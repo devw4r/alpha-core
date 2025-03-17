@@ -14,6 +14,7 @@ from game.world.managers.maps.MapManager import MapManager
 from game.world.managers.maps.MapTile import MapTile
 from tools.map_extractor.MapExtractor import MapExtractor
 from utils.ConfigManager import config, ConfigManager
+from utils.GitUtils import GitUtils
 from utils.Logger import Logger
 from utils.PathManager import PathManager
 from utils.constants import EnvVars
@@ -129,6 +130,11 @@ if __name__ == '__main__':
     except AttributeError:
         print(f'Invalid config.yml version. Expected {ConfigManager.EXPECTED_VERSION}, none found.')
         exit()
+
+    if args.extract or config.Server.Settings.use_nav_tiles:
+        if not GitUtils.check_download_namigator_bindings():
+            Logger.error(f'Unable to locate namigator bindings.')
+            exit()
 
     if args.extract:
         MapExtractor.run()
