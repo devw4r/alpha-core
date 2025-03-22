@@ -2,7 +2,7 @@ import datetime
 from database.world.WorldDatabaseManager import WorldDatabaseManager
 from utils.constants.ConditionCodes import ConditionType, ConditionFlags, ConditionTargetsInternal, EscortConditionFlags
 from utils.Logger import Logger
-from utils.constants.MiscCodes import ObjectTypeIds, QuestState, ObjectTypeFlags
+from utils.constants.MiscCodes import QuestState, ObjectTypeFlags
 from utils.constants.UnitCodes import Genders, PowerTypes, UnitFlags
 
 MAX_3368_SPELL_ID = 7913
@@ -52,19 +52,19 @@ class ConditionChecker:
 
     @staticmethod
     def is_player(target):
-        return target and target.get_type_id() == ObjectTypeIds.ID_PLAYER
+        return target and target.is_player()
 
     @staticmethod
     def is_creature(target):
-        return target and target.get_type_id() == ObjectTypeIds.ID_UNIT
+        return target and target.is_unit()
 
     @staticmethod
     def is_unit(target):
-        return target and target.get_type_mask() & ObjectTypeFlags.TYPE_UNIT
+        return target and target.is_unit(by_mask=True)
 
     @staticmethod
     def is_gameobject(target):
-        return target and target.get_type_id() == ObjectTypeIds.ID_GAMEOBJECT
+        return target and target.is_gameobject()
 
     @staticmethod
     def time_in_range(start, end, current):
@@ -139,10 +139,11 @@ class ConditionChecker:
         # Requires WorldObject target or source.
         # Returns True if target is in area.
         # Area_id = condition_value1.
-        if not target:
+        if not ConditionChecker.is_unit(target):
             return False
-        # TODO: Check this, we might need to validate parent zone id, also check area condition
-        return target.zone == condition.value1  # or target.area
+
+        parent_zone_id = target.get_map().get_parent_zone_id(target.zone)
+        return target.zone == condition.value1 or (parent_zone_id and condition.value1 == parent_zone_id)
 
     @staticmethod
     def check_condition_reputation_rank_min(_condition, _source, _target):
@@ -228,7 +229,6 @@ class ConditionChecker:
     def check_condition_cant_path_to_victim(_condition, source, target):
         # Requires Unit source.
         # Returns True if source cannot path to target.
-        # Unused in 0.5.3.
         if not ConditionChecker.is_unit(target):
             return False
         if not ConditionChecker.is_unit(source):
@@ -285,9 +285,9 @@ class ConditionChecker:
             return False
 
         if condition.value2 == 0:
-            return condition.value1 in target.spell_manager.spells
+            return target.spell_manager.has_spell(condition.value1)
         elif condition.value2 == 1:
-            return condition.value1 not in target.spell_manager.spells
+            return not target.spell_manager.has_spell(condition.value1)
 
         return False
 
@@ -376,12 +376,15 @@ class ConditionChecker:
         return target.inventory.get_item_count(condition.value1, include_bank=True) >= condition.value2
 
     @staticmethod
-    def check_condition_wow_patch(_condition, _source, _target):
+    def check_condition_wow_patch(condition, _source, _target):
         # Checks if the client is running a specific patch.
         # Condition_value1 = patch id.
         # Condition_value2 = 0 equal, 1 equal and higher, 2 equal and lower.
-        # Not used in 0.5.3.
-        Logger.warning('CONDITION_WOW_PATCH is not implemented.')
+
+        # Allow patch 0 (1.2 vMangos) equal or greater condition to evaluate true.
+        if condition.value1 == 0:
+            return True
+
         return False
 
     @staticmethod
@@ -550,7 +553,7 @@ class ConditionChecker:
         # Checks if the source has line of sight to the target.
         if not source or not target:
             return False
-        return source.get_map().los_check(source.location, target.location)
+        return source.get_map().los_check(source.get_ray_position(), target.get_ray_position())
 
     @staticmethod
     def check_condition_distance_to_target(condition, source, target):
@@ -585,7 +588,7 @@ class ConditionChecker:
         # Checks if the target has a pet.
         if not ConditionChecker.is_unit(target):
             return False
-        return target.pet_manager.get_active_controlled_pet()
+        return target.pet_manager.get_active_controlled_pet() is not None
 
     @staticmethod
     def check_condition_health_percent(condition, _source, target):
@@ -611,7 +614,6 @@ class ConditionChecker:
         # Checks the target's mana percentage.
         # Condition_value1 = mana percentage.
         # Condition_value2 = 0 equal, 1 equal or higher, 2 equal or lower.
-        # Unused in 0.5.3
         if not ConditionChecker.is_unit(target) or target.power_type != PowerTypes.TYPE_MANA:
             return False
 
@@ -639,7 +641,6 @@ class ConditionChecker:
     def check_condition_is_hostile_to(_condition, source, target):
         # Requires WorldObject source and target.
         # Checks if the source is hostile to the target.
-        # Unused in 0.5.3.
         if not source or not target:
             return False
         return source.is_hostile_to(target)
@@ -740,7 +741,7 @@ class ConditionChecker:
 
     @staticmethod
     def check_condition_local_time(condition, _source, _target):
-        # Checks if the local time is i.n the given range.
+        # Checks if the local time is in the given range.
         # Condition_value1 = start hour.
         # Condition_value2 = start minute.
         # Condition_value3 = end hour.
@@ -823,11 +824,11 @@ class ConditionChecker:
 
     @staticmethod
     def check_target_unit(_source, target):
-        return target and target.get_type_mask() & ObjectTypeFlags.TYPE_UNIT
+        return target and target.is_unit(by_mask=True)
 
     @staticmethod
     def check_target_player(_source, target):
-        return target and target.get_type_id() == ObjectTypeIds.ID_PLAYER
+        return target and target.is_player()
 
     @staticmethod
     def check_target_any_worldobject(source, target):
@@ -836,16 +837,15 @@ class ConditionChecker:
 
     @staticmethod
     def check_target_source_unit(source, _target):
-        return source and source.get_type_mask() & ObjectTypeFlags.TYPE_UNIT
+        return source and source.is_unit(by_mask=True)
 
     @staticmethod
     def check_target_source_worldobject(source, _target):
-        return source and source.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT
+        return source and source.is_object(by_mask=True)
 
     @staticmethod
     def check_target_map_or_worldobject(source, target):
-        return (source and source.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT) \
-            or (target and target.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT)
+        return (source and source.is_object(by_mask=True)) or (target and target.is_object(by_mask=True))
 
     @staticmethod
     def check_target_worldobject(_source, target):
@@ -853,7 +853,7 @@ class ConditionChecker:
 
     @staticmethod
     def check_target_source_creature(source, _target):
-        return source and source.get_type_id() == ObjectTypeIds.ID_UNIT
+        return source and source.is_unit()
 
     @staticmethod
     def check_target_both_worldobjects(source, target):
@@ -862,7 +862,7 @@ class ConditionChecker:
 
     @staticmethod
     def check_target_gameobject(_source, target):
-        return target and target.get_type_id() == ObjectTypeIds.ID_GAMEOBJECT
+        return target and target.is_gameobject()
 
 
 CONDITIONAL_TARGETS_INTERNAL_MAP = {

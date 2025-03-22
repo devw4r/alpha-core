@@ -3,6 +3,7 @@ from struct import pack
 
 from database.dbc.DbcDatabaseManager import DbcDatabaseManager
 from database.world.WorldDatabaseManager import WorldDatabaseManager
+from database.world.WorldModels import CreatureTemplate
 from game.world.managers.objects.ai.AIFactory import AIFactory
 from game.world.managers.objects.farsight.FarSightManager import FarSightManager
 from game.world.managers.objects.spell.ExtendedSpellData import ShapeshiftInfo
@@ -16,14 +17,14 @@ from game.world.managers.objects.units.creature.groups.CreatureGroupManager impo
 from network.packet.PacketWriter import PacketWriter
 from utils import Formulas
 from utils.ByteUtils import ByteUtils
-from utils.Formulas import CreatureFormulas, Distances
+from utils.Formulas import Distances
 from utils.GuidUtils import GuidUtils
 from utils.Logger import Logger
 from utils.constants import CustomCodes
 from utils.constants.MiscCodes import NpcFlags, ObjectTypeIds, UnitDynamicTypes, ObjectTypeFlags, MoveFlags, HighGuid, \
-    MoveType, Emotes, EmoteUnitState
+    MoveType, EmoteUnitState
 from utils.constants.OpCodes import OpCode
-from utils.constants.SpellCodes import SpellTargetMask
+from utils.constants.SpellCodes import SpellTargetMask, SpellImmunity
 from utils.constants.UnitCodes import UnitFlags, WeaponMode, CreatureTypes, MovementTypes, CreatureStaticFlags, \
     PowerTypes, CreatureFlagsExtra, CreatureReactStates, StandState
 from utils.constants.UpdateFields import ObjectFields, UnitFields
@@ -34,7 +35,6 @@ class CreatureManager(UnitManager):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.spawn_id = 0
-        self.is_dynamic_spawn = False
         self.entry = 0
         self.guid = 0
         self.creature_template = None
@@ -87,7 +87,7 @@ class CreatureManager(UnitManager):
         is_morph = self.fully_loaded
 
         self.entry = creature_template.entry
-        self.creature_template = creature_template
+        self.creature_template: CreatureTemplate = creature_template
         self.entry = self.creature_template.entry
         self.class_ = self.creature_template.unit_class
         self.npc_flags = self.creature_template.npc_flags
@@ -113,6 +113,12 @@ class CreatureManager(UnitManager):
         # NPC is immune to player characters.
         if self.creature_template.static_flags & CreatureStaticFlags.IMMUNE_PLAYER:
             self.set_unit_flag(UnitFlags.UNIT_FLAG_NOT_ATTACKABLE_OCC, active=True)
+
+        # Innate school and mechanic immunities.
+        if self.creature_template.mechanic_immune_mask:
+            self.set_immunity(SpellImmunity.IMMUNITY_MECHANIC, self.creature_template.mechanic_immune_mask)
+        if self.creature_template.school_immune_mask:
+            self.set_immunity(SpellImmunity.IMMUNITY_SCHOOL, self.creature_template.school_immune_mask)
 
         if self.is_totem() or self.is_critter() or not self.can_have_target():
             self.react_state = CreatureReactStates.REACT_PASSIVE
@@ -370,7 +376,7 @@ class CreatureManager(UnitManager):
     # override
     def is_player_controlled_pet(self):
         charmer_or_summoner = self.get_charmer_or_summoner()
-        return self.is_pet() and charmer_or_summoner and charmer_or_summoner.get_type_id() == ObjectTypeIds.ID_PLAYER
+        return self.is_pet() and charmer_or_summoner and charmer_or_summoner.is_player()
 
     def is_totem(self):
         return self.summoner and self.subtype == CustomCodes.CreatureSubtype.SUBTYPE_TOTEM
@@ -654,11 +660,11 @@ class CreatureManager(UnitManager):
         # Handle COMBAT_PING creature static flag.
         if self.has_combat_ping() and not self.in_combat:
             summoner = self.get_charmer_or_summoner()
-            if summoner and summoner.get_type_id() == ObjectTypeIds.ID_PLAYER:
+            if summoner and summoner.is_player():
                 summoner.send_minimap_ping(self.guid, self.location)
 
         # If creature's being attacked by another unit, automatically set combat target.
-        not_attacked_by_gameobject = source and source.get_type_id() != ObjectTypeIds.ID_GAMEOBJECT
+        not_attacked_by_gameobject = source and not source.is_gameobject()
         if not_attacked_by_gameobject:
             if not self.combat_target:
                 # Make sure to first stop any movement right away.
@@ -671,8 +677,7 @@ class CreatureManager(UnitManager):
         if not self.is_spawned:
             return False
 
-        if (source and source.get_type_id() == ObjectTypeIds.ID_PLAYER and self.is_pet()
-                and self.get_charmer_or_summoner() == source):
+        if source and source.is_player() and self.is_pet() and self.get_charmer_or_summoner() == source:
             data = pack('<IQ', amount, source.guid)
             source.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_HEALSPELL_ON_PLAYERS_PET, data))
 
@@ -698,23 +703,26 @@ class CreatureManager(UnitManager):
             # Notify member death.
             self.creature_group.on_member_died(self)
 
-        if killer and killer.get_type_id() == ObjectTypeIds.ID_UNIT and killer.object_ai:
+        if killer and killer.is_unit() and killer.object_ai:
             killer.object_ai.killed_unit(self)
 
         # Handle one shot kills leading to player remaining in combat.
         if was_oneshot and killer:
             self.threat_manager.add_threat(killer)
 
-        if killer and killer.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if killer and not killer.is_player():
             charmer_or_summoner = killer.get_charmer_or_summoner()
             # Attribute non-player kills to the creature's charmer/summoner.
             # TODO Does this also apply for player mind control?
             killer = charmer_or_summoner if charmer_or_summoner else killer
 
-        is_player_pet = self.get_charmer_or_summoner().pet_manager.get_active_permanent_pet().creature is self \
-            if self.is_player_controlled_pet() else False
+        is_player_pet = False
+        if self.is_player_controlled_pet():
+            charmer_or_summoner = self.get_charmer_or_summoner()
+            if charmer_or_summoner and charmer_or_summoner.pet_manager.get_active_permanent_pet().creature is self:
+                is_player_pet = True
 
-        if not is_player_pet and not self.is_guardian() and killer and killer.get_type_id() == ObjectTypeIds.ID_PLAYER:
+        if not is_player_pet and not self.is_guardian() and killer and killer.is_player():
             self.loot_manager.generate_loot(killer)
 
             self.reward_kill_xp(killer)
@@ -900,7 +908,7 @@ class CreatureManager(UnitManager):
         self.subtype = subtype
         self.object_ai = AIFactory.build_ai(self)
         # Set/remove player controlled flag.
-        if controller.get_type_id() == ObjectTypeIds.ID_PLAYER:
+        if controller.is_player():
             self.set_player_controlled(not remove)
 
     # override

@@ -227,6 +227,7 @@ class WorldServerSessionHandler:
             WorldServerSessionHandler.build_scheduler('Player', WorldSessionStateHandler.update_players, 0.1, 1),
             WorldServerSessionHandler.build_scheduler('Creature', MapManager.update_creatures, 0.2, 1),
             WorldServerSessionHandler.build_scheduler('Gameobject', MapManager.update_gameobjects, 1.0, 1),
+            WorldServerSessionHandler.build_scheduler('Transport', MapManager.update_transports, 0.1, 1),
             WorldServerSessionHandler.build_scheduler('DynObject', MapManager.update_dynobjects, 1.0, 1),
             WorldServerSessionHandler.build_scheduler('Spawn', MapManager.update_spawns, 1.0, 1),
             WorldServerSessionHandler.build_scheduler('Corpse', MapManager.update_corpses, 10.0, 1),
@@ -258,7 +259,7 @@ class WorldServerSessionHandler:
         Logger.info('Background schedulers stopped.')
 
     @staticmethod
-    def start(running):
+    def start_world(running, world_server_ready):
         WorldLoader.load_data()
 
         # Start background tasks.
@@ -267,6 +268,9 @@ class WorldServerSessionHandler:
 
         # Chat logger.
         WorldServerSessionHandler.start_chat_logger()
+
+        # Set ready.
+        world_server_ready.value = 1
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             try:
@@ -279,21 +283,22 @@ class WorldServerSessionHandler:
             server_socket.settimeout(2)
 
             real_binding = server_socket.getsockname()
-            Logger.success(f'World server started, listening on {real_binding[0]}:{real_binding[1]}\a')
+            Logger.success(f'World server started, listening on {real_binding[0]}:{real_binding[1]}')
 
-            while WORLD_ON and running.value:
-                try:
-                    client_socket, client_address = server_socket.accept()
-                    server_handler = WorldServerSessionHandler(client_socket, client_address)
-                    world_session_thread = threading.Thread(target=server_handler.handle)
-                    world_session_thread.daemon = True
-                    world_session_thread.start()
-                except socket.timeout:
-                    pass  # Non blocking.
-                except OSError:
-                    Logger.warning(traceback.format_exc())
-                except KeyboardInterrupt:
-                    break
+            try:
+                while WORLD_ON and running.value:
+                    try:
+                        client_socket, client_address = server_socket.accept()
+                        server_handler = WorldServerSessionHandler(client_socket, client_address)
+                        world_session_thread = threading.Thread(target=server_handler.handle)
+                        world_session_thread.daemon = True
+                        world_session_thread.start()
+                    except socket.timeout:
+                        pass  # Non blocking.
+            except OSError:
+                Logger.warning(traceback.format_exc())
+            except KeyboardInterrupt:
+                pass
 
         Logger.info("World server turned off.")
         ChatLogManager.exit()

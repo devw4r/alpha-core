@@ -28,9 +28,9 @@ class DoorManager(GameObjectManager):
         if now > self.last_tick > 0:
             if self.is_active_object():
                 # Check if we need to reset the original door state.
-                if self.is_active() and super().check_cooldown(now):
+                if self.get_auto_close_time() > 0 and self.is_active() and super().check_cooldown(now):
                     self.reset_door_state()
-            super().update(now)
+        super().update(now)
 
     # override
     def use(self, player=None, target=None, from_script=False):

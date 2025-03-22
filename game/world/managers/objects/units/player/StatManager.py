@@ -7,8 +7,8 @@ from game.world.managers.objects.units.player.EnchantmentManager import Enchantm
 from utils.Formulas import UnitFormulas, CreatureFormulas
 from utils.Logger import Logger
 from utils.constants.ItemCodes import InventorySlots, InventoryStats, ItemSubClasses, ItemEnchantmentType
-from utils.constants.MiscCodes import AttackTypes, HitInfo, ObjectTypeIds, SkillCategories, ObjectTypeFlags
-from utils.constants.SpellCodes import SpellSchools, SpellImmunity, SpellHitFlags, SpellMissReason
+from utils.constants.MiscCodes import AttackTypes, HitInfo, ObjectTypeIds, SkillCategories
+from utils.constants.SpellCodes import SpellSchools, SpellHitFlags, SpellMissReason
 from utils.constants.UnitCodes import PowerTypes, Classes, Races, UnitFlags, UnitStates
 from utils.constants.UpdateFields import UnitFields
 
@@ -141,7 +141,7 @@ class StatManager(object):
                 return
 
         # Player specific.
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER:
+        if self.unit_mgr.is_player():
             base_attrs = WorldDatabaseManager.player_get_level_stats(self.unit_mgr.class_,
                                                                      self.unit_mgr.level,
                                                                      self.unit_mgr.race)
@@ -337,7 +337,7 @@ class StatManager(object):
     def apply_bonuses(self, replenish=False):
         # Don't apply bonuses for players that haven't completed login.
         # Sending a speed change before entering the world crashes the client.
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER and not self.unit_mgr.online:
+        if self.unit_mgr.is_player() and not self.unit_mgr.online:
             return
 
         self.calculate_item_stats()
@@ -368,7 +368,7 @@ class StatManager(object):
         self.send_defense_bonuses()
         self.send_cast_time_mods()
 
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER:
+        if self.unit_mgr.is_player():
             self.unit_mgr.skill_manager.build_update()
 
         if replenish:
@@ -448,7 +448,7 @@ class StatManager(object):
         return bonuses
 
     def _set_creature_base_damage(self, base_min, base_max, attack_type):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_UNIT:
+        if not self.unit_mgr.is_unit():
             return
 
         # In vanilla, creatures get a damage bonus of 30% of their bonus attack power.
@@ -502,7 +502,7 @@ class StatManager(object):
             self.base_stats[UnitStats.RANGED_DELAY] = self.unit_mgr.ranged_attack_time
 
     def calculate_item_stats(self):
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_UNIT:
+        if self.unit_mgr.is_unit():
             return
 
         self.item_stats = {UnitStats.MAIN_HAND_DELAY: config.Unit.Defaults.base_attack_time,
@@ -611,7 +611,7 @@ class StatManager(object):
         current_total_hp = self.unit_mgr.max_health
         new_hp = int(self.get_health_bonus_from_stamina(self.unit_mgr.class_, total_stamina) + total_health)
 
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_UNIT:
+        if self.unit_mgr.is_unit():
             # Creature health already includes bonus from base stamina.
             new_hp -= int(self.get_health_bonus_from_stamina(self.unit_mgr.class_,
                                                              self.get_base_stat(UnitStats.STAMINA)))
@@ -638,7 +638,7 @@ class StatManager(object):
         current_total_mana = self.unit_mgr.max_power_1
         new_mana = int(self.get_mana_bonus_from_intellect(self.unit_mgr.class_, total_intellect) + total_mana)
 
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_UNIT:
+        if self.unit_mgr.is_unit():
             # Creature mana already includes bonus from base intellect.
             new_mana -= int(self.get_mana_bonus_from_intellect(self.unit_mgr.class_,
                                                                self.get_base_stat(UnitStats.INTELLECT)))
@@ -670,7 +670,7 @@ class StatManager(object):
         self.base_stats[UnitStats.MANA_REGENERATION_PER_5] = regen * 2.5  # Values are per tick (* 5/2).
 
     def update_base_melee_critical_chance(self):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             return
 
         player_class = self.unit_mgr.class_
@@ -682,7 +682,7 @@ class StatManager(object):
         self.base_stats[UnitStats.MELEE_CRITICAL] = critical_bonus
 
     def update_base_dodge_chance(self):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             return  # Base dodge can't change for creatures - set on init.
 
         player_class = self.unit_mgr.class_
@@ -699,7 +699,7 @@ class StatManager(object):
         self.base_stats[UnitStats.DODGE_CHANCE] = base_dodge
 
     def update_base_block_chance(self):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             return
 
         player_class = self.unit_mgr.class_
@@ -720,7 +720,7 @@ class StatManager(object):
         self.base_stats[UnitStats.BLOCK_CHANCE] = strength_scaling + base_block_chance
 
     def update_base_proc_chance(self):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             return
         player_class = self.unit_mgr.class_
 
@@ -809,8 +809,8 @@ class StatManager(object):
         return min(0.4, 0.2 - 0.002 * self._get_combat_rating_difference(attacker.level))
 
     def get_attack_result_against_self(self, attacker, attack_type,
-                                       dual_wield_penalty=0.0, allow_parry=True,
-                                       allow_crit=True, combat_rating=-1) -> HitInfo:
+                                       dual_wield_penalty=0.0, invalid_result_mask: HitInfo = 0,
+                                       combat_rating=-1) -> HitInfo:
         # TODO Based on vanilla calculations.
         # Evading/Sanctuary.
         if self.unit_mgr.is_evading or self.unit_mgr.unit_state & UnitStates.SANCTUARY:
@@ -827,7 +827,7 @@ class StatManager(object):
 
         base_miss = 0.05 + dual_wield_penalty
         miss_chance = base_miss
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER:
+        if self.unit_mgr.is_player():
             # 0.04% Bonus against players when the defender has a higher combat rating,
             # 0.02% Penalty when the attacker has a higher combat rating.
             miss_chance += rating_difference * 0.0004 if rating_difference > 0 else rating_difference * 0.0002
@@ -846,36 +846,35 @@ class StatManager(object):
         # regardless of how much +hit% gear was equipped.
         miss_chance = max(dual_wield_penalty, miss_chance)
 
-        roll = random.random()
-        if roll < miss_chance:
+        if not (HitInfo.MISS & invalid_result_mask) and random.random() < miss_chance:
             return HitInfo.MISS
+
+        hit_info = HitInfo.SUCCESS
 
         # Dodge/parry/block receive a 0.04% bonus/penalty for each skill point difference.
         dodge_chance = self.get_total_stat(UnitStats.DODGE_CHANCE, accept_float=True) + rating_difference * 0.0004
-        roll = random.random()
-        if self.unit_mgr.can_dodge(attacker.location, in_combat=True) and roll < dodge_chance:
-            return HitInfo.DODGE | HitInfo.SUCCESS
+        can_dodge = not (invalid_result_mask & HitInfo.DODGE) and self.unit_mgr.can_dodge(attacker.location, in_combat=True)
+        if can_dodge and random.random() < dodge_chance:
+            return hit_info | HitInfo.DODGE
 
-        if allow_parry:
-            parry_chance = self.get_total_stat(UnitStats.PARRY_CHANCE, accept_float=True) + rating_difference * 0.0004
-            roll = random.random()
-            if self.unit_mgr.can_parry(attacker.location, in_combat=True) and roll < parry_chance:
-                return HitInfo.PARRY | HitInfo.SUCCESS
+        parry_chance = self.get_total_stat(UnitStats.PARRY_CHANCE, accept_float=True) + rating_difference * 0.0004
+        can_parry = not (invalid_result_mask & HitInfo.PARRY) and self.unit_mgr.can_parry(attacker.location, in_combat=True)
+        if can_parry and random.random() < parry_chance:
+            return hit_info | HitInfo.PARRY
 
         rating_difference_block = self._get_combat_rating_difference(attacker.level, combat_rating,
                                                                      use_block=self.unit_mgr.can_block(in_combat=True))
 
         block_chance = self.get_total_stat(UnitStats.BLOCK_CHANCE, accept_float=True) + rating_difference_block * 0.0004
-        roll = random.random()
-        if self.unit_mgr.can_block(attacker.location, in_combat=True) and roll < block_chance:
-            return HitInfo.BLOCK | HitInfo.SUCCESS
+        can_block = not (invalid_result_mask & HitInfo.BLOCK) and self.unit_mgr.can_block(attacker.location, in_combat=True)
+        if can_block and random.random() < block_chance:
+            return hit_info | HitInfo.BLOCK
 
-        if allow_crit:
+        if not (invalid_result_mask & HitInfo.CRITICAL_HIT):
             critical_chance = self._get_base_crit_chance_against_self(attacker, attack_type)
         else:
             critical_chance = 0
 
-        hit_info = HitInfo.SUCCESS
         if attack_type == AttackTypes.OFFHAND_ATTACK:
             hit_info |= HitInfo.OFFHAND
         if random.random() < critical_chance:
@@ -883,14 +882,21 @@ class StatManager(object):
             return hit_info
 
         # Crushing blows.
-        # TODO: Find formula, use crit chance for now.
-        if attacker.can_crush():
-            if attacker.should_always_crush():
-                hit_info |= HitInfo.CRUSHING
-                return hit_info
-            elif attacker.level >= self.unit_mgr.level + 3:
-                if random.random() < critical_chance:
-                    hit_info |= HitInfo.CRUSHING
+        can_crush = not (invalid_result_mask & HitInfo.CRUSHING) and attacker.can_crush()
+        if not can_crush:
+            return hit_info
+
+        if attacker.should_always_crush():
+            return hit_info | HitInfo.CRUSHING
+
+        # Defense rating above max isn't considered for crushing blow roll.
+        effective_defense_rating = min(self._get_defense_rating(False), self.unit_mgr.level * 5)
+        eff_difference = combat_rating - effective_defense_rating
+
+        # 15% + 2% * skill difference chance to crush when level difference >= 3.
+        crush_chance = eff_difference * 0.02 - 0.15
+        if eff_difference >= 15 and random.random() < crush_chance:
+            return hit_info | HitInfo.CRUSHING
         
         return hit_info
 
@@ -907,7 +913,7 @@ class StatManager(object):
         skill_value = -1
 
         # Prioritize spell combat rating.
-        if casting_spell and self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER:
+        if casting_spell and self.unit_mgr.is_player():
             _, skill, _ = self.unit_mgr.skill_manager.get_skill_info_for_spell_id(casting_spell.spell_entry.ID)
             if not skill and casting_spell.triggered_by_spell:
                 trigger_spell_id = casting_spell.triggered_by_spell.spell_entry.ID
@@ -944,7 +950,7 @@ class StatManager(object):
 
         rating_difference = self._get_combat_rating_difference(attacker.level, attack_rating)
 
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER:
+        if self.unit_mgr.is_player():
             # Player: +- 0.04% for each rating difference.
             # For example with defender player level 60 and attacker mob level 63:
             # 5% - (300-315) * 0.04 = 5.6% crit chance (mob).
@@ -994,10 +1000,14 @@ class StatManager(object):
         if is_base_attack_spell:
             # Use base attack formulas for next melee swing and ranged spells.
             # Note that dual wield penalty is not applied to spells.
-            # Ranged attacks can't be parried. Crit is rolled later for special damage (non-normal school) spells.
+            # Spells can never result in crushing blows. Ranged attacks can't be parried.
+            # Crit is rolled later for special damage (non-normal school) spells.
+            invalid_results = HitInfo.CRUSHING | \
+                              (HitInfo.PARRY if casting_spell.is_ranged_weapon_attack() else HitInfo.DAMAGE) | \
+                              (HitInfo.CRITICAL_HIT if is_special_damage else HitInfo.DAMAGE)
+
             result_info = self.get_attack_result_against_self(caster, casting_spell.get_attack_type(),
-                                                              allow_parry=not casting_spell.is_ranged_weapon_attack(),
-                                                              allow_crit=not is_special_damage,
+                                                              invalid_result_mask=invalid_results,
                                                               combat_rating=attacker_combat_rating)
             if result_info & HitInfo.CRITICAL_HIT:
                 hit_flags |= SpellHitFlags.CRIT
@@ -1028,8 +1038,7 @@ class StatManager(object):
 
         miss_chance = self.get_spell_resist_chance_against_self(casting_spell)
 
-        roll = random.random()
-        if roll < miss_chance:
+        if random.random() < miss_chance:
             return SpellMissReason.MISS_REASON_RESIST, hit_flags
 
         return SpellMissReason.MISS_REASON_NONE, hit_flags
@@ -1050,9 +1059,9 @@ class StatManager(object):
         spell_school = casting_spell.spell_entry.School
 
         attack_type = casting_spell.get_attack_type() if casting_spell.is_weapon_attack() else -1
-        if caster.get_type_mask() & ObjectTypeFlags.TYPE_UNIT:
+        if caster.is_unit(by_mask=True):
             attacker_combat_rating = caster.stat_manager.get_combat_rating_for_attack(attack_type=attack_type,
-                                                                                  casting_spell=casting_spell)
+                                                                                      casting_spell=casting_spell)
         else:
             attacker_combat_rating = self.unit_mgr.level * 5  # Gameobjects? @Flug.
 
@@ -1060,13 +1069,13 @@ class StatManager(object):
         rating_mod = rating_difference / 5 / 100
 
         miss_chance = 0.04
-        level_penalty = 7 if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER else 11
+        level_penalty = 7 if self.unit_mgr.is_player() else 11
 
         miss_chance += rating_mod if rating_difference < 15 else \
             0.02 + (rating_mod - 0.02) * level_penalty
 
         # Resistance application.
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER and spell_school != SpellSchools.SPELL_SCHOOL_NORMAL:
+        if self.unit_mgr.is_player() and spell_school != SpellSchools.SPELL_SCHOOL_NORMAL:
             # Use resistance for players.
             # Our values for creatures are most likely wrong for alpha and are not applied.
             resist_mod = self.get_total_stat(UnitStats.RESISTANCE_START << spell_school)
@@ -1087,7 +1096,7 @@ class StatManager(object):
         return miss_chance
 
     def update_attack_base_damage(self, attack_type=0):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             base_stats, base_dmg, base_ranged_dmg = self._get_creature_base_stats()
             self._set_creature_base_damage(base_dmg[0], base_dmg[1], AttackTypes.BASE_ATTACK)
             self._set_creature_base_damage(base_ranged_dmg[0], base_ranged_dmg[1], AttackTypes.RANGED_ATTACK)
@@ -1139,8 +1148,7 @@ class StatManager(object):
 
     def send_melee_attributes(self):
         enchant_bonus = 0
-        if (self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER and
-                not self.unit_mgr.unit_flags & UnitFlags.UNIT_FLAG_DISARMED):
+        if self.unit_mgr.is_player() and not self.unit_mgr.unit_flags & UnitFlags.UNIT_FLAG_DISARMED:
             # Weapon enchant bonuses are included in the weapon's damage internally,
             # but should be displayed as a bonus.
             enchant_bonus = EnchantmentManager.get_effect_value_for_enchantment_type(
@@ -1191,7 +1199,7 @@ class StatManager(object):
         self.unit_mgr.set_spi(self.get_total_stat(UnitStats.SPIRIT, accept_negative=True))
 
     def send_damage_bonuses(self):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             return
         main_hand = self.unit_mgr.inventory.get_main_hand()
         subclass_mask = 0
@@ -1219,7 +1227,7 @@ class StatManager(object):
         self.send_dodge_percentage()
 
     def send_block_percentage(self):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             return
         if not self.unit_mgr.can_block(in_combat=False):
             self.unit_mgr.set_block_chance(0)
@@ -1235,7 +1243,7 @@ class StatManager(object):
         self.unit_mgr.set_block_chance(value)
 
     def send_parry_percentage(self):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             return
         if not self.unit_mgr.can_parry(in_combat=False):
             self.unit_mgr.set_parry_chance(0)
@@ -1249,7 +1257,7 @@ class StatManager(object):
         self.unit_mgr.set_parry_chance(value)
 
     def send_dodge_percentage(self):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             return
         if not self.unit_mgr.can_dodge(in_combat=False):
             self.unit_mgr.set_dodge_chance(0)
@@ -1263,7 +1271,7 @@ class StatManager(object):
         self.unit_mgr.set_dodge_chance(value)
 
     def send_cast_time_mods(self):
-        if self.unit_mgr.get_type_id() != ObjectTypeIds.ID_PLAYER:
+        if not self.unit_mgr.is_player():
             return
         self.unit_mgr.set_float(UnitFields.UNIT_MOD_CAST_SPEED,
                                 self.get_total_stat(UnitStats.SPELL_CASTING_SPEED, accept_float=True) * 100)
@@ -1276,14 +1284,15 @@ class StatManager(object):
         if attacker_rating == -1:
             attacker_rating = attacker_level * 5
 
-        if self.unit_mgr.get_type_id() == ObjectTypeIds.ID_PLAYER:
+        return self._get_defense_rating(use_block) - attacker_rating
+
+    def _get_defense_rating(self, use_block=True):
+        if self.unit_mgr.is_player():
             # TODO It's unclear what the block skill is used for based on patch notes.
             # Use Shields/Block or Defense, depending on the class.
-            own_defense_rating = self.unit_mgr.skill_manager.get_defense_skill_value(use_block=use_block)
+            return self.unit_mgr.skill_manager.get_defense_skill_value(use_block=use_block)
         else:
-            own_defense_rating = self.unit_mgr.level * 5
-
-        return own_defense_rating - attacker_rating
+            return self.unit_mgr.level * 5
 
     @staticmethod
     def get_health_bonus_from_stamina(class_, stamina):
