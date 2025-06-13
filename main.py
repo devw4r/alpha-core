@@ -2,8 +2,10 @@ import multiprocessing
 import os
 import argparse
 import signal
+import sys
 from sys import platform
 from time import sleep
+
 
 from game.login.LoginManager import LoginManager
 from game.realm.RealmManager import RealmManager
@@ -33,6 +35,22 @@ parser.add_argument(
     help='-e in order to extract .map files',
     dest='extract',
     action='store_true',
+    default=False
+)
+
+parser.add_argument(
+    '-x', '--adt_x',
+    help='-x in order to specify adt x extraction',
+    dest='adt_x',
+    type=int,
+    default=False
+)
+
+parser.add_argument(
+    '-y', '--adt_y',
+    help='-y in order to specify adt y extraction',
+    dest='adt_y',
+    type=int,
     default=False
 )
 args = parser.parse_args()
@@ -68,11 +86,15 @@ def handle_console_commands():
             command = input()
     except:
         pass
+    Logger.info(f'Command listener released.')
     RUNNING.value = 0
 
 
 def handler_stop_signals(signum, frame):
     RUNNING.value = 0
+    # Console mode, we need to kill stdin input() listener.
+    if CONSOLE_LISTENING:
+        raise KeyboardInterrupt
 
 
 def wait_world_server():
@@ -80,34 +102,34 @@ def wait_world_server():
         return
     # Wait for world start before starting realm/proxy sockets if needed.
     while not WORLD_SERVER_READY.value and RUNNING.value:
-        sleep(1)
+        sleep(0.1)
 
 
 def wait_realm_server():
     if not launch_realm:
         return
     while not REALM_SERVER_READY.value and RUNNING.value:
-        sleep(1)
+        sleep(0.1)
 
 
 def wait_proxy_server():
     if not launch_realm:
         return
     while not PROXY_SERVER_READY.value and RUNNING.value:
-        sleep(1)
+        sleep(0.1)
 
 
 def wait_login_server():
     while not LOGIN_SERVER_READY.value and RUNNING.value:
-        sleep(1)
+        sleep(0.1)
 
 
 def wait_update_server():
     while not UPDATE_SERVER_READY.value and RUNNING.value:
-        sleep(1)
+        sleep(0.1)
 
 
-CONSOLE_THREAD = None
+CONSOLE_LISTENING = False
 RUNNING = None
 WORLD_SERVER_READY = None
 REALM_SERVER_READY = None
@@ -133,7 +155,9 @@ if __name__ == '__main__':
         exit()
 
     if args.extract:
-        Extractor.run()
+        adt_x = args.adt_x if args.adt_x else -1
+        adt_y = args.adt_y if args.adt_y else -1
+        Extractor.run(adt_x, adt_y)
         exit()
 
     # Validate if maps available and if version match.
@@ -157,12 +181,6 @@ if __name__ == '__main__':
     PROXY_SERVER_READY = context.Value('i', 0)
     LOGIN_SERVER_READY = context.Value('i', 0)
     UPDATE_SERVER_READY = context.Value('i', 0)
-
-    # Print active env vars.
-    for env_var_name in EnvVars.EnvironmentalVariables.ACTIVE_ENV_VARS:
-        env_var = os.getenv(env_var_name, '')
-        if env_var:
-            Logger.info(f'Environment variable {env_var_name}: {env_var}')
 
     launch_realm = not args.launch or args.launch == 'realm'
     launch_world = not args.launch or args.launch == 'world'
@@ -209,11 +227,18 @@ if __name__ == '__main__':
         process.start()
         wait_call()
 
+    # Print active env vars.
+    for env_var_name in EnvVars.EnvironmentalVariables.ACTIVE_ENV_VARS:
+        env_var = os.getenv(env_var_name, '')
+        if env_var:
+            Logger.info(f'Environment variable {env_var_name}: {env_var}')
+
     # Bell sound character.
     Logger.info('Alpha Core is now running.\a')
 
     # Handle console mode.
     if console_mode and RUNNING.value:
+        CONSOLE_LISTENING = True
         handle_console_commands()
     else:
         # Wait on main thread for stop signal or 'exit' command.

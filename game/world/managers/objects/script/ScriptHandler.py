@@ -7,6 +7,7 @@ from database.world.WorldModels import CreatureGroup
 from game.world.managers.abstractions.Vector import Vector
 from game.world.managers.objects.gameobjects.managers.ButtonManager import ButtonManager
 from game.world.managers.objects.gameobjects.managers.DoorManager import DoorManager
+from game.world.managers.objects.gameobjects.managers.GooberManager import GooberManager
 from game.world.managers.objects.script.ConditionChecker import ConditionChecker
 from game.world.managers.objects.script.Script import Script
 from game.world.managers.objects.script.ScriptHelpers import ScriptHelpers
@@ -502,6 +503,7 @@ class ScriptHandler:
                                 script_id=command.dataint2)
         # Attack target type.
         if command.dataint3 < ScriptTarget.TARGET_T_PROVIDED_TARGET:  # Can be -1.
+            creature_manager.set_has_moved(has_moved=True, has_turned=True)
             return False
 
         from game.world.managers.objects.script.ScriptManager import ScriptManager
@@ -808,7 +810,7 @@ class ScriptHandler:
 
         creature_template = WorldDatabaseManager.CreatureTemplateHolder.creature_get_by_entry(creature_or_model_entry)
         if creature_template:
-            command.source.set_display_id(creature_template.display_id)
+            command.source.set_display_id(creature_template.display_id1)
         else:
             Logger.warning(f'ScriptHandler: No creature template found, {command.get_info()}.')
             return command.should_abort()
@@ -839,8 +841,8 @@ class ScriptHandler:
         elif creature_or_model_entry:
             creature_template = WorldDatabaseManager.CreatureTemplateHolder.creature_get_by_entry(
                 creature_or_model_entry)
-            if creature_template and creature_template.display_id:
-                command.source.mount(creature_template.display_id)
+            if creature_template and creature_template.display_id1:
+                command.source.mount(creature_template.display_id1)
             else:
                 command.source.unmount()
 
@@ -1635,6 +1637,8 @@ class ScriptHandler:
             command.source.gameobject_instance.reset_door_state()
         elif isinstance(command.source.gameobject_instance, ButtonManager):
             command.source.gameobject_instance.reset_button_state()
+        elif isinstance(command.source.gameobject_instance, GooberManager):
+            command.source.gameobject_instance.reset_goober_state()
 
         return False
 

@@ -61,7 +61,7 @@ class Cell:
 
     @staticmethod
     def _object_in_visible_range(source, world_object):
-        return source.location.distance(world_object.location) <= VIEW_DISTANCE
+        return source.location.distance_2d(world_object.location) <= VIEW_DISTANCE
 
     def has_players(self):
         return len(self.players) > 0

@@ -40,6 +40,9 @@ class ChaseMovement(BaseMovement):
         evade_distance = Distances.CREATURE_EVADE_DISTANCE
         combat_target = unit.combat_target
 
+        if not combat_target:
+            return
+
         if not unit.is_pet():
             # In 0.5.3, evade mechanic was only based on distance, the correct distance remains unknown.
             # From 0.5.4 patch notes:
@@ -49,16 +52,15 @@ class ChaseMovement(BaseMovement):
                 unit.threat_manager.remove_unit_threat(combat_target)
                 return
 
-            if self.unit.is_swimming():
-                if not unit.can_swim():
-                    unit.threat_manager.remove_unit_threat(combat_target)
-                    return
-                if not unit.can_exit_water() and not combat_target.is_swimming():
-                    unit.threat_manager.remove_unit_threat(combat_target)
-                    return
+            if unit.is_swimming() or combat_target.is_swimming() and not unit.can_swim():
+                unit.threat_manager.remove_unit_threat(combat_target)
+                return
+            elif unit.is_swimming() and not combat_target.is_swimming() and not unit.can_exit_water():
+                unit.threat_manager.remove_unit_threat(combat_target)
+                return
 
         # Face the target if necessary.
-        if not unit.location.has_in_arc(unit.combat_target.location, math.pi):
+        if not unit.location.has_in_arc(combat_target.location, math.pi):
             unit.movement_manager.face_target(unit.combat_target)
 
         # Use less distance if target is moving.

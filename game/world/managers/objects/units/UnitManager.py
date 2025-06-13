@@ -694,7 +694,7 @@ class UnitManager(ObjectManager):
         if power_type not in {PowerTypes.TYPE_HEALTH, PowerTypes.TYPE_MANA} or \
             power_type == PowerTypes.TYPE_HEALTH and not self.in_combat or \
                 (power_type == PowerTypes.TYPE_MANA and self.mana_regen_timer >= 5):
-            regen_per_5 += self.stat_manager.get_total_stat(regen_stat, accept_negative=True)
+            regen_per_5 += self.stat_manager.get_total_stat(regen_stat, accept_negative=True, accept_float=True)
 
         # Health regen from sitting.
         if power_type == PowerTypes.TYPE_HEALTH and not self.in_combat and self.is_sitting():
@@ -828,9 +828,10 @@ class UnitManager(ObjectManager):
         if not self.is_alive:
             return False
 
-        if source is not self and not is_periodic and damage_info.total_damage > 0:
+        if source is not self and damage_info.total_damage > 0:
             self.aura_manager.check_aura_interrupts(received_damage=True)
-            self.spell_manager.check_spell_interrupts(received_damage=True)
+            if not is_periodic:
+                self.spell_manager.check_spell_interrupts(received_damage=True)
 
         new_health = self.health - damage_info.total_damage
         if new_health <= 0:
@@ -1900,6 +1901,10 @@ class UnitManager(ObjectManager):
         if self.beast_master:
             return
 
+        charmer_or_summoner = self.get_charmer_or_summoner()
+        if charmer_or_summoner and charmer_or_summoner.beast_master:
+            return
+
         map_ = self.get_map()
         self_is_player = self.is_player()
         surrounding_units = map_.get_surrounding_units(self, not self_is_player)
@@ -1972,6 +1977,9 @@ class UnitManager(ObjectManager):
             if unit_is_player and not unit.pending_relocation and not unit.beast_master:
                 unit.pending_relocation = True
             elif not unit_is_player:
+                charmer_or_summoner = unit.get_charmer_or_summoner()
+                if charmer_or_summoner and charmer_or_summoner.beast_master:
+                    continue
                 unit.object_ai.move_in_line_of_sight(self)
 
     def set_has_moved(self, has_moved, has_turned, flush=False):

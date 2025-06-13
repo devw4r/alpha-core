@@ -942,9 +942,7 @@ class PlayerManager(UnitManager):
 
         # Reward kill experience to pet.
         if victim:
-            pet = self.pet_manager.get_active_permanent_pet()
-            if pet:
-                pet.get_pet_data().add_experience(total_amount)
+            self.pet_manager.add_active_pet_experience(total_amount)
 
         if self.xp + total_amount >= self.next_level_xp:  # Level up!
             xp_to_level = self.next_level_xp - self.xp
@@ -1120,7 +1118,7 @@ class PlayerManager(UnitManager):
         if state:
             self.liquid_information = self.get_map().get_liquid_information(self.location.x, self.location.y,
                                                                             self.location.z)
-            if not self.liquid_information:
+            if not self.liquid_information and config.Server.Settings.use_map_tiles:
                 Logger.warning(f'Unable to retrieve liquids information. Map {self.map_id} X {self.location.x} Y '
                                f'{self.location.y}')
         else:

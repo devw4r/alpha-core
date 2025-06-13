@@ -1190,5 +1190,111 @@ begin not atomic
 
         insert into applied_updates values ('020520251');
     end if;
+
+    -- 25/05/2025 1
+    if (select count(*) from applied_updates where id='250520251') = 0 then
+        UPDATE `trainer_template` SET reqlevel = 21 WHERE playerspell = 4772; -- Bruise Rank 2
+        UPDATE `trainer_template` SET reqlevel = 28 WHERE playerspell = 4773; -- Bruise Rank 3
+        UPDATE `trainer_template` SET reqlevel = 36 WHERE playerspell = 4774; -- Bruise Rank 4
+        UPDATE `trainer_template` SET reqlevel = 22 WHERE playerspell = 6577; -- Intimidating Growl
+        UPDATE `trainer_template` SET reqlevel = 22 WHERE playerspell = 6666; -- Survival Instinct
+        INSERT INTO applied_updates VALUES ('250520251');
+    end if;
+
+    -- 29/05/2025 1
+    if (select count(*) from applied_updates where id='290520251') = 0 then
+        UPDATE `spawns_creatures` SET `ignored` = '0', `position_x` = '-3828.561', `position_y` = '-1519.325', `position_z` = '92.818', `orientation` = '4.599' WHERE (`spawn_id` = '14367');
+        UPDATE `creature_template` SET `display_id1` = '1344' WHERE (`entry` = '3435');
+        INSERT INTO applied_updates VALUES ('290520251');
+    end if;
+
+    -- 30/05/2025 1
+    if (select count(*) from applied_updates where id='300520251') = 0 then
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1502
+        UPDATE `item_template` SET `display_id` = 9388 WHERE (`entry` = 2854);
+        -- Runed Copper Breastplate
+        UPDATE `item_template` SET `display_id` = 9387 WHERE (`entry` = 2864);
+
+        INSERT INTO applied_updates VALUES ('300520251');
+    end if;
+
+    -- 31/05/2025 1
+    if (select count(*) from applied_updates where id='310520251') = 0 then
+        UPDATE `quest_template` SET `Details` = 'As my understanding of Arugal\'s magic grows so does my disdain for the hapless fool.  I am close to completing my research on his so called remedy.$b$bMy knowledge will be complete when I learn what enchantment is causing the strange behavior going on in Pyrewood Village.  By day, the peasants appear to be Human.  But when the sun goes down the townsfolk turn into Moonrage Worgen.$b$bI need to draw energy from the enchanted shackles Arugal cast on them.  Bring to me twelve enchanted Pyrewood Shackles, $N.', `Objectives` = 'Bring 12 Pyrewood Shackles to Dalar Dawnweaver at the Sepulcher.' WHERE (`entry` = '99');
+        -- Partial fixes for #1504, missing Sign post at: .port -48 -262 1 1 (Sunrock to the east, the Venture Co camp to the southeast and Windshar Craig to the northwest)
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '603.36', `spawn_positionY` = '325.836', `spawn_orientation` = '1.67552', `spawn_rotation0` = '0.034697', `spawn_rotation1` = '0.045045', `spawn_rotation2` = '0.741777', `spawn_rotation3` = '0.668232' WHERE (`spawn_id` = '47456');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '68.8' WHERE (`spawn_id` = '47450');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '68.8' WHERE (`spawn_id` = '47447');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '47614');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '47615');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '47616');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '44776');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '44777');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '44807');
+        UPDATE `spawns_gameobjects` SET `spawn_orientation` = '2.36492', `spawn_rotation0` = '0.063403', `spawn_rotation1` = '0.166318', `spawn_rotation2` = '0.910467', `spawn_rotation3` = '0.373321' WHERE (`spawn_id` = '47449');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '68.548', `spawn_positionY` = '-139.245', `spawn_positionZ` = '9.54' WHERE (`spawn_id` = '47449');
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1506
+        UPDATE `broadcast_text` SET `male_text` = '%s inspects the thresher hides...' WHERE (`entry` = '1085');
+        UPDATE `broadcast_text` SET `male_text` = '$N.  These hides tell me much, but I fear many more questions are now raised...' WHERE (`entry` = '1089');
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1508
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '50.0159' WHERE (`spawn_id` = '38944');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '51.1986' WHERE (`spawn_id` = '43639');
+        UPDATE `spawns_gameobjects` SET `spawn_positionY` = '-4652.405', `spawn_positionZ` = '16.318' WHERE (`spawn_id` = '44108');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '91.6668' WHERE (`spawn_id` = '40266');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '99.5902' WHERE (`spawn_id` = '40274');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '97.924' WHERE (`spawn_id` = '40206');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '44.682', `spawn_positionY` = '-1724', `spawn_positionZ` = '105.110' WHERE (`spawn_id` = '40242');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_entry` = '123334');
+
+        INSERT INTO applied_updates VALUES ('310520251');
+    end if;
+
+    -- 01/06/2025 1
+    if (select count(*) from applied_updates where id='010620251') = 0 then
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1512
+        DELETE FROM `quest_start_scripts` WHERE `id`=1149;
+        INSERT INTO `quest_start_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+(1149, 1, 0, 15, 6716, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Dorn Plainstalker - Cast Test of Faith (Effect and Root)'),
+(1149, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1589, 0, 0, 0, 0, 0, 0, 0, 0, 'Dorn Plainstalker - Say Text 1'),
+(1149, 2, 0, 15, 6714, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Dorn Plainstalker - Cast Test of Faith (Teleport)');
+        UPDATE `areatrigger_teleport` SET `id` = '251' WHERE (`id` = '943');
+
+        INSERT INTO applied_updates VALUES ('010620251');
+    end if;
+
+    -- 08/06/2025 1
+    if (select count(*) from applied_updates where id='080620251') = 0 then
+        -- Set faction.
+        UPDATE `gameobject_template` SET `faction` = '35', `flags` = '4' WHERE (`entry` = '4072');
+
+        -- Make valves interactive only with quest.
+        UPDATE `gameobject_template` SET `flags` = '4' WHERE (`entry` = '61935');
+        UPDATE `gameobject_template` SET `flags` = '4' WHERE (`entry` = '61936');
+
+        -- Fix positions.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '778.975', `spawn_positionY` = '-2820.637', `spawn_positionZ` = '91.840' WHERE (`spawn_id` = '13167');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '788.938', `spawn_positionY` = '-2830.07', `spawn_positionZ` = '91.66', `spawn_orientation` = '2.4085', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0' WHERE (`spawn_id` = '13339');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '807.016', `spawn_positionY` = '-2811.32', `spawn_positionZ` = '91.74', `spawn_orientation` = '3.1415', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0', `spawn_rotation2` = '1.0', `spawn_rotation3` = '0.0' WHERE (`spawn_id` = '15080');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '786.796', `spawn_positionY` = '-2825.89', `spawn_positionZ` = '91.668', `spawn_orientation` = '1.47', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0', `spawn_rotation2` = '0.0', `spawn_rotation3` = '0.0' WHERE (`spawn_id` = '15722');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '781.301', `spawn_positionY` = '-2836.60', `spawn_positionZ` = '93.0', `spawn_orientation` = '4.12', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0', `spawn_rotation2` = '0.0', `spawn_rotation3` = '0.0' WHERE (`spawn_id` = '15730');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '791.449', `spawn_positionY` = '-2835.38', `spawn_positionZ` = '92.6', `spawn_orientation` = '5.30', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0', `spawn_rotation2` = '0.0', `spawn_rotation3` = '0.0' WHERE (`spawn_id` = '15731');
+
+        -- Fix script spawns location after using main valve.
+        DELETE FROM `gameobject_scripts` WHERE `id`=15722;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (15722, 0, 0, 10, 3284, 180000, 1, 15, 0, 0, 0, 1, 8, 407201, -1, 2, 792.967, -2820.797, 91.6667, 3.985, 900, 'Main Control Valve - Summon Creature'),
+        (15722, 0, 0, 10, 3285, 180000, 1, 15, 0, 0, 0, 1, 8, 407201, -1, 2, 794.057, -2822.358, 91.6667, 3.643, 900, 'Main Control Valve - Summon Creature');
+        
+        -- Valves display ids.
+        UPDATE `gameobject_template` SET `displayId` = '353' WHERE (`entry` = '61935');
+        UPDATE `gameobject_template` SET `displayId` = '353' WHERE (`entry` = '61936');
+
+        -- Delete end quest (902) script, spells and gameobject do not exist.
+        DELETE FROM quest_end_scripts where id = 902;
+
+        INSERT INTO applied_updates VALUES ('080620251');
+    end if;
 end $
 delimiter ;
