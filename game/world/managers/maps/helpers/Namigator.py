@@ -13,6 +13,9 @@ class Namigator:
     def find_path(self, start_x, start_y, start_z, end_x, end_y, end_z):
         pass
 
+    def find_smooth_path(self, start_x, start_y, start_z, end_x, end_y, end_z):
+        pass
+
     def has_adts(self):
         pass
 

@@ -1076,6 +1076,32 @@ class CommandManager(object):
         return 0, ''
 
     @staticmethod
+    def attack_me(world_session, args):
+        unit = CommandManager._target_or_self(world_session)
+        if not unit.is_unit():
+            return -1, 'you must select a valid unit.'
+        unit.smooth_path = True if args else False
+        print(f'Smooth {unit.smooth_path}')
+        res = unit.attack(world_session.player_mgr)
+        return 0, str(res)
+
+    @staticmethod
+    def printpath(world_session, args):
+        unit = CommandManager._target_or_self(world_session)
+        if not unit.is_unit():
+            return -1, 'you must select a valid unit.'
+        smooth = True if args else False
+        print(f'Smooth {smooth}')
+        failed, in_place, path = unit.get_map().calculate_path(unit.location, world_session.player_mgr.location, smooth=smooth)
+        if failed:
+            return -1, 'failed'
+        paths = '\n'.join(f'{v.x}, {v.y}, {v.z}' for v in path)
+        for v in path:
+            print(f'.port {v.x} {v.y} {v.z} {unit.map_id}')
+
+        return 0, paths
+
+    @staticmethod
     def worldoff(world_session, args):
         confirmation = str(args)
 
@@ -1361,5 +1387,7 @@ DEV_COMMAND_DEFINITIONS = {
     'destroymonster': [CommandManager.destroymonster, 'destroy the selected creature'],
     'createmonster': [CommandManager.createmonster, 'spawn a creature at your position'],
     'sloc': [CommandManager.save_location, 'save your location to locations.log along with a comment'],
-    'worldoff': [CommandManager.worldoff, 'stop the world server']
+    'worldoff': [CommandManager.worldoff, 'stop the world server'],
+    'printpath': [CommandManager.printpath, 'prints path from target to self'],
+    'attackme': [CommandManager.attack_me, 'makes current target attack self']
 }

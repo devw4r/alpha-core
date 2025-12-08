@@ -196,8 +196,8 @@ class Map:
         map_id = self.map_id if map_id == -1 else map_id
         return self.map_manager.validate_teleport_destination(map_id, x, y)
 
-    def calculate_path(self, start_vector, end_vector, los=False) -> tuple:  # bool failed, in_place, path list.
-        return self.map_manager.calculate_path(self.map_id, start_vector, end_vector, los=los)
+    def calculate_path(self, start_vector, end_vector, los=False, smooth=False) -> tuple:  # bool failed, in_place, path list.
+        return self.map_manager.calculate_path(self.map_id, start_vector, end_vector, los=los, smooth=smooth)
 
     def find_point_in_between_vectors(self, offset, start_location, end_location):
         return self.map_manager.find_point_in_between_vectors(self.map_id, offset, start_location, end_location)

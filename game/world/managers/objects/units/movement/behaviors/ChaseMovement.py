@@ -101,7 +101,7 @@ class ChaseMovement(BaseMovement):
         final_path = [combat_target.location]
         # Use direct combat location if target is over water.
         if not target_swimming:
-            failed, in_place, path = self.unit.get_map().calculate_path(self.unit.location, final_path[0])
+            failed, in_place, path = self.unit.get_map().calculate_path(self.unit.location, final_path[0], smooth=self.unit.smooth_path)
             if not failed and not in_place:
                 final_path = path
             elif in_place:

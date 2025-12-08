@@ -75,6 +75,7 @@ class CreatureManager(UnitManager):
         self.killed_by = None
         self.known_players = {}
         self.temp_faction_flags = 0
+        self.smooth_path = False
 
         # Managers, will be load upon lazy loading trigger.
         self.loot_manager = None

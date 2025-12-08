@@ -96,7 +96,7 @@ class FearMovement(BaseMovement):
             diff = math.fabs(destination.z - self.unit.location.z)
             if diff > 2.5:
                 continue
-            failed, in_place, path = self.unit.get_map().calculate_path(self.unit.location, destination)
+            failed, in_place, path = self.unit.get_map().calculate_path(self.unit.location, destination, smooth=True)
             if not failed:
                 return path
         return [fear_point]

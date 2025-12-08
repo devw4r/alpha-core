@@ -403,7 +403,7 @@ class MapManager:
                                                        end_location.x, end_location.y, end_location.z)
 
     @staticmethod
-    def calculate_path(map_id, src_loc, dst_loc, los=False) -> tuple:  # bool failed, in_place, path list.
+    def calculate_path(map_id, src_loc, dst_loc, los=False, smooth=False) -> tuple:  # bool failed, in_place, path list.
         # If nav tiles disabled or unable to load Namigator, return the end_vector as found.
         if not config.Server.Settings.use_nav_tiles or not MapManager.NAMIGATOR_LOADED:
             return False, False, [dst_loc]
@@ -442,7 +442,10 @@ class MapManager:
             return True, False, [dst_loc]
 
         # Calculate path.
-        navigation_path = namigator.find_path(src_loc.x, src_loc.y, src_loc.z, dst_loc.x, dst_loc.y, dst_loc.z)
+        if not smooth:
+            navigation_path = namigator.find_path(src_loc.x, src_loc.y, src_loc.z, dst_loc.x, dst_loc.y, dst_loc.z)
+        else:
+            navigation_path = namigator.find_smooth_path(src_loc.x, src_loc.y, src_loc.z, dst_loc.x, dst_loc.y, dst_loc.z)
 
         if len(navigation_path) == 0:
             if not los:
@@ -451,7 +454,8 @@ class MapManager:
 
         # Pop starting location, we already have that and WoW client seems to crash when sending
         # movements with too short of a diff.
-        del navigation_path[0]
+        if len(navigation_path) > 1:
+            del navigation_path[0]
 
         # Validate length again.
         if len(navigation_path) == 0:
