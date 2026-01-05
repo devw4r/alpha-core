@@ -1,4 +1,3 @@
-import math
 import time
 from random import randint
 from struct import pack
@@ -24,8 +23,7 @@ from game.world.managers.objects.units.DamageInfoHolder import DamageInfoHolder
 from network.packet.PacketWriter import PacketWriter
 from utils.Logger import Logger
 from utils.constants.ItemCodes import InventoryError, ItemSubClasses, ItemClasses, ItemDynFlags, ItemSpellTriggerType
-from utils.constants.MiscCodes import ObjectTypeFlags, HitInfo, GameObjectTypes, AttackTypes, ObjectTypeIds, ProcFlags, \
-    ItemBondingTypes
+from utils.constants.MiscCodes import HitInfo, GameObjectTypes, AttackTypes, ObjectTypeIds, ProcFlags, ItemBondingTypes
 from utils.constants.MiscFlags import GameObjectFlags
 from utils.constants.OpCodes import OpCode
 from utils.constants.SpellCodes import SpellCheckCastResult, SpellCastStatus, \
@@ -68,11 +66,17 @@ class SpellManager:
                 self.caster.skill_manager.has_reached_skills_limit():
             return False
 
-        character_skill, skill, skill_line_ability = self.caster.skill_manager.get_skill_info_for_spell_id(spell_id)
-        # Character does not have the skill, but it is a valid skill, check if we can add that skill.
-        if not character_skill and skill and not self.caster.skill_manager.has_skill(skill.ID) and \
-                self.caster.skill_manager.has_reached_skills_limit():
-            return False
+        # If the spell has skill line ability, validate.
+        if DbcDatabaseManager.SkillLineAbilityHolder.spell_has_skill_line_ability(spell_id):
+            character_skill, skill, skill_line_ability = self.caster.skill_manager.get_skill_info_for_spell_id(spell_id)
+            # Race / Class not allowed for skill line.
+            if not skill_line_ability:
+                return False
+
+            # Character does not have the skill, but it is a valid skill, check if we can add that skill.
+            if not character_skill and skill and not self.caster.skill_manager.has_skill(skill.ID) and \
+                    self.caster.skill_manager.has_reached_skills_limit():
+                return False
 
         return True
 
@@ -142,18 +146,32 @@ class SpellManager:
         return True
 
     def unlearn_spell(self, spell_id, new_spell_id=0) -> bool:
-        if self.caster.is_player() and spell_id in self.spells:
-            if new_spell_id:
-                self.spells[spell_id].active = 0
-                RealmDatabaseManager.character_update_spell(self.spells[spell_id])
-            else:
-                if RealmDatabaseManager.character_delete_spell(self.caster.guid, spell_id) == 0:
-                    del self.spells[spell_id]
+        if not self.caster.is_player() or spell_id not in self.spells:
+            return False
 
-            self.remove_cast_by_id(spell_id)
-            self.supersede_spell(spell_id, new_spell_id)
-            return True
-        return False
+        spell_button = RealmDatabaseManager.character_get_spell_button(self.caster.guid, spell_id)
+        if spell_button:
+            RealmDatabaseManager.character_delete_spell_button(spell_button)
+
+        if new_spell_id:
+            self.spells[spell_id].active = 0
+            RealmDatabaseManager.character_update_spell(self.spells[spell_id])
+        else:
+            # Reactivate preceding spell if learned.
+            preceded_by_spell = DbcDatabaseManager.SkillLineAbilityHolder.skill_line_abilities_get_preceded_by_spell(
+                spell_id)
+            if self.spells[spell_id].active and preceded_by_spell and preceded_by_spell.Spell in self.spells:
+                self.spells[preceded_by_spell.Spell].active = 1
+                self.supersede_spell(spell_id, preceded_by_spell.Spell)
+                RealmDatabaseManager.character_update_spell(self.spells[preceded_by_spell.Spell])
+
+            if RealmDatabaseManager.character_delete_spell(self.caster.guid, spell_id) == 0:
+                del self.spells[spell_id]
+
+        self.remove_cast_by_id(spell_id)
+        self.supersede_spell(spell_id, new_spell_id)
+
+        return True
 
     # Replaces a given spell with another (Updates action bars and SpellBook), deletes if new spell is 0.
     def supersede_spell(self, old_spell_id, new_spell_id):
@@ -215,6 +233,9 @@ class SpellManager:
 
         data = bytearray(pack('<BH', 0, len(self.spells)))
         for spell_id, spell in self.spells.items():
+            if not spell.active:
+                continue
+
             index = spell_buttons[spell.spell] if spell.spell in spell_buttons else 0
             data.extend(pack('<2h', spell.spell, index))
         data.extend(pack('<H', 0))
@@ -393,10 +414,17 @@ class SpellManager:
             self.caster.mana_regen_timer = 0
 
         if casting_spell.cast_state == SpellState.SPELL_STATE_DELAYED:
-            return  # Spell is in delayed state, do nothing for now
+            return  # Spell is in delayed state, do nothing for now.
 
         self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_NO_ERROR)
         self.send_spell_go(casting_spell)
+
+        # Spells that use the KneelLoop animation causes the client to get stuck in this animation until relog.
+        # Send a KneelEnd animation to resolve this issue. e.g. spell 6717 'Place Lion Carcass'
+        if casting_spell.spell_visual_entry and casting_spell.spell_visual_entry.CastKit == 380:  # KneelLoop.
+            data = pack(f'QI', self.caster.guid, 444)
+            packet = PacketWriter.get_packet(OpCode.SMSG_PLAY_SPELL_VISUAL, data)
+            self.caster.enqueue_packet(packet)
 
         if casting_spell.requires_combo_points():
             # Combo points will be reset by consume_resources_for_cast.
@@ -613,9 +641,13 @@ class SpellManager:
             SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_MOVEMENT: moved,
             SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_TURNING: turned
         }
+
         for casting_spell in list(self.casting_spells):
             if casting_spell.cast_state == SpellState.SPELL_STATE_DELAYED:
                 continue
+
+            # 0.5.3: Creatures dealing enough damage (crushing blow) will now fully interrupt casting.
+            crushing_interrupt = hit_info & HitInfo.CRUSHING and not casting_spell.is_ability()
 
             if casting_spell.is_channeled() and casting_spell.cast_state == SpellState.SPELL_STATE_ACTIVE:
                 for flag, condition in channeling_spell_flag_cases.items():
@@ -623,9 +655,8 @@ class SpellManager:
                     if not (channel_flags & flag) or not condition:
                         continue
 
-                    # TODO Do crushing blows interrupt channeling too?
-                    if not (channel_flags & SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_FULL_INTERRUPT) and \
-                            not hit_info & HitInfo.CRUSHING:
+                    full_interrupt = channel_flags & SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_FULL_INTERRUPT
+                    if not full_interrupt and not crushing_interrupt:
                         if flag & SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_DAMAGE:
                             casting_spell.handle_partial_interrupt()
                             continue
@@ -634,7 +665,7 @@ class SpellManager:
                 continue
 
             if casting_spell.cast_state == SpellState.SPELL_STATE_ACTIVE:
-                # If the spell is already active (area aura etc.), don't check SpellInterrupts.
+                # Ignore other spells that are already active (e.g. area auras).
                 continue
 
             for flag, condition in casting_spell_flag_cases.items():
@@ -642,8 +673,8 @@ class SpellManager:
                 if not (spell_flags & flag) or not condition:
                     continue
 
-                # - Creatures dealing enough damage (crushing blow) will now fully interrupt casting. (0.5.3 notes).
-                if spell_flags & SpellInterruptFlags.SPELL_INTERRUPT_FLAG_PARTIAL and not hit_info & HitInfo.CRUSHING:
+                partial_interrupt = spell_flags & SpellInterruptFlags.SPELL_INTERRUPT_FLAG_PARTIAL
+                if partial_interrupt and not crushing_interrupt:
                     if flag & SpellInterruptFlags.SPELL_INTERRUPT_FLAG_DAMAGE:
                         casting_spell.handle_partial_interrupt()
                         continue
@@ -660,7 +691,7 @@ class SpellManager:
         self.remove_cast(casting_spell, interrupted=True)
         self.set_on_cooldown(casting_spell, cooldown_penalty=cooldown_penalty)
 
-    def remove_cast(self, casting_spell, cast_result=SpellCheckCastResult.SPELL_NO_ERROR,
+    def remove_cast(self, casting_spell, cast_result: SpellCheckCastResult=SpellCheckCastResult.SPELL_NO_ERROR,
                     interrupted=False, cancel_auras=False) -> bool:
         if casting_spell not in self.casting_spells:
             return False
@@ -739,7 +770,7 @@ class SpellManager:
                 if effect.area_aura_holder:
                     effect.area_aura_holder.remove_target(target_guid)
 
-            # Interrupt handling
+            # Interrupt handling.
             if not casting_spell.initial_target_is_unit_or_player() or \
                     (casting_spell.spell_target_mask == SpellTargetMask.SELF and not
                      casting_spell.requires_implicit_initial_unit_target()) or \
@@ -810,14 +841,15 @@ class SpellManager:
         if not self.caster.is_unit(by_mask=True):
             return  # Non-unit casters should not broadcast their casts.
 
-        is_player = self.caster.is_player()
+        source_guid = self.caster.guid
+        if casting_spell.source_item:
+            source_guid = casting_spell.source_item.guid
 
-        source_guid = casting_spell.initial_target.guid if casting_spell.initial_target_is_item() else self.caster.guid
         cast_flags = casting_spell.cast_flags
 
         # Validate if this spell crashes the client.
         # Force SpellCastFlags.CAST_FLAG_PROC, which hides the start cast.
-        if not is_player and not ExtendedSpellData.UnitSpellsValidator.spell_has_valid_cast(casting_spell):
+        if not self.caster.is_player() and not ExtendedSpellData.UnitSpellsValidator.spell_has_valid_cast(casting_spell):
             Logger.warning(f'Hiding spell {casting_spell.spell_entry.Name_enUS} start cast due invalid cast.')
             cast_flags |= SpellCastFlags.CAST_FLAG_PROC
 
@@ -841,7 +873,7 @@ class SpellManager:
         # Spell start.
         data = pack(signature, *data)
         packet = PacketWriter.get_packet(OpCode.SMSG_SPELL_START, data)
-        self.caster.get_map().send_surrounding(packet, self.caster, include_self=is_player)
+        self.caster.get_map().send_surrounding(packet, self.caster, include_self=self.caster.is_player())
 
     def handle_channel_start(self, casting_spell):
         if not casting_spell.is_channeled():
@@ -857,6 +889,10 @@ class SpellManager:
 
         if casting_spell.initial_target_is_object():
             self.caster.set_channel_object(casting_spell.initial_target.guid)
+
+        # From 0.5.4 patch notes: 'You can now turn in place while fishing.'
+        if casting_spell.is_fishing_spell():
+            self.caster.set_unit_flag(UnitFlags.UNIT_FLAG_DISABLE_ROTATE, active=True)
 
         self.caster.set_channel_spell(casting_spell.spell_entry.ID)
 
@@ -931,13 +967,14 @@ class SpellManager:
         self.caster.get_map().send_surrounding(packet, self.caster, include_self=is_player)
 
     def send_spell_go(self, casting_spell):
-        # The client expects the source to only be set for unit casters.
-        caster_unit = casting_spell.initial_target.guid if casting_spell.initial_target_is_item() \
-            else self.caster.guid
+        source_guid = self.caster.guid
+        if casting_spell.source_item:
+            source_guid = casting_spell.source_item.guid
+
         caster_guid = self.caster.guid if self.caster.is_unit(by_mask=True) else 0
 
         # Exclude proc flag from GO - proc casts are visible in 0.5.5 screenshots.
-        data = [caster_unit, caster_guid, casting_spell.spell_entry.ID,
+        data = [source_guid, caster_guid, casting_spell.spell_entry.ID,
                 casting_spell.cast_flags & ~SpellCastFlags.CAST_FLAG_PROC]
 
         signature = '<2QIHB'  # caster, source, ID, flags .. (targets, ammo info).
@@ -1171,7 +1208,7 @@ class SpellManager:
                                       spell_focus_type)
                 return False
             if isinstance(spell_focus_object[0], SpellFocusManager):
-                spell_focus_object[0].use(player=self.caster)
+                spell_focus_object[0].use(unit=self.caster)
 
         # Target validation.
         validation_target = casting_spell.initial_target
@@ -1238,7 +1275,7 @@ class SpellManager:
                 return False
 
             # Orientation checks.
-            target_is_facing_caster = validation_target.location.has_in_arc(self.caster.location, math.pi)
+            target_is_facing_caster = validation_target.location.has_in_arc(self.caster.location)
             if not ExtendedSpellData.CastPositionRestrictions.is_position_correct(casting_spell.spell_entry.ID,
                                                                                   target_is_facing_caster):
                 if ExtendedSpellData.CastPositionRestrictions.is_from_behind(casting_spell.spell_entry.ID):
@@ -1420,7 +1457,7 @@ class SpellManager:
             if not self.caster.can_attack_target(validation_target):
                 self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_TARGET_FRIENDLY)
                 return False
-            # Patch 1.12.0 - Can now be used on targets that are in combat, as long as the rogue remains stealthed.
+            # Patch 1.12.0 - Pick Pocket can now be used on targets that are in combat, as long as the rogue remains stealthed.
             if validation_target.in_combat:
                 self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_TARGET_AFFECTING_COMBAT)
                 return False
@@ -1561,14 +1598,17 @@ class SpellManager:
         return True
 
     def _handle_fishing_node_end(self):
+        # From 0.5.4 patch notes: 'You can now turn in place while fishing.'
+        self.caster.set_unit_flag(UnitFlags.UNIT_FLAG_DISABLE_ROTATE, active=False)
         if not self.caster.channel_object:
             return
         fishing_node = self.caster.get_map().get_surrounding_gameobject_by_guid(self.caster, self.caster.channel_object)
-        if isinstance(fishing_node, FishingNodeManager):
-            # If this was an interrupt or miss hook, remove the bobber.
-            # Else, it will be removed upon CMSG_LOOT_RELEASE.
-            if not fishing_node.hook_result:
-                self.caster.get_map().remove_object(fishing_node)
+        if not isinstance(fishing_node, FishingNodeManager):
+            return
+        # If this was an interrupt or miss hook, remove the bobber.
+        # Else, it will be removed upon CMSG_LOOT_RELEASE.
+        if not fishing_node.hook_result:
+            self.caster.get_map().remove_object(fishing_node)
 
     def _handle_summoning_channel_end(self):
         # Specific handling of ritual of summoning interrupting.
@@ -1704,7 +1744,7 @@ class SpellManager:
 
     def consume_resources_for_cast(self, casting_spell):
         # This method assumes that the reagents exist (meets_casting_requisites was run).
-        if not self.caster.get_type_mask() & ObjectTypeFlags.TYPE_UNIT:
+        if not self.caster.is_unit(by_mask=True):
             return
 
         is_player = self.caster.is_player()

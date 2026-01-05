@@ -244,6 +244,17 @@ class MoveToCoordinateTypes(IntEnum):
     SO_MOVETO_COORDINATES_DISTANCE_FROM_TARGET = 2
     SO_MOVETO_COORDINATES_RANDOM_POINT = 3
 
+class MoveOptions(IntEnum):
+    MOVE_NONE = 0x000
+    MOVE_PATHFINDING = 0x001
+    MOVE_WALK_MODE = 0x002
+    MOVE_RUN_MODE = 0x004
+    MOVE_FLY_MODE = 0x008
+    MOVE_CYCLIC = 0x010
+    MOVE_FALLING = 0x020
+    MOVE_FORCE_DESTINATION = 0x040
+    MOVE_EXCLUDE_STEEP_SLOPES = 0x080
+    MOVE_STRAIGHT_PATH = 0x100
 
 class SetPhaseOptions(IntEnum):
     SO_SETPHASE_RAW = 0
@@ -264,6 +275,14 @@ class EventFlags(IntEnum):
     NOT_CASTING = 0x4
     CHECK_RESULT = 0x8
     DEBUG_ONLY = 0x10
+
+
+class TemporaryFactionFlags(IntEnum):
+    TEMPFACTION_NONE = 0  # When no flag is used in temporary faction change, faction will be persistent.
+    TEMPFACTION_RESTORE_RESPAWN = 1  # Default faction will be restored at respawn
+    TEMPFACTION_RESTORE_COMBAT_STOP = 2  # ... at CombatStop() (happens at creature death, at evade or custom scripte among others)
+    TEMPFACTION_RESTORE_REACH_HOME = 4  # ... at reaching home in home movement (evade), if not already done at CombatStop()
+    TEMPFACTION_ALL = 5
 
 
 class SetMapScriptDataOptions(IntEnum):

@@ -1,3 +1,6 @@
+import hashlib
+
+from database.auth.AuthDatabaseManager import AuthDatabaseManager
 from database.realm.RealmDatabaseManager import *
 from game.world import WorldManager
 from game.world.WorldSessionStateHandler import WorldSessionStateHandler
@@ -7,7 +10,7 @@ from utils.Srp6 import Srp6
 from utils.constants.AuthCodes import *
 
 
-class AuthSessionHandler(object):
+class AuthSessionHandler:
 
     @staticmethod
     def handle_srp6_begin(auth_session, reader):
@@ -16,7 +19,7 @@ class AuthSessionHandler(object):
         )
 
         username = PacketReader.read_string(reader.data, 9).strip()
-        account_mgr = RealmDatabaseManager.account_try_get(username)
+        account_mgr = AuthDatabaseManager.account_try_get(username)
 
         # Can't auto generate from here, we have no plain password.
         if not account_mgr:
@@ -85,15 +88,15 @@ class AuthSessionHandler(object):
             AuthSessionHandler.send_result(world_session, AuthCode.AUTH_UNKNOWN_ACCOUNT)
             return -1
 
-        account_mgr = RealmDatabaseManager.account_try_get(username)
+        account_mgr = AuthDatabaseManager.account_try_get(username)
         # Can only auto generate accounts through old wow.ses which exposes plain password.
         if not account_mgr and config.Server.Settings.auto_create_accounts and password:
             salt = Srp6.generate_salt()
             verifier = Srp6.calculate_password_verifier(username, password, salt).hex()
-            account_mgr = RealmDatabaseManager.account_create(username,
-                                                              hashlib.sha256(password.encode('utf-8')).hexdigest(),
-                                                              world_session.client_socket.getpeername()[0],
-                                                              salt.hex(), verifier)
+            account_mgr = AuthDatabaseManager.account_create(username,
+                                                             hashlib.sha256(password.encode('utf-8')).hexdigest(),
+                                                             world_session.client_socket.getpeername()[0],
+                                                             salt.hex(), verifier)
 
         if not account_mgr:
             AuthSessionHandler.send_result(world_session, AuthCode.AUTH_UNKNOWN_ACCOUNT)
@@ -108,8 +111,8 @@ class AuthSessionHandler(object):
 
         # Attempt login.
         password = hashlib.sha256(password.encode('utf-8')).hexdigest() if password else ''
-        login_res, world_session.account_mgr = RealmDatabaseManager.account_try_login(
-                username, password, world_session.client_socket.getpeername()[0], client_digest, server_digest)
+        login_res, world_session.account_mgr = AuthDatabaseManager.account_try_login(
+            username, password, world_session.client_socket.getpeername()[0], client_digest, server_digest)
 
         if login_res == 0:
             auth_code = AuthCode.AUTH_INCORRECT_PASSWORD

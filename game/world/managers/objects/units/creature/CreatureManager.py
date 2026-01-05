@@ -17,14 +17,15 @@ from game.world.managers.objects.units.creature.groups.CreatureGroupManager impo
 from network.packet.PacketWriter import PacketWriter
 from utils import Formulas
 from utils.ByteUtils import ByteUtils
-from utils.Formulas import Distances
+from utils.Formulas import Distances, UnitFormulas
 from utils.GuidUtils import GuidUtils
 from utils.Logger import Logger
 from utils.ObjectQueryUtils import ObjectQueryUtils
 from utils.constants import CustomCodes
 from utils.constants.MiscCodes import NpcFlags, ObjectTypeIds, UnitDynamicTypes, ObjectTypeFlags, MoveFlags, HighGuid, \
-    MoveType, EmoteUnitState
+    MoveType, EmoteUnitState, TempSummonType
 from utils.constants.OpCodes import OpCode
+from utils.constants.ScriptCodes import TemporaryFactionFlags
 from utils.constants.SpellCodes import SpellTargetMask, SpellImmunity
 from utils.constants.UnitCodes import UnitFlags, WeaponMode, CreatureTypes, MovementTypes, CreatureStaticFlags, \
     PowerTypes, CreatureFlagsExtra, CreatureReactStates, StandState
@@ -41,6 +42,7 @@ class CreatureManager(UnitManager):
         self.creature_template = None
         self.location = None
         self.spawn_position = None
+        self.tmp_home_position = None
         self.creature_group = None
         self.map_id = 0
         self.health_percent = 100
@@ -49,8 +51,10 @@ class CreatureManager(UnitManager):
         self.charmer = None
         self.addon = None
         self.creation_spell_id = 0
+        self.time_to_live = 0
         self.time_to_live_timer = 0
         self.faction = 0
+        self.summon_type = TempSummonType.TEMP_SUMMON_DEAD_DESPAWN
         self.subtype = CustomCodes.CreatureSubtype.SUBTYPE_GENERIC
         self.react_state = CreatureReactStates.REACT_PASSIVE
         self.npc_flags = 0
@@ -62,14 +66,15 @@ class CreatureManager(UnitManager):
         self.ranged_attack_time = 0
         self.dmg_min = 0
         self.dmg_max = 0
-        self.destroy_time = 420  # Standalone instances, destroyed after 7 minutes.
-        self.destroy_timer = 0
+        self.just_died = False
         self.virtual_item_info = {}
         self.wander_distance = 0
         self.movement_type = MovementTypes.IDLE
         self.fully_loaded = False
+        self.loading = False
         self.killed_by = None
         self.known_players = {}
+        self.temp_faction_flags = 0
 
         # Managers, will be load upon lazy loading trigger.
         self.loot_manager = None
@@ -81,12 +86,14 @@ class CreatureManager(UnitManager):
         self.has_parry_passive = True
 
     # This can also be used to 'morph' the creature.
-    def initialize_from_creature_template(self, creature_template, subtype=CustomCodes.CreatureSubtype.SUBTYPE_GENERIC):
+    def initialize_from_creature_template(self, creature_template, subtype=CustomCodes.CreatureSubtype.SUBTYPE_GENERIC,
+                                          summon_type=TempSummonType.TEMP_SUMMON_DEAD_DESPAWN):
         if not creature_template:
             return
 
         is_morph = self.fully_loaded
 
+        self.just_died = False
         self.entry = creature_template.entry
         self.creature_template: CreatureTemplate = creature_template
         self.entry = self.creature_template.entry
@@ -103,6 +110,7 @@ class CreatureManager(UnitManager):
         self.spell_list_id = self.creature_template.spell_list_id
         self.sheath_state = WeaponMode.NORMALMODE
         self.subtype = subtype
+        self.summon_type = summon_type
         self.level = randint(self.creature_template.level_min, self.creature_template.level_max)
 
         # Elite mob.
@@ -110,10 +118,10 @@ class CreatureManager(UnitManager):
             self.set_unit_flag(UnitFlags.UNIT_FLAG_PLUS_MOB, active=True)
         # NPC can't be attacked by other NPCs and can't attack other NPCs.
         if self.creature_template.static_flags & CreatureStaticFlags.IMMUNE_NPC:
-            self.set_unit_flag(UnitFlags.UNIT_FLAG_PASSIVE, active=True)
+            self.set_unit_flag(UnitFlags.UNIT_FLAG_IMMUNE_TO_NPC, active=True)
         # NPC is immune to player characters.
         if self.creature_template.static_flags & CreatureStaticFlags.IMMUNE_PLAYER:
-            self.set_unit_flag(UnitFlags.UNIT_FLAG_NOT_ATTACKABLE_OCC, active=True)
+            self.set_unit_flag(UnitFlags.UNIT_FLAG_IMMUNE_TO_PLAYER, active=True)
 
         # Innate school and mechanic immunities.
         if self.creature_template.mechanic_immune_mask:
@@ -121,7 +129,7 @@ class CreatureManager(UnitManager):
         if self.creature_template.school_immune_mask:
             self.set_immunity(SpellImmunity.IMMUNITY_SCHOOL, self.creature_template.school_immune_mask)
 
-        if self.is_totem() or self.is_critter() or not self.can_have_target():
+        if self.is_totem() or self.is_critter() or not self.can_have_target() or self.ignores_combat():
             self.react_state = CreatureReactStates.REACT_PASSIVE
         elif self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_NO_AGGRO:
             self.react_state = CreatureReactStates.REACT_DEFENSIVE
@@ -215,9 +223,15 @@ class CreatureManager(UnitManager):
         # Trigger respawned event.
         self.object_ai.just_respawned()
 
+        # Update Swimming State.
+        self._update_swimming_state()
+
     def finish_loading(self):
-        if self.fully_loaded:
+        if self.fully_loaded or self.loading:
             return
+
+        self.loading = True
+
         # Load loot manager.
         self.loot_manager = CreatureLootManager(self)
         # Load pickpocket loot manager if required.
@@ -258,7 +272,7 @@ class CreatureManager(UnitManager):
         # Equipment.
         self.reset_virtual_equipment()
 
-        # Mount this creature, will be overriden if defined in creature_addon.
+        # Mount this creature, will be overridden if defined in creature_addon.
         if self.creature_template.mount_display_id > 0:
             self.mount(self.creature_template.mount_display_id)
 
@@ -290,33 +304,55 @@ class CreatureManager(UnitManager):
         self.apply_default_auras()
 
         # Movement.
+        self.set_move_flag(MoveFlags.MOVEFLAG_SWIMMING, active=self.static_flags & CreatureStaticFlags.AQUATIC != 0)
         self.set_move_flag(MoveFlags.MOVEFLAG_WALK, active=not self.should_always_run_ooc())
         self.movement_manager.initialize_or_reset()
 
+        self.loading = False
         self.fully_loaded = True
 
     def set_virtual_equipment(self, slot, item_id):
         VirtualItemsUtils.set_virtual_item(self, slot, item_id)
 
-    def reset_virtual_equipment(self):
-        equipment_id = self._get_equipment_id()
-        if equipment_id:
+    def get_virtual_equipment_entries(self, filtered=False):
+        equipment_entries = [0, 0, 0]
+
+        # If addon is set, it should only replace values > 0.
+        for equipment_id in self._get_equipment_ids():
             equip_template = WorldDatabaseManager.CreatureEquipmentHolder.creature_get_equipment_by_id(equipment_id)
-            if equip_template:
-                [VirtualItemsUtils.set_virtual_item(self, x, getattr(equip_template, f'equipentry{x + 1}')) for x in range(3)]
-                return
-        # Make sure its cleared if creature was morphed.
-        [VirtualItemsUtils.set_virtual_item(self, x, 0) for x in range(3)]
+            if not equip_template:
+                continue
 
-    def _get_equipment_id(self):
-        return self.addon.equipment_id if self.addon and self.addon.equipment_id \
-            else self.creature_template.equipment_id
+            for i in range(3):
+                entry = getattr(equip_template, f'equipentry{i + 1}', 0)
+                if entry > 0:
+                    equipment_entries[i] = entry
 
-    def set_faction(self, faction_id):
+        if filtered:
+            equipment_entries = [entry for entry in equipment_entries if entry > 0]
+
+        return equipment_entries
+
+    def reset_virtual_equipment(self):
+        equipment_entries = self.get_virtual_equipment_entries()
+        for i in range(3):
+            VirtualItemsUtils.set_virtual_item(self, i, equipment_entries[i])
+
+    def _get_equipment_ids(self):
+        ids = []
+        if self.creature_template and self.creature_template.equipment_id:
+            ids.append(self.creature_template.equipment_id)
+        if self.addon and self.addon.equipment_id:
+            ids.append(self.addon.equipment_id)
+        return ids
+
+    def set_faction(self, faction_id, temp_faction_flags=TemporaryFactionFlags.TEMPFACTION_NONE):
+        self.temp_faction_flags |= temp_faction_flags
         self.faction = faction_id
         self.set_uint32(UnitFields.UNIT_FIELD_FACTIONTEMPLATE, self.faction)
 
     def reset_faction(self):
+        self.temp_faction_flags = 0
         self.faction = self.creature_template.faction
         self.set_uint32(UnitFields.UNIT_FIELD_FACTIONTEMPLATE, self.faction)
 
@@ -325,6 +361,12 @@ class CreatureManager(UnitManager):
                                         self.creature_template.spell_id2,
                                         self.creature_template.spell_id3,
                                         self.creature_template.spell_id4]))
+
+    # override
+    def is_escort(self):
+        from game.world.managers.objects.ai.EscortAI import EscortAI
+        return (DbcDatabaseManager.FactionTemplateHolder.is_escortee_faction(self.faction)
+                or isinstance(self.object_ai, EscortAI))
 
     def is_guard(self):
         return self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_GUARD
@@ -345,17 +387,19 @@ class CreatureManager(UnitManager):
         return super().has_melee() and not self.creature_template.static_flags & CreatureStaticFlags.NO_MELEE
 
     def is_pet(self):
-        return (self.summoner or self.charmer) \
-               and (self.subtype == CustomCodes.CreatureSubtype.SUBTYPE_PET
-                    or GuidUtils.extract_high_guid(self.guid) == HighGuid.HIGHGUID_PET)
+        owner = self.get_charmer_or_summoner()
+        if not owner:
+            return False
+        return (self.subtype == CustomCodes.CreatureSubtype.SUBTYPE_PET
+                            or GuidUtils.extract_high_guid(self.guid) == HighGuid.HIGHGUID_PET)
 
     def set_guardian(self, state):
         self._is_guardian = state
 
+    def is_temp_summon_or_pet_or_guardian(self):
+        return any([self.is_temp_summon(), self.is_pet(), self.is_guardian()])
+
     def is_guardian(self):
-        owner = self.get_charmer_or_summoner()
-        if not owner:
-            return False
         return self._is_guardian
 
     def is_controlled(self):
@@ -367,8 +411,7 @@ class CreatureManager(UnitManager):
         return owner_controlled_pet and owner_controlled_pet.creature is self
 
     def is_temp_summon(self):
-        return self.summoner and self.subtype in \
-               {CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON, CustomCodes.CreatureSubtype.SUBTYPE_TOTEM}
+        return self.subtype in {CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON, CustomCodes.CreatureSubtype.SUBTYPE_TOTEM}
 
     # override
     def is_unit_pet(self, unit):
@@ -388,6 +431,9 @@ class CreatureManager(UnitManager):
     def can_have_target(self):
         return not self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_NO_TARGET
 
+    def ignores_combat(self):
+        return self.creature_template.static_flags & CreatureStaticFlags.IGNORE_COMBAT
+
     def is_quest_giver(self):
         return self.npc_flags & NpcFlags.NPC_FLAG_QUESTGIVER
 
@@ -398,15 +444,21 @@ class CreatureManager(UnitManager):
     def is_tameable(self):
         return self.static_flags & CreatureStaticFlags.TAMEABLE
 
-    def is_at_home(self):
-        return self.location == self.spawn_position and not self.is_moving()
+    # override
+    def is_sessile(self):
+        return self.static_flags & CreatureStaticFlags.SESSILE
 
-    def on_at_home(self, was_at_home=False):
+    def is_at_home(self):
+        return self.location.approximately_equals(self.get_home_position())
+
+    def on_at_home(self):
+        self.tmp_home_position = None
         self.apply_default_auras()
-        self.movement_manager.face_angle(self.spawn_position.o)
-        # Scan surrounding for enemies.
-        self._on_relocation()
-        if self.object_ai and not was_at_home:
+        if not self.is_controlled():
+            self.movement_manager.face_angle(self.spawn_position.o)
+        if self.temp_faction_flags & TemporaryFactionFlags.TEMPFACTION_RESTORE_REACH_HOME:
+            self.reset_faction()
+        if self.object_ai:
             self.object_ai.ai_event_handler.reset()
             self.object_ai.just_reached_home()
 
@@ -418,10 +470,14 @@ class CreatureManager(UnitManager):
             camera.update_camera_on_players()
 
     def can_swim(self):
-        return (self.static_flags & CreatureStaticFlags.AMPHIBIOUS) or (self.static_flags & CreatureStaticFlags.AQUATIC)
+        # Amphibious or Aquatic.
+        return (self.static_flags & CreatureStaticFlags.AMPHIBIOUS) != 0 or (
+                    self.static_flags & CreatureStaticFlags.AQUATIC) != 0
 
     def can_exit_water(self):
-        return self.static_flags & CreatureStaticFlags.AQUATIC == 0
+        # Amphibious and NOT Aquatic.
+        return (self.static_flags & CreatureStaticFlags.AMPHIBIOUS) != 0 and (
+                    self.static_flags & CreatureStaticFlags.AQUATIC) == 0
 
     # override
     def can_block(self, attacker_location=None, in_combat=False):
@@ -453,7 +509,7 @@ class CreatureManager(UnitManager):
         if self.is_player_controlled_pet() or self.is_guardian():
             self.set_unit_flag(UnitFlags.UNIT_FLAG_PET_IN_COMBAT, True)
         self.object_ai.enter_combat(source)
-        self._update_swimming_state()
+        self.swim_checks_enabled = True
         return True
 
     # override
@@ -468,7 +524,7 @@ class CreatureManager(UnitManager):
         else:
             self.set_unit_flag(UnitFlags.UNIT_FLAG_PET_IN_COMBAT, False)
 
-        if self.creature_group and self.is_evading and self.is_alive:
+        if self.creature_group and self.is_evading and self.is_alive and was_in_combat:
             self.creature_group.on_leave_combat(self)
 
     def evade(self):
@@ -485,29 +541,41 @@ class CreatureManager(UnitManager):
         if not self.static_flags & CreatureStaticFlags.NO_AUTO_REGEN:
             self.replenish_powers()
 
-        # Pets should return to owner on evading, not to spawn position.
-        at_home = self.is_at_home()
-        if self.is_controlled() or at_home:
-            # Should turn off flag since we are not sending move packets.
+        # TODO: Move all pathing checks/logic inside Evade movement.
+        # Get the path we are using to get back to spawn location or latest known location for movement behaviors.
+        return_position = self.get_home_position().copy()
+        failed, in_place, waypoints = self.get_map().calculate_path(self.location, return_position)
+
+        # We are at home position already.
+        if in_place or self.is_at_home():
+            self.movement_manager.face_angle(return_position.o)
             self.is_evading = False
-            self.on_at_home(was_at_home=at_home)
+            self.tmp_home_position = None
+            self.swim_checks_enabled = False
             return
 
-        # Get the path we are using to get back to spawn location.
-        failed, in_place, waypoints = self.get_map().calculate_path(self.location, self.spawn_position.copy())
-
-        # We are at spawn position already.
-        if in_place:
-            return
+        # If Namigator fails, swimming and heading to land, try to locate a near
+        # land point in the direction of home position.
+        if failed and self.is_swimming() and self.get_map().is_land_location(vector=return_position):
+            land = self.get_map().find_land_location_in_angle(self, return_position)
+            if land:
+                # Path from land to home.
+                failed, in_place, waypoints = self.get_map().calculate_path(land, return_position)
+                if not failed:
+                    Logger.warning('Found valid land location to complete Namigator evade pathing.')
+                    # Insert creature water to land waypoint.
+                    waypoints.insert(0, land)
 
         # Near teleport the unit instance if unable to acquire a valid path.
         if failed or self.location.distance(waypoints[-1]) > Distances.CREATURE_EVADE_DISTANCE * 2:
             if failed:
                 Logger.warning(f'Unit: {self.get_name()}, Namigator was unable to provide a valid return home path:')
                 Logger.warning(f'Start: {self.location}')
-                Logger.warning(f'End: {self.spawn_position}')
-            self.near_teleport(self.spawn_position)
+                Logger.warning(f'End: {return_position}')
+            self.near_teleport(return_position)
             self.is_evading = False
+            self.tmp_home_position = None
+            self.swim_checks_enabled = False
         else:
             self.movement_manager.move_home(waypoints)
 
@@ -538,6 +606,10 @@ class CreatureManager(UnitManager):
             or FarSightManager.object_is_camera_view_point(self) \
             or self.subtype == CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON
 
+    # override
+    def has_player_observers(self):
+        return len(self.known_players) > 0
+
     def has_waypoints_type(self):
         return self.movement_type == MovementTypes.WAYPOINT \
             or self.movement_manager.get_move_behavior_by_type(MoveType.WAYPOINTS)
@@ -550,16 +622,17 @@ class CreatureManager(UnitManager):
         if now > self.last_tick > 0:
             elapsed = now - self.last_tick
 
+            # Check for despawn logic for standalone instances.
+            if self._should_despawn(elapsed):
+                return  # Creature destroyed.
+
             is_active = self.is_active_object()
             if not is_active:
                 return
 
             if self.is_alive:
-                # Time to live checks for standalone instances.
-                if not self._check_time_to_live(elapsed):
-                    return  # Creature destroyed.
-                # Update relocate/call for help timer.
-                self.relocation_call_for_help_timer += elapsed
+                # Update call for help timer.
+                self.call_for_help_timer += elapsed
                 # Regeneration.
                 self.regenerate(elapsed)
                 # Spell/Aura Update.
@@ -576,70 +649,99 @@ class CreatureManager(UnitManager):
                 self.attack_update(elapsed)
                 # Movement checks.
                 if self.has_moved or self.has_turned:
-                    # Relocate only if x, y changed.
-                    if self.has_moved and not self.pending_relocation:
-                        self.pending_relocation = True
                     # Check spell and aura move interrupts.
                     self.spell_manager.check_spell_interrupts(moved=self.has_moved, turned=self.has_turned)
                     self.aura_manager.check_aura_interrupts(moved=self.has_moved, turned=self.has_turned)
+                    if self.has_moved and self.has_player_observers():
+                        self.get_map().get_detection_manager().queue_update_unit_placement(self)
 
-                if self.relocation_call_for_help_timer >= 1:
-                    if self.pending_relocation:
-                        self._on_relocation()
-                        self.pending_relocation = False
+                if self.call_for_help_timer >= 0.33:
                     if self.combat_target:
                         self.threat_manager.call_for_help(self.combat_target)
-                    self.relocation_call_for_help_timer = 0
-            # Dead creature with no spawn point, handle destroy.
-            elif not self._check_destroy(elapsed):
-                return  # Creature destroyed.
+                    self.call_for_help_timer = 0
+
+                if self.swim_checks_enabled:
+                    self._update_swimming_state()
 
             has_changes = self.has_pending_updates()
             # Check if this creature object should be updated yet or not.
             if has_changes or self.has_moved:
-                self.set_has_moved(False, False, flush=True)
                 self.get_map().update_object(self, has_changes=has_changes)
+                self.set_has_moved(False, False, flush=True)
 
         self.last_tick = now
 
-    def _check_destroy(self, elapsed):
-        if self.summoner and not self.is_alive and self.is_spawned and self.initialized:
-            self.destroy_timer += elapsed
-            if self.destroy_timer >= self.destroy_time:
-                self.despawn()
-                return False
-        return True
-
     # override
-    def despawn(self, ttl=0):
-        if ttl:
-            # Delayed despawn.
-            self.time_to_live_timer = ttl / 1000  # Seconds.
-            return
-        super().despawn()
+    def despawn(self, ttl=0, respawn_delay=0):
+        # Handle temporary respawn_delay if provided.
+        if not self.is_dynamic_spawn and respawn_delay:
+            unit_spawn = self.get_map().get_surrounding_creature_spawn_by_spawn_id(self, self.spawn_id)
+            if unit_spawn:
+                unit_spawn.set_respawn_time(respawn_delay)
 
-    def _check_time_to_live(self, elapsed):
-        if self.time_to_live_timer > 0:
-            self.time_to_live_timer -= elapsed
-            # Time to live expired, destroy.
-            if self.time_to_live_timer <= 0:
-                self.despawn()
-                return False
-        return True
+        # Delayed despawn.
+        if ttl:
+            self.time_to_live = ttl / 1000  # Seconds.
+            self.time_to_live_timer = 0
+            return
+
+        self.time_to_live_timer = 0
+        self.time_to_live = 0
+
+        super().despawn(ttl, respawn_delay)
+
+    def _should_despawn(self, elapsed):
+        # Do not despawn charmed unit until charm expires.
+        if self.charmer:
+            return False
+
+        if not self.is_dynamic_spawn:
+            return False
+
+        return SUMMON_DESPAWN_TYPES[self.summon_type](self, elapsed)
+
+    def update_time_to_live(self, elapsed):
+        if self.time_to_live > 0:
+            self.time_to_live_timer += elapsed
+            return self.time_to_live_timer >= self.time_to_live
+        return False
 
     # override
     def attack(self, victim: UnitManager):
         had_target = self.combat_target and self.combat_target.is_alive
-        super().attack(victim)
+
+        # Can't have this check in can_attack_target else allegiance checks would fail for passive creatures.
+        #  Pets check react state logic before calling attack through PetAI.
+        if self.get_react_state() == CreatureReactStates.REACT_PASSIVE and not self.is_pet():
+            return False
+
+        if not self.can_have_target() or self.ignores_combat():
+            return False
+
+        can_attack = super().attack(victim)
+
+        if not can_attack:
+            return False
+
         if had_target:
-            return
+            return False
+
         # Stand if necessary.
         if self.stand_state != StandState.UNIT_STANDING:
             self.set_stand_state(StandState.UNIT_STANDING)
+
         # Remove emote.
         if self.emote_unit_state:
             self.set_emote_unit_state(EmoteUnitState.NONE)
+
         self.object_ai.attack_start(victim)
+        return True
+
+    # override
+    def attack_stop(self):
+        super().attack_stop()
+        if self.temp_faction_flags & TemporaryFactionFlags.TEMPFACTION_RESTORE_COMBAT_STOP:
+            self.reset_faction()
 
     # override
     def attack_update(self, elapsed):
@@ -658,20 +760,16 @@ class CreatureManager(UnitManager):
         if not super().receive_damage(damage_info, source, casting_spell=casting_spell, is_periodic=is_periodic):
             return False
 
-        self.object_ai.damage_taken(source, damage_info)
+        if self.object_ai:
+            self.object_ai.damage_taken(source, damage_info)
+            if not is_periodic:
+                self.object_ai.attacked_by(source)
 
         # Handle COMBAT_PING creature static flag.
         if self.has_combat_ping() and not self.in_combat:
             summoner = self.get_charmer_or_summoner()
             if summoner and summoner.is_player():
                 summoner.send_minimap_ping(self.guid, self.location)
-
-        # If creature's being attacked by another unit, automatically set combat target.
-        not_attacked_by_gameobject = source and not source.is_gameobject()
-        if not_attacked_by_gameobject:
-            if not self.combat_target:
-                # Make sure to first stop any movement right away.
-                self.movement_manager.stop()
 
         return True
 
@@ -698,7 +796,7 @@ class CreatureManager(UnitManager):
         if not self.is_alive:
             return False
 
-        was_oneshot = not self.threat_manager.has_aggro_from(killer)
+        was_oneshot = killer and not self.threat_manager.has_aggro_from(killer)
         if self.creature_group:
             if was_oneshot and killer:
                 # AI will not trigger since NPC was unable to start attacking, make the call for attack start event.
@@ -785,7 +883,7 @@ class CreatureManager(UnitManager):
         self.set_has_moved(has_moved=True, has_turned=True)
         self.get_map().send_surrounding(self.get_heartbeat_packet(), self, False)
 
-        if location == self.spawn_position:
+        if self.is_at_home():
             self.on_at_home()
         return True
 
@@ -814,32 +912,12 @@ class CreatureManager(UnitManager):
         super().respawn()
 
     # override
-    def get_bytes_0(self):
-        return ByteUtils.bytes_to_int(
-            self.power_type,  # power type
-            self.gender,  # gender
-            self.creature_template.unit_class,  # class
-            self.race  # race (0 for creatures)
-        )
+    def get_npc_flags(self):
+        return self.npc_flags
 
     # override
-    def get_bytes_1(self):
-        return ByteUtils.bytes_to_int(
-            self.sheath_state,  # sheath state
-            self.shapeshift_form,  # shapeshift form
-            self.npc_flags,  # npc flags
-            self.stand_state  # stand state
-        )
-
-    # override
-    # This update field is unused and private in 0.5.3.
-    def get_bytes_2(self):
-        return ByteUtils.bytes_to_int(
-            0,  # unknown
-            0,  # pet flags
-            0,  # misc flags
-            0,  # unknown
-        )
+    def get_unit_class(self):
+        return self.creature_template.unit_class
 
     # override
     def get_damages(self):
@@ -848,25 +926,40 @@ class CreatureManager(UnitManager):
             self.dmg_min
         )
 
-    def _on_relocation(self):
-        self._update_swimming_state()
-        self.notify_move_in_line_of_sight()
+    def get_home_position(self):
+        return self.tmp_home_position if self.tmp_home_position else self.spawn_position
 
-    def get_detection_range(self):
-        return self.creature_template.detection_range
+    def get_detection_range(self, unit):
+        # Adjustments due to level differences, cap at 25 level difference. Aggro radius seems to vary at a rate of
+        # 1 yard per level (it can both grow or shrink). Only make this effective if one of the parties involved is
+        # a player (or a player controlled pet) and always take its level into account, not the level from the
+        # creature.
+        detection_range = self.creature_template.detection_range
+        if unit.is_player() or unit.is_player_controlled_pet() or unit.is_guardian():
+            detection_range -= max(-25, min(unit.level - self.level, 25))
+        elif self.is_player() or self.is_player_controlled_pet() or self.is_guardian():
+            detection_range -= max(-25, min(self.level - unit.level, 25))
+
+        # Minimum aggro radius seems to be combat distance.
+        detection_range = max(detection_range, UnitFormulas.combat_distance(self, unit))
+        return detection_range
 
     # Automatically set/remove swimming move flag on units.
     def _update_swimming_state(self):
-        # Not in combat or evading, skip.
-        if not self.in_combat or self.is_evading:
+        if not self.can_swim():
             return
+
+        if not self.get_map().is_active_cell_for_location(self.location):
+            return
+
         is_under_water = self.is_under_water()
+
         if is_under_water and not self.movement_flags & MoveFlags.MOVEFLAG_SWIMMING:
             self.set_move_flag(MoveFlags.MOVEFLAG_SWIMMING, active=True)
-            self.get_map().send_surrounding(self.get_heartbeat_packet(), self)
+            self.movement_manager.set_speed_dirty()
         elif not is_under_water and self.movement_flags & MoveFlags.MOVEFLAG_SWIMMING:
             self.set_move_flag(MoveFlags.MOVEFLAG_SWIMMING, active=False)
-            self.get_map().send_surrounding(self.get_heartbeat_packet(), self)
+            self.movement_manager.set_speed_dirty()
 
     # override
     def has_mainhand_weapon(self):
@@ -947,8 +1040,17 @@ class CreatureManager(UnitManager):
     def get_creature_family(self):
         return self.creature_template.beast_family
 
+    def get_react_state(self):
+        if self.object_ai:
+            return self.object_ai.get_react_state()
+        return self.react_state
+
     def is_in_world(self):
         return self.is_spawned and self.get_map()
+
+    # Implemented by CreatureManager
+    def has_ooc_events(self):
+        return self.object_ai and self.object_ai.ai_event_handler.has_ooc_los_events()
 
     # override
     def get_query_details_packet(self):
@@ -969,3 +1071,136 @@ class CreatureManager(UnitManager):
                 self.class_, constraint_level
             ))
         return creature_class_level_stats
+
+# Summon despawn handling.
+
+    @staticmethod
+    def handle_summon_timed_or_dead(unit, elapsed):
+        should_despawn = unit.update_time_to_live(elapsed)
+        if not unit.in_combat and unit.is_alive:
+            if should_despawn:
+                unit.despawn()
+                return True
+        # In combat, restore timer.
+        elif unit.in_combat and unit.time_to_live_timer:
+            unit.time_to_live_timer = 0
+        elif not unit.is_alive and should_despawn:
+            unit.despawn()
+            return True
+
+        return False
+
+    @staticmethod
+    def handle_summon_corpse(unit, elapsed):
+        if not unit.is_alive:
+            unit.despawn()
+            return True
+
+        return False
+
+    @staticmethod
+    def handle_summon_timed_ooc(unit, elapsed):
+        # Out of combat, process timer.
+        if not unit.in_combat:
+            if unit.update_time_to_live(elapsed):  # Time to live expired, destroy.
+                unit.despawn()
+                return True
+        # In combat, restore timer to original ttl.
+        elif unit.time_to_live_timer:
+            unit.time_to_live_timer = 0
+
+        return False
+
+    @staticmethod
+    def handle_summon_timed_or_corpse(unit, elapsed):
+        if not unit.is_alive:
+            unit.despawn()
+            return True
+        elif not unit.in_combat:
+            if unit.update_time_to_live(elapsed):
+                unit.despawn()
+                return True
+        # In combat, restore timer to original ttl.
+        elif unit.time_to_live_timer:
+            unit.time_to_live_timer = 0
+
+        return False
+
+    @staticmethod
+    def handle_summon_corpse_timed(unit, elapsed):
+        if not unit.is_alive:
+            if unit.update_time_to_live(elapsed):
+                unit.despawn()
+                return True
+
+        return False
+
+
+    @staticmethod
+    def handle_summon_timed(unit, elapsed):
+        if unit.update_time_to_live(elapsed):
+            unit.despawn()
+            return True
+
+        return False
+
+    @staticmethod
+    def handle_summon_dead(unit, elapsed):
+        if not unit.is_alive:
+            unit.despawn()
+            return True
+
+        return False
+
+    @staticmethod
+    def handle_summon_manual(unit, elapsed):
+        return False
+
+    @staticmethod
+    def handle_summon_timed_combat_or_dead(unit, elapsed):
+        if not unit.is_alive and not unit.just_died:
+            unit.just_died = True
+            unit.time_to_live_timer = unit.time_to_live
+        elif unit.update_time_to_live(elapsed):
+            if not unit.in_combat:
+                unit.despawn()
+                return True
+
+        return False
+
+
+    @staticmethod
+    def handle_summon_timed_combat_or_corpse(unit, elapsed):
+        if not unit.is_alive or unit.update_time_to_live(elapsed):
+            unit.despawn()
+            return True
+
+        return False
+
+    @staticmethod
+    def handle_summon_timed_death_and_dead(unit, elapsed):
+        if unit.update_time_to_live(elapsed):
+            # Prevent death while the mob is still in combat.
+            if not unit.in_combat and unit.is_alive:
+                unit.die()
+            elif not unit.is_alive:
+                unit.despawn()
+                return True
+
+        return False
+
+
+SUMMON_DESPAWN_TYPES = {
+    TempSummonType.TEMP_SUMMON_DEFAULT: CreatureManager.handle_summon_timed,
+    TempSummonType.TEMP_SUMMON_TIMED_OR_DEAD_DESPAWN: CreatureManager.handle_summon_timed_or_dead,
+    TempSummonType.TEMP_SUMMON_TIMED_OR_CORPSE_DESPAWN: CreatureManager.handle_summon_timed_or_corpse,
+    TempSummonType.TEMP_SUMMON_TIMED_DESPAWN: CreatureManager.handle_summon_timed,
+    TempSummonType.TEMP_SUMMON_TIMED_DESPAWN_OUT_OF_COMBAT: CreatureManager.handle_summon_timed_ooc,
+    TempSummonType.TEMP_SUMMON_CORPSE_DESPAWN: CreatureManager.handle_summon_corpse,
+    TempSummonType.TEMP_SUMMON_CORPSE_TIMED_DESPAWN: CreatureManager.handle_summon_corpse_timed,
+    TempSummonType.TEMP_SUMMON_DEAD_DESPAWN: CreatureManager.handle_summon_dead,
+    TempSummonType.TEMP_SUMMON_MANUAL_DESPAWN: CreatureManager.handle_summon_manual,
+    TempSummonType.TEMP_SUMMON_TIMED_COMBAT_OR_DEAD_DESPAWN: CreatureManager.handle_summon_timed_combat_or_dead,
+    TempSummonType.TEMP_SUMMON_TIMED_COMBAT_OR_CORPSE_DESPAWN: CreatureManager.handle_summon_timed_combat_or_corpse,
+    TempSummonType.TEMP_SUMMON_TIMED_DEATH_AND_DEAD_DESPAWN: CreatureManager.handle_summon_timed_death_and_dead
+}

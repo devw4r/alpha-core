@@ -5,7 +5,6 @@ from database.dbc.DbcDatabaseManager import DbcDatabaseManager
 from database.dbc.DbcModels import Spell
 from database.world.WorldDatabaseManager import WorldDatabaseManager
 from database.world.WorldModels import TrainerTemplate
-from game.world.managers.objects.item.ItemManager import ItemManager
 from network.packet.PacketWriter import PacketWriter
 from utils.Logger import Logger
 from utils.ObjectQueryUtils import ObjectQueryUtils
@@ -66,12 +65,12 @@ class TrainerUtils:
                 spell.ID)
             preceded_spell = 0 if not preceded_skill_line else preceded_skill_line.Spell
 
-            skill_line_ability = DbcDatabaseManager.SkillLineAbilityHolder.skill_line_ability_get_by_spell_race_and_class(
-                spell.ID, player_mgr.race, player_mgr.class_)
-
-            # Spell is not available to player.
-            if not skill_line_ability:
-                continue
+            if DbcDatabaseManager.SkillLineAbilityHolder.spell_has_skill_line_ability(spell.ID):
+                skill_line_ability = DbcDatabaseManager.SkillLineAbilityHolder.skill_line_ability_get_by_spell_race_and_class(
+                    spell.ID, player_mgr.race, player_mgr.class_, player_mgr.is_gm)
+                # Spell is not available to player.
+                if not skill_line_ability:
+                    continue
 
             # Skill step.
             skill_step: int = 0
@@ -199,7 +198,7 @@ class TrainerUtils:
         if not creature_mgr.is_trainer():
             return False
 
-        if not creature_mgr.is_within_interactable_distance(player_mgr) and not player_mgr.session.account_mgr.is_gm():
+        if not creature_mgr.is_within_interactable_distance(player_mgr) and not player_mgr.is_gm:
             return False
 
         # If expecting a specific class, check if they match.
@@ -240,7 +239,12 @@ class TrainerUtils:
         if template_req_skill:
             # Check player race/class masks with skill race/class masks.
             skill_race_mask = template_req_skill.RaceMask
+            if template_req_skill.ExcludeRace:
+                skill_race_mask = ~skill_race_mask
+
             skill_class_mask = template_req_skill.ClassMask
+            if template_req_skill.ExcludeClass:
+                skill_class_mask = ~skill_class_mask
 
             if skill_race_mask and not race_mask & skill_race_mask:
                 return False

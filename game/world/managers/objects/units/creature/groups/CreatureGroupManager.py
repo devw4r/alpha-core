@@ -1,6 +1,8 @@
+import math
 from random import choice
 
 from database.world.WorldDatabaseManager import WorldDatabaseManager
+from game.world.managers.abstractions.Vector import Vector
 from game.world.managers.objects.units.creature.groups.CreatureGroupMember import CreatureGroupMember
 from game.world.managers.objects.units.movement.helpers.MovementWaypoint import MovementWaypoint
 from utils.Logger import Logger
@@ -29,6 +31,11 @@ class CreatureGroupManager:
 
     def is_leader(self, creature_mgr):
         return self.leader and self.leader.guid == creature_mgr.guid
+
+    def get_leader(self):
+        if not self.leader or self.leader.guid not in self.members:
+            return None
+        return self.members[self.leader.guid]
 
     def add_member(self, creature_mgr, dist: int = 0, angle: int = 0, flags: int = 0):
         if creature_mgr.guid not in self.members:
@@ -98,7 +105,7 @@ class CreatureGroupManager:
                     continue
                 member.creature.object_ai.group_member_just_died(creature_mgr, is_leader=is_leader)
 
-        # We don't re use creatures instances, remove.
+        # We don't re-use creatures instances, remove.
         self.remove_member(creature_mgr)
 
     def on_leave_combat(self, creature_mgr):
@@ -112,7 +119,8 @@ class CreatureGroupManager:
             for guid, member in self.members.items():
                 if guid == creature_mgr.guid or not member.creature.is_alive or not member.creature.combat_target:
                     continue
-                member.creature.leave_combat()
+                if member.creature.in_combat:
+                    member.creature.leave_combat()
 
     def disband(self):
         Logger.debug(f'Disbanding creature group.')
@@ -135,6 +143,21 @@ class CreatureGroupManager:
 
     def is_formation(self):
         return self.group_flags & CreatureGroupFlags.OPTION_FORMATION_MOVE
+
+    def compute_relative_position(self, group_member, distance=0.0):
+        leader = self.get_leader()
+        if not leader or not self.leader:
+            return None
+        distance = distance if distance else group_member.distance_leader
+        off_x = (math.cos(group_member.angle + leader.angle) * distance) + self.leader.location.x
+        off_y = (math.sin(group_member.angle + leader.angle) * distance) + self.leader.location.y
+        off_z = self.leader.location.z + (group_member.creature.location.z - self.leader.location.z) * 0.5
+
+        # Try to find precise Z.
+        z, z_locked = self.leader.get_map().calculate_z(off_x, off_y, off_z, is_rand_point=True)
+        if not z_locked:
+            off_z = z
+        return Vector(off_x, off_y, off_z)
 
     def _get_sorted_waypoints_by_distance(self, movement_waypoints) -> list[MovementWaypoint]:
         points = [MovementWaypoint(wp.point, wp.position_x, wp.position_y, wp.position_z, wp.orientation,

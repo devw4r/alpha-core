@@ -12,7 +12,7 @@ from utils.constants.OpCodes import OpCode
 from utils.constants.UnitCodes import SplineFlags, SplineType
 
 
-class Spline(object):
+class Spline:
     def __init__(self, unit, spline_type=0, spline_flags=0, spot=None, guid=0, facing=0, speed=0, elapsed=0,
                  total_time=0, points=None, extra_time_seconds=0):
         self.unit = unit
@@ -79,8 +79,8 @@ class Spline(object):
             self.elapsed_since_last_location = 0
             if config.Server.Settings.debug_movement:
                 self._debug_position(new_position)
-            # While in movement (guessed position) always face target destination.
-            # End orientation upon waypoint finish is handled by movement behaviors.
+            # While in movement (guessed position) always face the target destination.
+            # Movement behaviors handle end orientation upon waypoint finish.
             if not is_complete:
                 new_position.face_point(current_waypoint.location)
 
@@ -88,7 +88,7 @@ class Spline(object):
         return new_position is not None, new_position, is_complete
 
     def _get_position(self, pending_waypoint, elapsed, is_complete=False):
-        # Handle players collision due wrong pathing.
+        # Handle players collision due to wrong pathing.
         if self.unit.movement_flags & MoveFlags.MOVEFLAG_REDIRECTED:
             return self.unit.location
         if is_complete:
@@ -100,13 +100,13 @@ class Spline(object):
                                                                    pending_waypoint.location,
                                                                    map_id=self.unit.map_id)
 
-        # For creatures try to adjust the position in case the unit is part of a group.
-        if not self.is_player:
-            point_in_between = self._get_leader_z(point_in_between)
+        # For creatures, if Z calculation failed, try to adjust the position Z in case the unit is part of a group.
+        if not self.is_player and point_in_between.z_locked:
+            point_in_between = self._apply_creature_group_leader_z(point_in_between)
 
         return point_in_between
 
-    def _get_leader_z(self, location):
+    def _apply_creature_group_leader_z(self, location):
         if not self.unit.creature_group:
             return location
         if not self.unit.movement_manager.get_current_behavior().move_type == MoveType.GROUP:
@@ -134,13 +134,10 @@ class Spline(object):
                                               GameObjectStates.GO_STATE_READY,
                                               summoner=self.unit,
                                               ttl=1)
-        self.unit.get_map().spawn_object(world_object_instance=gameobject)
+        self.unit.get_map().spawn_object(instance=gameobject)
 
     def is_complete(self):
         return not self.pending_waypoints and self.elapsed >= self.get_total_time_ms()
-
-    def is_type(self, spline_type):
-        return spline_type == self.spline_type
 
     def is_flight(self):
         return self.spline_flags & SplineFlags.SPLINEFLAG_FLYING
@@ -150,52 +147,59 @@ class Spline(object):
             return self.unit.location
         return self.pending_waypoints[0].location
 
-    # Update spline to current time when someone requests a movement update.
+    # Update spline to the current time when someone requests a movement update.
     def update_to_now(self):
         elapsed = time.time() - self.unit.last_tick
         if elapsed:
             self.update(elapsed)
 
     def try_build_movement_packet(self):
-        # Sending no waypoints crashes the client.
-        if len(self.pending_waypoints) == 0:
-            return None
-
         # Initialize if needed.
         if not self.initialized:
             self.initialize()
 
+        # Sending no waypoints crashes the client.
+        if len(self.pending_waypoints) == 0:
+            return None
+
         # Fill header.
         data = bytearray(self._get_header_bytes())
 
-        if not self.is_type(SplineType.SPLINE_TYPE_STOP):
-            data.extend(self._get_payload_bytes())
+        # Use match for spline_type
+        match self.spline_type:
+            case SplineType.SPLINE_TYPE_STOP:
+                pass  # No payload if stopped.
+            case _:
+                data.extend(self._get_payload_bytes())
 
         return PacketWriter.get_packet(OpCode.SMSG_MONSTER_MOVE, data)
 
     def _get_header_bytes(self):
         location_bytes = self.unit.location.to_bytes(include_orientation=False)
-        data = pack(
-            f'<Q{len(location_bytes)}sIB',
-            self.unit.guid,
-            location_bytes,
-            int(WorldManager.get_seconds_since_startup() * 1000),
-            int(self.spline_type)
-        )
-        if self.is_type(SplineType.SPLINE_TYPE_FACING_SPOT):
-            spot_bytes = self.spot.to_bytes(include_orientation=False)
-            data += pack(f'<{len(spot_bytes)}s', spot_bytes)
-        elif self.is_type(SplineType.SPLINE_TYPE_FACING_TARGET):
-            data += pack('<Q', self.guid)
-        elif self.is_type(SplineType.SPLINE_TYPE_FACING_ANGLE):
-            data += pack('<f', self.facing)
+        timestamp = int(WorldManager.get_seconds_since_startup() * 1000)
+        # Common part first.
+        data = pack(f'<Q{len(location_bytes)}sIB', self.unit.guid, location_bytes, timestamp, self.spline_type)
+
+        # Handle specific spline types.
+        match self.spline_type:
+            case SplineType.SPLINE_TYPE_FACING_SPOT:
+                spot_bytes = self.spot.to_bytes(include_orientation=False)
+                data += pack(f'<{len(spot_bytes)}s', spot_bytes)
+            case SplineType.SPLINE_TYPE_FACING_TARGET:
+                data += pack('<Q', self.guid)
+            case SplineType.SPLINE_TYPE_FACING_ANGLE:
+                data += pack('<f', self.facing)
+            case _:
+                pass  # No additional data for other types.
+
         return data
 
     def _get_payload_bytes(self):
+        total_time_remaining = max(int(self.total_time - self.elapsed), 0)
         return pack(
             f'<3I{len(self.waypoints_bytes)}s',
             self.spline_flags,
-            int(max(self.total_time - int(self.elapsed), 0)),
+            total_time_remaining,
             len(self.points),
             self.waypoints_bytes
         )

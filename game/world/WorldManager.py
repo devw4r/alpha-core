@@ -3,6 +3,7 @@ import socket
 import threading
 import traceback
 from time import time
+from typing import Any
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -66,6 +67,17 @@ class WorldServerSessionHandler:
         finally:
             self.disconnect()
 
+    @staticmethod
+    def save_characters():
+        WorldSessionStateHandler.save_characters()
+
+    @staticmethod
+    def disconnect_sessions():
+        for session in WorldSessionStateHandler.get_world_sessions():
+            if session.player_mgr and session.player_mgr.online:
+                session.player_mgr.logout()
+            session.disconnect()
+
     def save_character(self):
         WorldSessionStateHandler.save_character(self.player_mgr)
 
@@ -77,40 +89,48 @@ class WorldServerSessionHandler:
             self.outgoing_pending.put_nowait(data)
 
     def process_outgoing(self):
-        while self.keep_alive:
-            try:
-                data = self.outgoing_pending.get(block=True, timeout=None)
+        try:
+            while self.keep_alive:
+                packet = self.outgoing_pending.get(block=True, timeout=None)
                 # We've been blocking, by now keep_alive might be false.
                 # data can be None if we shut down the thread.
-                if data and self.keep_alive:
-                    self.client_socket.sendall(data)
-            except OSError:
-                self.disconnect()
+                if packet and self.keep_alive:
+                    self.client_socket.sendall(packet)
+        except OSError:
+            self.disconnect()
+        finally:
+            # Flush outgoing packets from the queue, if any.
+            while not self.outgoing_pending.empty():
+                self.outgoing_pending.get_nowait()
 
     # noinspection PyBroadException
     def process_incoming(self):
         try:
             while self.keep_alive:
-                reader = self.incoming_pending.get(block=True, timeout=None)
+                packet = self.incoming_pending.get(block=True, timeout=None)
                 # We've been blocking, by now keep_alive might be false.
-                if not reader or not self.keep_alive:  # Can be None if we shut down the thread.
+                if not packet or not self.keep_alive:  # Can be None if we shut down the thread.
                     break
-                if not reader.opcode:
+                if not packet.opcode:
                     continue
-                handler, found = Definitions.get_handler_from_packet(self, reader.opcode)
+                handler, found = Definitions.get_handler_from_packet(self, packet.opcode)
                 if handler:
-                    res = handler(self, reader)
+                    res = handler(self, packet)
                     if res == 0:
-                        Logger.debug(f'[{self.client_address[0]}] Handling {reader.opcode_str()}')
+                        Logger.debug(f'[{self.client_address[0]}] Handling {packet.opcode_str()}')
                     elif res == 1:
-                        Logger.debug(f'[{self.client_address[0]}] Ignoring {reader.opcode_str()}')
+                        Logger.debug(f'[{self.client_address[0]}] Ignoring {packet.opcode_str()}')
                     elif res < 0:
                         break
                 elif not found:
-                    Logger.warning(f'[{self.client_address[0]}] Received unknown data: {reader.data}')
+                    Logger.warning(f'[{self.client_address[0]}] Received unknown data: {packet.data}')
         except:
             # Can be multiple since it includes handlers execution.
             Logger.error(traceback.format_exc())
+        finally:
+            # Flush incoming packets from the queue, if any.
+            while not self.incoming_pending.empty():
+                self.incoming_pending.get_nowait()
 
         # End this session.
         self.disconnect()
@@ -127,13 +147,9 @@ class WorldServerSessionHandler:
         except AttributeError:
             pass
 
-        # Unblock and flush queues.
+        # Add signals to stop queues from handling packets.
         self.incoming_pending.put_nowait(None)
-        while not self.incoming_pending.empty():
-            self.incoming_pending.get(block=False, timeout=None)
         self.outgoing_pending.put_nowait(None)
-        while not self.outgoing_pending.empty():
-            self.outgoing_pending.get(block=False, timeout=None)
 
         WorldSessionStateHandler.remove(self)
         try:
@@ -232,7 +248,8 @@ class WorldServerSessionHandler:
             WorldServerSessionHandler.build_scheduler('Spawn', MapManager.update_spawns, 1.0, 1),
             WorldServerSessionHandler.build_scheduler('Corpse', MapManager.update_corpses, 10.0, 1),
             WorldServerSessionHandler.build_scheduler('Script/Event', MapManager.update_map_scripts_and_events, 1.0, 1),
-            WorldServerSessionHandler.build_scheduler('Tile Loading', MapManager.initialize_pending_tiles, 2.0, 4),
+            WorldServerSessionHandler.build_scheduler('Detection', MapManager.update_detection_range_collision, 1.0, 1),
+            WorldServerSessionHandler.build_scheduler('Tile Loading', MapManager.initialize_pending_tiles, 0.2, 4),
             WorldServerSessionHandler.build_scheduler('Tile Unloading', MapManager.deactivate_cells, 300.0, 1)]
 
     @staticmethod
@@ -259,7 +276,7 @@ class WorldServerSessionHandler:
         Logger.info('Background schedulers stopped.')
 
     @staticmethod
-    def start_world(running, world_server_ready):
+    def start_world(shared_state: Any):
         WorldLoader.load_data()
 
         # Start background tasks.
@@ -270,7 +287,7 @@ class WorldServerSessionHandler:
         WorldServerSessionHandler.start_chat_logger()
 
         # Set ready.
-        world_server_ready.value = 1
+        shared_state.WORLD_SERVER_READY = True
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             try:
@@ -286,7 +303,7 @@ class WorldServerSessionHandler:
             Logger.success(f'World server started, listening on {real_binding[0]}:{real_binding[1]}')
 
             try:
-                while WORLD_ON and running.value:
+                while WORLD_ON and shared_state.RUNNING:
                     try:
                         client_socket, client_address = server_socket.accept()
                         server_handler = WorldServerSessionHandler(client_socket, client_address)
@@ -302,4 +319,7 @@ class WorldServerSessionHandler:
 
         Logger.info("World server turned off.")
         ChatLogManager.exit()
+        # Since only this process is able to see current world sessions, save characters and disconnect all sessions.
+        WorldServerSessionHandler.save_characters()
+        WorldServerSessionHandler.disconnect_sessions()
         WorldServerSessionHandler.stop_schedulers(schedulers)

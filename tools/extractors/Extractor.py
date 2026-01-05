@@ -6,12 +6,13 @@ from utils.ConfigManager import config
 from utils.Logger import Logger
 
 WOW_DATA_FOLDER = 'Data/'
-WOW_MAPS_FOLDER = 'World/Maps/'
+WOW_WORLD_FOLDER = 'World/'
+WOW_MAPS_FOLDER = os.path.join(WOW_WORLD_FOLDER, 'Maps')
 
 
 class Extractor:
     @staticmethod
-    def run(adt_x=-1, adt_y=-1):
+    def run(context, adt_x=-1, adt_y=-1):
         # Validate WoW root.
         if not config.Extractor.Maps.wow_root_path:
             Logger.error('No wow root path provided, check config.yml. (World of Warcraft base directory)')
@@ -28,7 +29,7 @@ class Extractor:
             return
 
         if input('Extract .map files? [Y/N]').lower() == 'y':
-            MapExtractor.run(data_path, WOW_MAPS_FOLDER, adt_x, adt_y)
+            MapExtractor.run(data_path, WOW_MAPS_FOLDER, WOW_WORLD_FOLDER, adt_x, adt_y)
 
         if input('Extract .nav files? [Y/N]').lower() == 'y':
-            NavExtractor.run(data_path)
+            NavExtractor.run(data_path, context)

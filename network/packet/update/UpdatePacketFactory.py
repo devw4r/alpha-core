@@ -1,21 +1,15 @@
 import time
 from struct import pack
-from typing import Optional
-
-from bitarray import bitarray
-
-from network.packet.PacketWriter import PacketWriter
 from network.packet.update.UpdateData import UpdateData
 from network.packet.update.UpdateMask import UpdateMask
 from utils.Logger import Logger
-from utils.constants.OpCodes import OpCode
 from utils.constants.UpdateFields import EncapsulationType, ObjectFields
 
 FIELDS_ENCAPSULATION = {}  # { field_type : { index : encapsulation} }
-ENCAPSULATION_INFORMATION = {}  # Debug.
+DEBUG_INFORMATION = {}  # Debug.
 
 
-class UpdatePacketFactory(object):
+class UpdatePacketFactory:
     def __init__(self):
         self.owner_guid = 0
         self.fields_size = 0
@@ -37,42 +31,40 @@ class UpdatePacketFactory(object):
 
     @staticmethod
     def _load_encapsulation(fields_type):
-        # We just build encapsulation once per update field type, then share the same dictionary reference for all
-        # other update fields of the same kind.
+        # Cache encapsulation for each fields_type to avoid recomputation.
         if fields_type in FIELDS_ENCAPSULATION:
             return FIELDS_ENCAPSULATION[fields_type]
 
-        # Initialize encapsulation dictionary for this type of fields.
+        # Initialize dictionaries for encapsulation and related info.
         FIELDS_ENCAPSULATION[fields_type] = {}
+        DEBUG_INFORMATION[fields_type] = {}
 
-        # Initialize encapsulation information for this type of fields.
-        # Holds the index, the field names and encapsulation flags.
-        # Great for debugging.
-        ENCAPSULATION_INFORMATION[fields_type] = {}
-
-        # What other UpdateFields are involved, e.g. PlayerFields [ObjectFields -> UnitFields -> PlayerFields]
+        # Collect all involved update field types from the current type up to ObjectFields.
         update_field_types = []
 
-        # The UpdateField we stand on before looping through.
-        field_type = fields_type
+        # Start from the provided fields_type.
+        current_type = fields_type
 
-        # Loop through until we visit each parent and find root. (ObjectFields)
+        # Traverse parent fields until reaching ObjectFields.
         while True:
-            update_field_types.insert(0, field_type)
-            if field_type == ObjectFields:
+            update_field_types.insert(0, current_type)
+            if current_type == ObjectFields:
                 break
-            field_type = field_type.parent_fields()
+            current_type = current_type.parent_fields()
 
-        # Extract encapsulation flag for all affected UpdateFields.
-        for index, _type in enumerate(update_field_types):
-            # _type represent an UpdateFields type [UnitFields, PlayerFields, ItemFields, ContainerFields, etc]
-            for update_field in _type:
-                # How many integers do this field represents.
-                for _index in range(update_field.size):
-                    # Hold the update field index, name and flag.
-                    ENCAPSULATION_INFORMATION[fields_type][update_field.value + _index] = f'[{update_field.value + _index}] {update_field.name}_{_index} - [{update_field.flags.name}]'
-                    # { index : encapsulation flag }
-                    FIELDS_ENCAPSULATION[fields_type][update_field.value + _index] = update_field.flags
+        # Process each update field type in order.
+        for index, update_type in enumerate(update_field_types):
+            for update_field in update_type:
+                # For each component in the update field, store encapsulation info.
+                for offset in range(update_field.size):
+                    field_index = update_field.value + offset
+                    field_str_value = f"[{field_index}] {update_field.name}_{offset} - [{update_field.flags.name}]"
+                    # Store debugging info for each field.
+                    DEBUG_INFORMATION[fields_type][field_index] = field_str_value
+                    # Store the encapsulation flags for the field.
+                    FIELDS_ENCAPSULATION[fields_type][field_index] = update_field.flags
+
+        return FIELDS_ENCAPSULATION[fields_type]
 
     def is_dynamic_field(self, index):
         if not self._validate_field_existence(index):
@@ -94,25 +86,20 @@ class UpdatePacketFactory(object):
     def _validate_field_existence(self, index):
         if self.fields_type not in FIELDS_ENCAPSULATION:
             return False
-
-        if index not in FIELDS_ENCAPSULATION[self.fields_type]:
-            return False
-
-        return True
+        return index in FIELDS_ENCAPSULATION[self.fields_type]
 
     # Debug what UpdateFields players sees from self, other player, units, items, gameobjects, etc.
     def _debug_field_acquisition(self, requester, index, was_protected):
-        update_field_info = ENCAPSULATION_INFORMATION[self.fields_type][index]
+        update_field_info = DEBUG_INFORMATION[self.fields_type][index]
         result = {'[PROTECTED]' if was_protected else '[ACCESSED]'}
         Logger.debug(f"{requester.get_name()} - [{update_field_info}] - {result}, Value [{self.update_values[index]}]")
 
     # Makes sure every single player gets the same mask and values.
     def generate_update_data(self, flush_current=True):
-        with self.update_mask.lock:
-            update_object = UpdateData(self.update_mask.copy(), self.update_values_bytes.copy())
-            if flush_current:
-                self.update_mask.clear()
-            return update_object
+        update_object = UpdateData(self.update_mask.copy(), self.update_values_bytes.copy())
+        if flush_current:
+            self.update_mask.clear()
+        return update_object
 
     def reset(self):
         self.update_mask.clear()
@@ -121,31 +108,34 @@ class UpdatePacketFactory(object):
         return not self.update_mask.is_empty()
 
     def reset_older_than(self, timestamp_to_compare):
-        with self.update_mask.lock:
-            all_clear = True
-            for index, timestamp in enumerate(self.update_timestamps):
-                if not timestamp:
-                    continue
-                if timestamp <= timestamp_to_compare:
-                    self.update_mask.unset_bit(index)
-                else:
-                    all_clear = False
-
-            return all_clear
+        all_clear = True
+        for index, timestamp in enumerate(self.update_timestamps):
+            if not timestamp:
+                continue
+            if timestamp <= timestamp_to_compare:
+                self.update_mask.unset_bit(index)
+            else:
+                all_clear = False
+        return all_clear
 
     # Check if the new value is different from the field known value.
-    def should_update(self, index, value, value_type):
-        if value_type.lower() == 'q':
-            field_0 = int(value & 0xFFFFFFFF)
-            field_1 = int(value >> 32)
-            return self.update_values[index] != field_0 or self.update_values[index + 1] != field_1
-        else:
+    def should_update(self, index, value, is_int64):
+        if not is_int64:
             return self.update_values[index] != value
 
-    def update(self, index, value, value_type):
-        if value_type.lower() == 'q':
-            self.update(index, int(value & 0xFFFFFFFF), 'I')
-            self.update(index + 1, int(value >> 32), 'I')
+        field_0 = int(value & 0xFFFFFFFF)
+        field_1 = int((value >> 32) & 0xFFFFFFFF)  # Ensures only 32 bits are used after shifting.
+        return self.update_values[index] != field_0 or self.update_values[index + 1] != field_1
+
+    def update(self, index, value, value_type, is_int64):
+        # Handle 64-bit 'q' type by splitting into two 32-bit updates.
+        if is_int64:
+            lower_value = int(value & 0xFFFFFFFF)
+            upper_value = int((value >> 32) & 0xFFFFFFFF)  # Ensures only 32 bits are used after shifting.
+
+            # Recursively update lower and upper parts.
+            self.update(index, lower_value, 'I', False)
+            self.update(index + 1, upper_value, 'I', False)
         else:
             self.update_timestamps[index] = time.time()
             self.update_values[index] = value

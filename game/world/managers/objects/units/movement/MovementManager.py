@@ -1,8 +1,12 @@
+import math
 from typing import Optional
+
+from game.world.managers.objects.units.movement.behaviors.FollowMovement import FollowMovement
 from utils.ConfigManager import config
 from utils.Logger import Logger
 from game.world.managers.objects.units.movement.helpers.SplineBuilder import SplineBuilder
 from utils.constants.MiscCodes import MoveType, MoveFlags
+from utils.constants.ScriptCodes import MoveOptions
 from utils.constants.UnitCodes import UnitStates
 from game.world.managers.objects.units.movement.behaviors.BaseMovement import BaseMovement
 from game.world.managers.objects.units.movement.behaviors.PetMovement import PetMovement
@@ -33,6 +37,7 @@ class MovementManager:
             MoveType.DISTRACTED: None,
             MoveType.CHASE: None,
             MoveType.PET: None,
+            MoveType.FOLLOW: None,
             MoveType.GROUP: None,
             MoveType.WAYPOINTS: None,
             MoveType.WANDER: None,
@@ -47,7 +52,9 @@ class MovementManager:
         # Make sure to flush any existent behaviors if this was re-initialized.
         self.flush()
 
-        if self.unit.is_controlled() or self.unit.is_guardian():
+        if self.unit.is_guardian():
+            self.set_behavior(FollowMovement(spline_callback=self.spline_callback, is_default=True))
+        elif self.unit.is_controlled():
             is_default = self.unit.is_pet()
             self.set_behavior(PetMovement(spline_callback=self.spline_callback, is_default=is_default))
         elif self.unit.creature_group and self.unit.creature_group.is_formation():
@@ -88,8 +95,11 @@ class MovementManager:
     def update(self, now, elapsed):
         is_resume = self._handle_ooc_pause(elapsed)
 
+        self._update_spline_events(elapsed)
+
         if not self._can_move():
-            self.stop()
+            if self._get_current_spline():
+                self.stop()
             return
 
         # Check if we need to remove any movement.
@@ -98,10 +108,7 @@ class MovementManager:
         current_behavior = self.get_current_behavior()
 
         if not current_behavior:
-            self._update_spline_events(elapsed)
             return
-        elif self.spline_events:
-            self.spline_events.clear()
 
         # Resuming or cascaded into a previous movement, reset.
         if is_resume or movements_removed:
@@ -146,9 +153,11 @@ class MovementManager:
         # Do not allow shorter fear to override a current fear.
         if current_fear_behavior and current_fear_behavior.fear_duration > duration_seconds:
             return
-        self.reset(clean_behaviors=True)
         self.set_behavior(FearMovement(duration_seconds, spline_callback=self.spline_callback,
                                        target=target, seek_assist=seek_assist))
+
+    def move_follow(self, target, dist=2, angle=math.pi / 2):
+        self.set_behavior(FollowMovement(spline_callback=self.spline_callback, target=target, dist=dist, angle=angle))
 
     def move_confused(self, duration_seconds=-1):
         self.set_behavior(ConfusedMovement(spline_callback=self.spline_callback, duration_seconds=duration_seconds))
@@ -156,7 +165,14 @@ class MovementManager:
     def move_automatic_waypoints_from_script(self, command_move_info=None):
         self.set_behavior(WaypointMovement(spline_callback=self.spline_callback, command_move_info=command_move_info))
 
-    def move_to_point(self, location, speed=config.Unit.Defaults.walk_speed):
+    def move_to_point(self, location, speed=config.Unit.Defaults.walk_speed, move_options=0):
+        # TODO: Handle more move options.
+        if move_options:
+            if move_options & MoveOptions.MOVE_RUN_MODE:
+                speed = config.Unit.Defaults.run_speed
+            if move_options & MoveOptions.MOVE_WALK_MODE:
+                speed = config.Unit.Defaults.walk_speed
+
         self.set_behavior(WaypointMovement(spline_callback=self.spline_callback, waypoints=[location], speed=speed,
                                            is_single=True))
 
@@ -168,7 +184,7 @@ class MovementManager:
     def get_move_behavior_by_type(self, move_type) -> Optional[BaseMovement]:
         return self.movement_behaviors.get(move_type, None)
 
-    # TODO: Unused atm, lacking many specific move types from vMangos and some refactoring to our current move behaviors.
+    # TODO: Unused atm, lacking many specific move types from VMaNGOS and some refactoring to our current move behaviors.
     #  For now, attempt to resolve to the closest types in order to trigger some creature ai events.
     def _translate_to_vmangos_move_type(self):
         current_behavior = self.get_current_behavior()
@@ -197,6 +213,8 @@ class MovementManager:
     def stop(self, force=False):
         if not force and not self.unit.is_moving():
             return
+        if self.unit.is_sessile():
+            return
         current_behavior = self.get_current_behavior()
         # Make sure the current behavior spline does not update an extra tick.
         if current_behavior:
@@ -216,7 +234,12 @@ class MovementManager:
         self.spline_callback(SplineBuilder.build_face_spot_spline(self.unit, spot))
 
     def set_behavior(self, movement_behavior):
+        if self.unit.is_sessile():
+            return
+
         if movement_behavior.initialize(self.unit):
+            self.stop()  # Stop the current behavior if needed.
+            self.unit.spell_manager.remove_casts()  # Remove any cast when switching behaviors.
             self.movement_behaviors[movement_behavior.move_type] = movement_behavior
             self._update_active_behavior_type()
             if movement_behavior.is_default:
@@ -227,7 +250,8 @@ class MovementManager:
     def unit_is_moving(self):
         if self.is_player and (self.unit.movement_flags & MoveFlags.MOVEFLAG_MOVE_MASK or self.unit.has_moved):
             return True
-        return True if self._get_current_spline() else False
+        spline = self._get_current_spline()
+        return True if spline and not spline.is_complete() else False
 
     def try_build_movement_packet(self):
         spline = self._get_current_spline()
@@ -237,18 +261,21 @@ class MovementManager:
         self.spline_events.append(spline_event)
 
     def add_spline_events(self, events):
+        # Prevent events aggregation if someone spam emote events.
+        if self.spline_events:
+            self.spline_events.clear()
         [self.add_spline_event(event) for event in events]
 
     def has_spline_events(self):
-        return self.spline_events
+        return len(self.spline_events) > 0
 
     def _update_spline_events(self, elapsed):
         if not self.spline_events:
             return
-        for spline_event in list(self.spline_events):
-            spline_event.update(elapsed)
-            if spline_event.triggered:
-                self.spline_events.remove(spline_event)
+
+        for idx, spline_event in enumerate(list(self.spline_events)):
+            if spline_event.update(elapsed):
+                self.spline_events.pop(idx)
 
     def _handle_ooc_pause(self, elapsed):
         if self.pause_ooc_timer:
@@ -305,6 +332,11 @@ class MovementManager:
             return None
         movement_behavior = self.movement_behaviors.get(self.active_behavior_type, None)
         return movement_behavior if movement_behavior else None
+
+    def get_current_behavior_name(self):
+        if not self.active_behavior_type:
+            return 'None'
+        return MoveType(self.active_behavior_type).name
 
     def _get_default_behavior(self):
         if not self.default_behavior_type:

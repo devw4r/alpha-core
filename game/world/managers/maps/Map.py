@@ -10,6 +10,7 @@ from game.world.managers.maps.MapEventManager import MapEventManager
 from game.world.managers.maps.helpers.Constants import MapType
 from game.world.managers.objects.script.ScriptHandler import ScriptHandler
 from utils.constants.MiscCodes import PoolType
+from utils.constants.UnitCodes import ObjectSpawnFlags
 
 
 class Map:
@@ -19,7 +20,7 @@ class Map:
         self.dbc_map = DbcDatabaseManager.map_get_by_id(map_id)
         self.instance_id = instance_id
         self.name = self.dbc_map.MapName_enUS
-        self.grid_manager = GridManager(map_id, instance_id, active_cell_callback, inactive_cell_callback)
+        self.grid_manager = GridManager(self, map_id, instance_id, active_cell_callback, inactive_cell_callback)
         self.script_handler = ScriptHandler(self)
         self.map_event_manager = MapEventManager()
         self.pool_manager = PoolManager()
@@ -92,8 +93,10 @@ class Map:
         count = 0
         length = len(gobject_spawns)
         for gobject_spawn in gobject_spawns:
+            if gobject_spawn.spawn_flags & ObjectSpawnFlags.SPAWN_FLAG_DISABLED:
+                continue
             go_spawn_instance = GameObjectSpawn(gobject_spawn, instance_id=self.instance_id)
-            if config.Server.Settings.load_pools:
+            if config.Server.Settings.load_pools and config.Server.Settings.load_gameobjects:
                 go_spawn_instance.generate_or_add_to_pool_if_needed(self.pool_manager)
             if not go_spawn_instance.pool:
                 go_spawn_instances.append(go_spawn_instance)
@@ -110,7 +113,7 @@ class Map:
         length = len(creature_spawns)
         for creature_spawn in creature_spawns:
             creature_spawn_instance = CreatureSpawn(creature_spawn, instance_id=self.instance_id)
-            if config.Server.Settings.load_pools:
+            if config.Server.Settings.load_pools and config.Server.Settings.load_creatures:
                 creature_spawn_instance.generate_or_add_to_pool_if_needed(self.pool_manager)
             if not creature_spawn_instance.pool:
                 creature_spawn_instances.append(creature_spawn_instance)
@@ -149,14 +152,17 @@ class Map:
         self.map_event_manager.edit_map_event_data(event_id, success_condition, success_script, failure_condition,
                                                    failure_script)
 
-    def send_event_data(self, event_id, data_index, options):
-        self.map_event_manager.send_event_data(event_id, data_index, options)
+    def send_event_data(self, event_id, data, options):
+        self.map_event_manager.send_event_data(event_id, data, options)
 
     def get_map_event_data(self, event_id):
         return self.map_event_manager.get_map_event_data(event_id)
 
     def is_event_active(self, event_id):
         return self.map_event_manager.is_event_active(event_id)
+
+    def unlock_scripted_event(self, event_id):
+        return self.script_handler.forced_event_ids.add(event_id)
 
     # Scripts.
 
@@ -165,11 +171,14 @@ class Map:
 
     # Map helpers.
 
-    def get_liquid_or_create(self, liquid_type, height, use_float_16):
-        return self.map_manager.get_liquid_or_create(liquid_type, height, use_float_16)
+    def get_liquid_or_create(self, liquid_type, l_min, l_max, use_float_16, is_wmo):
+        return self.map_manager.get_liquid_or_create(liquid_type, l_min, l_max, use_float_16, is_wmo)
 
     def find_liquid_location_in_range(self, world_object, min_range, max_range):
         return self.map_manager.find_liquid_location_in_range(world_object, min_range, max_range)
+
+    def find_land_location_in_angle(self, world_object, destination):
+        return self.map_manager.find_land_location_in_angle(world_object, destination)
 
     def get_area_information(self, x, y):
         return self.map_manager.get_area_information(self.map_id, x, y)
@@ -179,6 +188,9 @@ class Map:
 
     def can_reach_object(self, source_object, target_object):
         return self.map_manager.can_reach_object(source_object, target_object)
+
+    def can_reach_location(self, src_vector, dst_vector):
+        return self.map_manager.can_reach_location(self.map_id, src_vector, dst_vector)
 
     def get_liquid_information(self, x, y, z, ignore_z=False):
         return self.map_manager.get_liquid_information(self.map_id, x, y, z, ignore_z=ignore_z)
@@ -193,6 +205,9 @@ class Map:
     def calculate_path(self, start_vector, end_vector, los=False) -> tuple:  # bool failed, in_place, path list.
         return self.map_manager.calculate_path(self.map_id, start_vector, end_vector, los=los)
 
+    def find_random_point_around_circle(self, vector, radius):
+        return self.map_manager.find_random_point_around_circle(self.map_id, vector, radius)
+
     def find_point_in_between_vectors(self, offset, start_location, end_location):
         return self.map_manager.find_point_in_between_vectors(self.map_id, offset, start_location, end_location)
 
@@ -202,6 +217,9 @@ class Map:
     def calculate_z(self, x, y, current_z=0.0, is_rand_point=False) -> tuple:  # float, z_locked (Could not use map files Z)
         return self.map_manager.calculate_z(self.map_id, x, y, current_z=current_z, is_rand_point=is_rand_point)
 
+    def is_land_location(self, vector=None, x=0, y=0, z=0):
+        return self.map_manager.is_land_location(self.map_id, vector, x, y, z)
+
     def los_check(self, start_vector, end_vector, doodads=False):
         return self.map_manager.los_check(self.map_id, start_vector, end_vector, doodads=doodads)
 
@@ -210,8 +228,8 @@ class Map:
 
     # GridManager helpers.
 
-    def spawn_object(self, world_object_spawn=None, world_object_instance=None):
-        self.grid_manager.spawn_object(world_object_spawn, world_object_instance)
+    def spawn_object(self, owner=None, instance=None):
+        self.grid_manager.spawn_object(owner, instance)
 
     def update_object(self, world_object, has_changes=False, has_inventory_changes=False):
         self.grid_manager.update_object(world_object, has_changes, has_inventory_changes)
@@ -276,8 +294,11 @@ class Map:
     def get_active_cell_count(self):
         return self.grid_manager.get_active_cell_count()
 
-    def activate_cell_by_world_object(self, world_object):
-        self.grid_manager.activate_cell_by_world_object(world_object)
+    def activate_cell_by_world_object(self, world_object, load_tile_data=False):
+        self.grid_manager.activate_cell_by_world_object(world_object, load_tile_data)
+
+    def get_detection_manager(self):
+        return self.grid_manager.detection_manager
 
     # Objects updates.
     def update_creatures(self):
@@ -304,3 +325,6 @@ class Map:
 
     def deactivate_cells(self):
         self.grid_manager.deactivate_cells()
+
+    def update_detection_range_collision(self):
+        self.grid_manager.update_detection_range_collision()

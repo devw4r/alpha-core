@@ -18,6 +18,7 @@ from game.world.managers.maps.helpers.LiquidInformation import LiquidInformation
 from game.world.managers.maps.helpers.MapUtils import MapUtils
 from game.world.managers.maps.helpers.Namigator import Namigator
 from utils.ConfigManager import config
+from utils.Formulas import Distances
 from utils.GitUtils import GitUtils
 from utils.Logger import Logger
 from utils.PathManager import PathManager
@@ -138,7 +139,7 @@ class MapManager:
                 MAPS_TILES[map_.map_id][adt_x][adt_y] = MapTile(map_, adt_x, adt_y)
 
         Logger.success(f'[MAP] Successfully built ADT tiles for map {map_.name}')
-        return True
+        return
 
     @staticmethod
     def initialize_pending_tiles():
@@ -202,10 +203,10 @@ class MapManager:
         return zone_id
 
     @staticmethod
-    def get_liquid_or_create(liquid_type, height, use_float_16):
-        key = f'{liquid_type}.{round(height, 4)}'
+    def get_liquid_or_create(liquid_type, l_min, l_max, use_float_16, is_wmo):
+        key = f'{liquid_type}.{round(l_min, 4)}.{round(l_max, 4)}'
         if key not in LIQUIDS_CACHE:
-            LIQUIDS_CACHE[key] = LiquidInformation(liquid_type, height, use_float_16)
+            LIQUIDS_CACHE[key] = LiquidInformation(liquid_type, l_min, l_max, use_float_16, is_wmo)
         return LIQUIDS_CACHE[key]
 
     @staticmethod
@@ -251,6 +252,15 @@ class MapManager:
         return True
 
     @staticmethod
+    def is_land_location(map_id, vector=None, x=0, y=0, z=0):
+        if vector:
+            x = vector.x
+            y = vector.y
+            z = vector.z
+        liq_info = MapManager.get_liquid_information(map_id, x, y, z, ignore_z=True)
+        return not liq_info
+
+    @staticmethod
     def calculate_z_for_object(w_object):
         return MapManager.calculate_z(w_object.map_id, w_object.location.x, w_object.location.y, w_object.location.z)
 
@@ -291,7 +301,7 @@ class MapManager:
                 return calculated_z, False
             except:
                 tile = MAPS_TILES[map_id][adt_x][adt_y]
-                return tile.z_height_map[cell_x][cell_x], False
+                return tile.z_height_map[cell_x][cell_y], False
         except:
             Logger.error(traceback.format_exc())
             return current_z if current_z else 0.0, False
@@ -363,6 +373,45 @@ class MapManager:
         return namigator.line_of_sight(src_loc.x, src_loc.y, src_loc.z, dst_loc.x, dst_loc.y, dst_loc.z, doodads)
 
     @staticmethod
+    def find_random_point_around_circle(map_id, vector, radius):
+        # If nav tiles disabled or unable to load Namigator, return normal random point.
+        if not config.Server.Settings.use_nav_tiles or not MapManager.NAMIGATOR_LOADED:
+            return vector.get_random_point_in_radius(radius)
+
+        # We don't have navs loaded for a given map.
+        namigator = MAPS_NAMIGATOR.get(map_id, None)
+        if not namigator:
+            return vector.get_random_point_in_radius(radius)
+
+        from game.world.managers.abstractions.Vector import Vector
+
+        # Detour's FindRandomPointAroundCircle does not constrain the point within the given radius.
+        # Instead, it returns a random point from any polygon within the circle, where the polygon's area
+        # can always exceed the radius.
+        # Try to find a valid random point close to the given radius.
+        for i in range (0, 10):
+            p = namigator.find_random_point_around_circle(vector.x, vector.y, vector.z, radius)
+            if not p:
+                continue
+            v = Vector(p[0], p[1], p[2])
+            if v.distance(vector) <= radius * 1.3:
+                return v
+
+        return vector.get_random_point_in_radius(radius)
+
+    @staticmethod
+    def can_reach_location(map_id, src_vector, dst_vector):
+        # If nav tiles disabled or unable to load Namigator, return as True.
+        if not config.Server.Settings.use_nav_tiles or not MapManager.NAMIGATOR_LOADED:
+            return True
+
+        if map_id not in MAPS_NAMIGATOR:
+            return True
+
+        failed, in_place, path_ = MapManager.calculate_path(map_id, src_vector, dst_vector, True)
+        return failed, path_
+
+    @staticmethod
     def can_reach_object(src_object, dst_object):
         if src_object.map_id != dst_object.map_id:
             return False
@@ -372,7 +421,7 @@ class MapManager:
             return True
 
         # We don't have navs loaded for a given map, return True.
-        if src_object.map_id not in MAPS_NAMIGATOR:
+        if src_object.map_id not in MAPS_NAMIGATOR or not dst_object.map_id in MAPS_NAMIGATOR:
             return True
 
         failed, in_place, _ = MapManager.calculate_path(src_object.map_id, src_object.location, dst_object.location)
@@ -403,6 +452,14 @@ class MapManager:
         if not namigator:
             return False, False, [dst_loc]
 
+        # At destination, return end vector.
+        if src_loc.approximately_equals(dst_loc):
+            return False, False, [dst_loc]
+
+        # Too short of a path, return end vector.
+        if src_loc.distance(dst_loc) < 1.0:
+            return False, False, [dst_loc]
+
         # Calculate source adt coordinates for x,y.
         src_adt_x, src_adt_y = MapUtils.get_tile(src_loc.x, src_loc.y)
 
@@ -410,30 +467,30 @@ class MapManager:
         dst_adt_x, dst_adt_y = MapUtils.get_tile(dst_loc.x, dst_loc.y)
 
         # Check if loaded or unable to load.
-        if MapManager._check_tile_load(map_id, src_loc.x, src_loc.y, src_adt_x, src_adt_y) != MapTileStates.READY:
+        src_tile_state = MapManager._check_tile_load(map_id, src_loc.x, src_loc.y, src_adt_x, src_adt_y)
+        if src_tile_state != MapTileStates.READY:
+            if src_tile_state == MapTileStates.LOADING:
+                Logger.warning(f'[Namigator] Source tile was loading when path requested.')
             return True, False, [dst_loc]
 
         # Check if loaded or unable to load.
-        if MapManager._check_tile_load(map_id, dst_loc.x, dst_loc.y, dst_adt_x, dst_adt_y) != MapTileStates.READY:
+        dst_tile_state = MapManager._check_tile_load(map_id, dst_loc.x, dst_loc.y, dst_adt_x, dst_adt_y)
+        if dst_tile_state != MapTileStates.READY:
+            if dst_tile_state == MapTileStates.LOADING:
+                Logger.warning(f'[Namigator] Destination tile was loading when path requested.')
             return True, False, [dst_loc]
 
         # Calculate path.
         navigation_path = namigator.find_path(src_loc.x, src_loc.y, src_loc.z, dst_loc.x, dst_loc.y, dst_loc.z)
 
-        if len(navigation_path) == 0:
+        if len(navigation_path) <= 1:
             if not los:
-                Logger.warning(f'Unable to find path, map {map_id} loc {src_loc} end {dst_loc}')
+                Logger.warning(f'[Namigator] Unable to find path, map {map_id} loc {src_loc} end {dst_loc}')
             return True, False, [dst_loc]
 
         # Pop starting location, we already have that and WoW client seems to crash when sending
         # movements with too short of a diff.
         del navigation_path[0]
-
-        # Validate length again.
-        if len(navigation_path) == 0:
-            if not los:
-                Logger.warning(f'Unable to find path, map {map_id} loc {src_loc} end {dst_loc}')
-            return True, False, [dst_loc]
 
         from game.world.managers.abstractions.Vector import Vector
         vectors = [Vector(waypoint[0], waypoint[1], waypoint[2]) for waypoint in navigation_path]
@@ -480,15 +537,22 @@ class MapManager:
 
     @staticmethod
     def get_normalized_height_for_cell(map_id, x, y, adt_x, adt_y, cell_x, cell_y):
-        x_normalized = (RESOLUTION_ZMAP - 1) * (32.0 - (x / ADT_SIZE) - adt_x) - cell_x
-        y_normalized = (RESOLUTION_ZMAP - 1) * (32.0 - (y / ADT_SIZE) - adt_y) - cell_y
-        val_1 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x, cell_y)
-        val_2 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x + 1, cell_y)
-        top_height = MapManager._lerp(val_1, val_2, x_normalized)
-        val_3 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x, cell_y + 1)
-        val_4 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x + 1, cell_y + 1)
-        bottom_height = MapManager._lerp(val_3, val_4, x_normalized)
-        return MapManager._lerp(top_height, bottom_height, y_normalized)  # Z
+        # Calculate normalized coordinates within the cell.
+        x_norm = (RESOLUTION_ZMAP - 1) * (32.0 - (x / ADT_SIZE) - adt_x) - cell_x
+        y_norm = (RESOLUTION_ZMAP - 1) * (32.0 - (y / ADT_SIZE) - adt_y) - cell_y
+
+        # Retrieve cell heights for the four corners.
+        v1 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x, cell_y)
+        v2 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x + 1, cell_y)
+        v3 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x, cell_y + 1)
+        v4 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x + 1, cell_y + 1)
+
+        # Bilinear interpolation.
+        top_height = MapManager._lerp(v1, v2, x_norm)
+        bottom_height = MapManager._lerp(v3, v4, x_norm)
+        height = MapManager._lerp(top_height, bottom_height, y_norm)
+
+        return height
 
     @staticmethod
     def get_near_height(map_id, x, y, adt_x, adt_y, cell_x, cell_y, current_z, tolerance=1.0):
@@ -529,11 +593,39 @@ class MapManager:
                 return None
 
             tile = MAPS_TILES[map_id][adt_x][adt_y]
-            liquids = tile.get_liquids_at(cell_x, cell_y)
-            return liquids if liquids and liquids.get_height() > z else liquids if liquids and ignore_z else None
+            liq_info = tile.get_liquids_at(cell_x, cell_y)
+
+            if not liq_info:
+                return None
+
+            if ignore_z:
+                return liq_info
+
+            # Retrieve liquid if its valid for current requester Z.
+            return liq_info.get_for_z(z)
         except:
             Logger.error(traceback.format_exc())
             return None
+
+    @staticmethod
+    def find_land_location_in_angle(world_object, destination):
+        # Circular ref.
+        from game.world.managers.abstractions.Vector import Vector
+        start_range = 5
+        start_location = world_object.location.copy()
+        orientation = world_object.location.get_angle_towards_vector(destination)
+        map_ = world_object.get_map()
+        while start_range <= Distances.CREATURE_EVADE_DISTANCE:
+            fx = start_location.x + start_range * math.cos(orientation)
+            fy = start_location.y + start_range * math.sin(orientation)
+            fz = start_location.z
+            liquid_info = map_.get_liquid_information(fx, fy, fz, ignore_z=True)
+            if not liquid_info:
+                z = map_.calculate_z(fx, fy, fz, is_rand_point=True)[0]
+                land_vector = Vector(fx, fy, z)
+                return land_vector
+            start_range += 5
+        return None
 
     @staticmethod
     def find_liquid_location_in_range(world_object, min_range, max_range):
@@ -552,6 +644,9 @@ class MapManager:
             fz = start_location.z
             liquid_info = map_.get_liquid_information(fx, fy, fz, ignore_z=True)
             if liquid_info:
+                # From 0.5.4 patch notes: 'You can now fish in the undercity Slime.'
+                if liquid_info.is_slime() and not config.World.Gameplay.enable_slime_fishing:
+                    break
                 liquid_vector = Vector(fx, fy, liquid_info.get_height())
                 if map_.los_check(world_object.get_ray_position(), liquid_vector):
                     liquids_vectors.append(liquid_vector)
@@ -638,6 +733,12 @@ class MapManager:
         for map_id, instances in list(MAPS.items()):
             for instance_map in list(instances.values()):
                 instance_map.update_map_scripts_and_events(now)
+
+    @staticmethod
+    def update_detection_range_collision():
+        for map_id, instances in list(MAPS.items()):
+            for instance_map in list(instances.values()):
+                instance_map.update_detection_range_collision()
 
     @staticmethod
     def deactivate_cells():

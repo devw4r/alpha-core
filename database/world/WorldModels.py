@@ -665,19 +665,6 @@ class PlayercreateinfoAction(Base):
     type = Column(SMALLINT(5), nullable=False, server_default=text("'0'"))
 
 
-class PlayercreateinfoItem(Base):
-    __tablename__ = 'playercreateinfo_item'
-    __table_args__ = (
-        Index('playercreateinfo_race_class_index', 'race', 'class'),
-    )
-
-    id = Column(INTEGER(10), primary_key=True, index=True)
-    race = Column(TINYINT(3), nullable=False, server_default=text("'0'"))
-    _class = Column('class', TINYINT(3), nullable=False, server_default=text("'0'"))
-    itemid = Column(MEDIUMINT(8), nullable=False, server_default=text("'0'"))
-    amount = Column(TINYINT(3), nullable=False, server_default=text("'1'"))
-
-
 class PlayercreateinfoSpell(Base):
     __tablename__ = 'playercreateinfo_spell'
 
@@ -1190,6 +1177,33 @@ class CreatureAddon(Base):
     auras = Column(Text)
 
 
+t_area_trigger_scripts = Table(
+    'area_trigger_scripts', metadata,
+    Column('id', MEDIUMINT, nullable=False, server_default=text("'0'")),
+    Column('delay', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('priority', TINYINT, nullable=False, server_default=text("'0'")),
+    Column('command', MEDIUMINT, nullable=False, server_default=text("'0'")),
+    Column('datalong', MEDIUMINT, nullable=False, server_default=text("'0'")),
+    Column('datalong2', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('datalong3', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('datalong4', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('target_param1', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('target_param2', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('target_type', TINYINT, nullable=False, server_default=text("'0'")),
+    Column('data_flags', TINYINT, nullable=False, server_default=text("'0'")),
+    Column('dataint', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('dataint2', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('dataint3', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('dataint4', INTEGER, nullable=False, server_default=text("'0'")),
+    Column('x', Float, nullable=False, server_default=text("'0'")),
+    Column('y', Float, nullable=False, server_default=text("'0'")),
+    Column('z', Float, nullable=False, server_default=text("'0'")),
+    Column('o', Float, nullable=False, server_default=text("'0'")),
+    Column('condition_id', MEDIUMINT, nullable=False, server_default=text("'0'")),
+    Column('comments', String(255), nullable=False)
+)
+
+
 t_quest_start_scripts = Table(
     'quest_start_scripts', metadata,
     Column('id', MEDIUMINT, nullable=False, server_default=text("'0'")),
@@ -1413,8 +1427,6 @@ class PoolCreature(Base):
     chance = Column(Float, nullable=False, server_default=text("0"))
     description = Column(String(255), nullable=False)
     flags = Column(INTEGER(10), nullable=False, server_default=text("0"))
-    patch_min = Column(INTEGER(10), nullable=False, server_default=text("0"))
-    patch_max = Column(INTEGER(10), nullable=False, server_default=text("0"))
 
 
 class PoolCreatureTemplate(Base):
@@ -1425,8 +1437,6 @@ class PoolCreatureTemplate(Base):
     chance = Column(Float, nullable=False, server_default=text("0"))
     description = Column(String(255), nullable=False)
     flags = Column(INTEGER(10), nullable=False, server_default=text("0"))
-    patch_min = Column(INTEGER(10), nullable=False, server_default=text("0"))
-    patch_max = Column(INTEGER(10), nullable=False, server_default=text("0"))
 
 
 class PoolGameobject(Base):
@@ -1437,8 +1447,6 @@ class PoolGameobject(Base):
     chance = Column(Float, nullable=False, server_default=text("0"))
     description = Column(String(255), nullable=False)
     flags = Column(INTEGER(10), nullable=False, server_default=text("0"))
-    patch_min = Column(INTEGER(10), nullable=False, server_default=text("0"))
-    patch_max = Column(INTEGER(10), nullable=False, server_default=text("0"))
 
 class PoolGameobjectTemplate(Base):
     __tablename__ = 'pool_gameobject_template'
@@ -1448,8 +1456,6 @@ class PoolGameobjectTemplate(Base):
     chance = Column(Float, nullable=False, server_default=text("0"))
     description = Column(String(255), nullable=False)
     flags = Column(INTEGER(10), nullable=False, server_default=text("0"))
-    patch_min = Column(INTEGER(10), nullable=False, server_default=text("0"))
-    patch_max = Column(INTEGER(10), nullable=False, server_default=text("0"))
 
 
 class PoolPool(Base):
@@ -1470,5 +1476,3 @@ class PoolTemplate(Base):
     description = Column(String(255), nullable=False)
     flags = Column(INTEGER(11), nullable=False, server_default=text("0"))
     instance = Column(MEDIUMINT(8), nullable=False, server_default=text("0"))
-    patch_min = Column(INTEGER(10), nullable=False, server_default=text("0"))
-    patch_max = Column(INTEGER(10), nullable=False, server_default=text("0"))

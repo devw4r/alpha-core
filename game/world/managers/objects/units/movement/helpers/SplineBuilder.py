@@ -6,7 +6,9 @@ class SplineBuilder:
 
     @staticmethod
     def build_normal_spline(unit, points, speed, spline_flags=SplineFlags.SPLINEFLAG_RUNMODE, extra_time_seconds=0):
-        unit.location.face_point(points[0])
+        if not unit.location.approximately_equals(points[0], 0.1):
+            unit.location.face_point(points[0])
+
         return Spline(
             unit=unit,
             spline_type=SplineType.SPLINE_TYPE_NORMAL,
@@ -21,10 +23,11 @@ class SplineBuilder:
 
     @staticmethod
     def build_stop_spline(unit, extra_time_seconds=0):
-        # Update Z on the spot.
-        z, z_locked = unit.get_map().calculate_z_for_object(unit)
-        if not z_locked:
-            unit.location.z = z
+        # Only update Z if not swimming, to avoid setting Z to the water bottom.
+        if not unit.is_swimming():
+            z, z_locked = unit.get_map().calculate_z_for_object(unit)
+            if not z_locked:
+                unit.location.z = z
 
         return Spline(
             unit=unit,

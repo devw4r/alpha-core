@@ -1,5 +1,6 @@
 import math
 import time
+from typing import Any
 
 from bitarray import bitarray
 from database.dbc.DbcDatabaseManager import *
@@ -13,6 +14,7 @@ from game.world.managers.objects.item.ItemManager import ItemManager
 from game.world.managers.objects.loot.LootSelection import LootSelection
 from game.world.managers.objects.spell.ExtendedSpellData import ShapeshiftInfo
 from game.world.managers.objects.spell.EquipmentProcManager import EquipmentProcManager
+from game.world.managers.objects.units.creature.KnownObjects import KnownObjects
 from game.world.managers.objects.units.creature.ThreatManager import ThreatManager
 from game.world.managers.objects.units.player.ChannelManager import ChannelManager
 from game.world.managers.objects.units.player.EnchantmentManager import EnchantmentManager
@@ -34,7 +36,7 @@ from utils.ByteUtils import ByteUtils
 from utils.GuidUtils import GuidUtils
 from utils.Logger import Logger
 from utils.constants.DuelCodes import *
-from utils.constants.ItemCodes import InventoryTypes
+from utils.constants.ItemCodes import InventoryTypes, ItemSubClasses
 from utils.constants.MiscCodes import ChatFlags, LootTypes, LiquidTypes, MountResults, DismountResults, LockTypes
 from utils.constants.MiscCodes import ObjectTypeFlags, ObjectTypeIds, PlayerFlags, WhoPartyStatus, HighGuid, \
     AttackTypes, MoveFlags
@@ -73,7 +75,7 @@ class PlayerManager(UnitManager):
         self.pending_teleport_data = []
         self.update_lock = False
         self.possessed_unit = None
-        self.known_objects = dict()
+        self.known_objects = KnownObjects(self)
         self.known_items = dict()
         self.known_stealth_units = dict()
 
@@ -93,6 +95,8 @@ class PlayerManager(UnitManager):
         self.loot_selection: Optional[LootSelection] = None
 
         self.chat_flags = chat_flags
+        self.afk_message = ''
+        self.dnd_message = ''
         self.group_status = WhoPartyStatus.WHO_PARTY_STATUS_NOT_IN_PARTY
         self.race_mask = 0
         self.class_mask = 0
@@ -141,11 +145,15 @@ class PlayerManager(UnitManager):
             self.regen_flags = RegenStatsFlags.REGEN_FLAG_HEALTH | RegenStatsFlags.REGEN_FLAG_POWER
             self.online = self.player.online
 
-            # GM checks
+            # GM checks.
             self.is_god = False
+            self.is_gm = False
             self.collision_cheat = False
             if self.session.account_mgr.is_gm():
                 self.set_gm_tag()
+
+            # Dev/Debug.
+            self.last_debug_ai_state_object = None
 
             # Update exploration data.
             if self.player.explored_areas and len(self.player.explored_areas) > 0:
@@ -180,6 +188,10 @@ class PlayerManager(UnitManager):
         if not race_data:
             race_data = DbcDatabaseManager.chr_races_get_by_race(self.player.race)
         return race_data.MaleDisplayId if is_male else race_data.FemaleDisplayId
+
+    def get_res_sickness_spell(self):
+        race_data = DbcDatabaseManager.chr_races_get_by_race(self.player.race)
+        return race_data.ResSicknessSpellID
 
     def set_player_variables(self):
         race = DbcDatabaseManager.chr_races_get_by_race(self.race)
@@ -219,14 +231,42 @@ class PlayerManager(UnitManager):
 
     def set_gm_tag(self, on=True, reload=False):
         if on:
+            self.is_gm = True
             self.player.extra_flags |= PlayerFlags.PLAYER_FLAGS_GM
             self.chat_flags |= ChatFlags.CHAT_TAG_GM
         else:
+            self.is_gm = False
             self.player.extra_flags &= ~PlayerFlags.PLAYER_FLAGS_GM
             self.chat_flags &= ~ChatFlags.CHAT_TAG_GM
 
         if reload:
             self.set_uint32(PlayerFields.PLAYER_BYTES_2, self.get_player_bytes_2())
+
+    def is_afk(self):
+        return self.player.extra_flags & PlayerFlags.PLAYER_FLAGS_AFK
+
+    def toggle_afk(self):
+        if self.is_afk():
+            self.player.extra_flags &= ~PlayerFlags.PLAYER_FLAGS_AFK
+            self.chat_flags &= ~ChatFlags.CHAT_TAG_AFK
+        else:
+            self.player.extra_flags |= PlayerFlags.PLAYER_FLAGS_AFK
+            self.chat_flags |= ChatFlags.CHAT_TAG_AFK
+
+        self.set_uint32(PlayerFields.PLAYER_BYTES_2, self.get_player_bytes_2())
+
+    def is_dnd(self):
+        return self.player.extra_flags & PlayerFlags.PLAYER_FLAGS_DND
+
+    def toggle_dnd(self):
+        if self.is_dnd():
+            self.player.extra_flags &= ~PlayerFlags.PLAYER_FLAGS_DND
+            self.chat_flags &= ~ChatFlags.CHAT_TAG_DND
+        else:
+            self.player.extra_flags |= PlayerFlags.PLAYER_FLAGS_DND
+            self.chat_flags |= ChatFlags.CHAT_TAG_DND
+
+        self.set_uint32(PlayerFields.PLAYER_BYTES_2, self.get_player_bytes_2())
 
     def set_player_to_deathbind_location(self):
         self.map_id = self.deathbind.deathbind_map
@@ -478,7 +518,6 @@ class PlayerManager(UnitManager):
 
         # Leave combat.
         self.leave_combat()
-        self.threat_manager.reset()
 
         # Remove from transport.
         if self.movement_info.remove_from_transport():
@@ -501,7 +540,7 @@ class PlayerManager(UnitManager):
                 pending_teleport.destination_location.z,
                 pending_teleport.destination_location.o,
                 self.pitch,
-                MoveFlags.MOVEFLAG_NONE
+                MoveFlags.MOVEFLAG_NONE if not self.collision_cheat else MoveFlags.MOVEFLAG_DONTCOLLIDE
             )
 
             self.enqueue_packet(PacketWriter.get_packet(OpCode.MSG_MOVE_TELEPORT_ACK, data))
@@ -613,9 +652,6 @@ class PlayerManager(UnitManager):
         if self.group_manager and self.group_manager.is_party_formed():
             self.group_manager.send_update()
 
-        # Notify surrounding for proximity checks.
-        self._on_relocation()
-
         # Remove this pending teleport data.
         self.pending_teleport_data.pop(0)
 
@@ -681,7 +717,7 @@ class PlayerManager(UnitManager):
     def is_dueling(self):
         return self.get_uint64(PlayerFields.PLAYER_DUEL_ARBITER) != 0
 
-    def get_duel_arbiter(self):
+    def get_duel_arbiter(self) -> Any:
         arbiter_guid = self.get_uint64(PlayerFields.PLAYER_DUEL_ARBITER)
         if not arbiter_guid:
             return None
@@ -758,22 +794,12 @@ class PlayerManager(UnitManager):
         self.set_uint32(UnitFields.UNIT_FIELD_BYTES_0, self.bytes_0)
 
     # override
-    def set_stealthed(self, active=True, index=-1):
-        stealthed = super().set_stealthed(active, index)
-        if not stealthed:
-            # Notify surrounding units about fading stealth for proximity aggro.
-            self.pending_relocation = True
-
-    # override
     def set_sanctuary(self, active=True, time_secs=0):
         super().set_sanctuary(active, time_secs)
-        if active:
-            self.spell_manager.remove_casts()
-            self.spell_manager.remove_unit_from_all_cast_targets(self.guid)
-            # Remove self from combat and attackers.
-            self.leave_combat()
-        else:
-            self._on_relocation()
+        if not active:
+            return
+        # Remove self from combat and attackers.
+        self.leave_combat()
 
     def send_minimap_ping(self, guid, vector):
         data = pack('<Q2f', guid, vector.x, vector.y)
@@ -909,7 +935,7 @@ class PlayerManager(UnitManager):
         self.reputation_manager.reward_reputation_on_kill(creature, rate)
 
     def give_xp(self, amounts, victim=None, notify=True):
-        if self.level >= config.Unit.Player.Defaults.max_level or not self.is_alive:
+        if not self.is_alive:
             return 0
 
         """
@@ -932,6 +958,13 @@ class PlayerManager(UnitManager):
             total_amount += amount
             amount_bytes += pack('<QI', self.guid, amount)
 
+        # Reward kill experience to pet.
+        if victim:
+            self.pet_manager.add_active_pet_experience(total_amount)
+
+        if self.level >= config.Unit.Player.Defaults.max_level:
+            return 0
+
         if notify:
             data = pack('<QI',
                         victim.guid if victim else self.guid,
@@ -939,10 +972,6 @@ class PlayerManager(UnitManager):
                         )
             data += amount_bytes
             self.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_LOG_XPGAIN, data))
-
-        # Reward kill experience to pet.
-        if victim:
-            self.pet_manager.add_active_pet_experience(total_amount)
 
         if self.xp + total_amount >= self.next_level_xp:  # Level up!
             xp_to_level = self.next_level_xp - self.xp
@@ -967,7 +996,7 @@ class PlayerManager(UnitManager):
         if level != self.level:
             # Even if level 255 is the maximum supported, client doesn't expect a level higher than 100
             # (player won't even appear in the /who list).
-            max_level = 100 if self.session.account_mgr.is_gm() else config.Unit.Player.Defaults.max_level
+            max_level = 100 if self.is_gm else config.Unit.Player.Defaults.max_level
             if 0 < level <= max_level:
                 # Check if the new level is higher than the current one or not.
                 is_leveling_up = level > self.level
@@ -1088,31 +1117,33 @@ class PlayerManager(UnitManager):
 
     def set_area_explored(self, area_information):
         self.explored_areas[area_information.explore_bit] = True
-        if area_information.level > 0:
-            if self.level < config.Unit.Player.Defaults.max_level:
-                # The following calculations are taken from VMaNGOS core.
-                xp_rate = int(config.Server.Settings.xp_rate)
-                diff = self.level - area_information.level
-                if diff < -5:
-                    xp_gain = WorldDatabaseManager.exploration_base_xp_get_by_level(self.level + 5) * xp_rate
-                elif diff > 5:
-                    exploration_percent = (100 - ((diff - 5) * 5))
-                    if exploration_percent > 100:
-                        exploration_percent = 100
-                    elif exploration_percent < 0:
-                        exploration_percent = 0
-                    base_xp = WorldDatabaseManager.exploration_base_xp_get_by_level(area_information.level)
-                    xp_gain = base_xp * exploration_percent / 100 * xp_rate
-                else:
-                    xp_gain = WorldDatabaseManager.exploration_base_xp_get_by_level(area_information.level) * xp_rate
-                self.give_xp([xp_gain], notify=False)
-            else:
-                xp_gain = 0
+        if area_information.level <= 0:
+            return
 
-            # Notify client new discovered zone + xp gain.
-            data = pack('<2I', area_information.zone_id, int(xp_gain * config.Server.Settings.xp_rate))
-            packet = PacketWriter.get_packet(OpCode.SMSG_EXPLORATION_EXPERIENCE, data)
-            self.enqueue_packet(packet)
+        if self.level < config.Unit.Player.Defaults.max_level:
+            # The following calculations are taken from VMaNGOS core.
+            xp_rate = int(config.Server.Settings.xp_rate)
+            diff = self.level - area_information.level
+            if diff < -5:
+                xp_gain = WorldDatabaseManager.exploration_base_xp_get_by_level(self.level + 5) * xp_rate
+            elif diff > 5:
+                exploration_percent = (100 - ((diff - 5) * 5))
+                if exploration_percent > 100:
+                    exploration_percent = 100
+                elif exploration_percent < 0:
+                    exploration_percent = 0
+                base_xp = WorldDatabaseManager.exploration_base_xp_get_by_level(area_information.level)
+                xp_gain = base_xp * exploration_percent / 100 * xp_rate
+            else:
+                xp_gain = WorldDatabaseManager.exploration_base_xp_get_by_level(area_information.level) * xp_rate
+            self.give_xp([xp_gain], notify=False)
+        else:
+            xp_gain = 0
+
+        # Notify client new discovered zone + xp gain.
+        data = pack('<2I', area_information.zone_id, int(xp_gain * config.Server.Settings.xp_rate))
+        packet = PacketWriter.get_packet(OpCode.SMSG_EXPLORATION_EXPERIENCE, data)
+        self.enqueue_packet(packet)
 
     def update_swimming_state(self, state):
         if state:
@@ -1124,9 +1155,6 @@ class PlayerManager(UnitManager):
         else:
             self.liquid_information = None
 
-    def is_swimming(self):
-        return self.movement_flags & MoveFlags.MOVEFLAG_SWIMMING
-
     # override
     def is_above_water(self):
         return not self.is_swimming()
@@ -1137,11 +1165,21 @@ class PlayerManager(UnitManager):
             return False
         return (self.location.z + self.model_height) < self.liquid_information.get_height()
 
+    def is_on_slime(self):
+        if not self.liquid_information or not self.is_swimming():
+            return False
+        return self.liquid_information.is_slime()
+
+    def is_on_magma(self):
+        if not self.liquid_information or not self.is_swimming():
+            return False
+        return self.liquid_information.is_magma()
+
     # override
     def is_in_deep_water(self):
         if self.liquid_information is None or not self.is_swimming():
             return False
-        return self.liquid_information.liquid_type == LiquidTypes.DEEP
+        return self.liquid_information.is_deep_water()
 
     def update_liquid_information(self):
         # Retrieve the latest liquid information, only if player is swimming.
@@ -1340,18 +1378,33 @@ class PlayerManager(UnitManager):
         if not super().can_block(attacker_location, in_combat=in_combat):
             return False
 
-        if attacker_location and not self.location.has_in_arc(attacker_location, math.pi):
+        if attacker_location and not self.location.has_in_arc(attacker_location):
             return False  # players can't block from behind.
 
-        return self.inventory.has_offhand() and \
-            self.inventory.get_offhand().item_template.inventory_type == InventoryTypes.SHIELD
+        return self.has_shield() or self.has_buckler()
+
+    # override
+    def has_shield(self):
+        if not self.inventory.has_offhand():
+            return False
+        item_template = self.inventory.get_offhand().item_template
+        return (item_template.inventory_type == InventoryTypes.SHIELD
+                and item_template.subclass == ItemSubClasses.ITEM_SUBCLASS_SHIELD)
+
+    # override
+    def has_buckler(self):
+        if not self.inventory.has_offhand():
+            return False
+        item_template = self.inventory.get_offhand().item_template
+        return (item_template.inventory_type == InventoryTypes.SHIELD
+                and item_template.subclass == ItemSubClasses.ITEM_SUBCLASS_BUCKLER)
 
     # override
     def can_parry(self, attacker_location=None, in_combat=False):
         if not super().can_parry(attacker_location, in_combat=in_combat):
             return False
 
-        if attacker_location and not self.location.has_in_arc(attacker_location, math.pi):
+        if attacker_location and not self.location.has_in_arc(attacker_location):
             return False  # players can't parry from behind.
 
         return True
@@ -1361,7 +1414,7 @@ class PlayerManager(UnitManager):
         if not super().can_dodge(attacker_location, in_combat=in_combat):
             return False
 
-        if attacker_location and not self.location.has_in_arc(attacker_location, math.pi):
+        if attacker_location and not self.location.has_in_arc(attacker_location):
             return False  # players can't dodge from behind.
 
         return True
@@ -1406,11 +1459,12 @@ class PlayerManager(UnitManager):
             self.combo_points = min(combo_points + self.combo_points, 5)
 
         self.bytes_2 = self.get_bytes_2()
-        self.set_uint32(UnitFields.UNIT_FIELD_BYTES_2, self.bytes_2)
-
         # Set combo target to a valid but non-existent guid if hiding.
         #  TODO: it's unclear if combo points should be hidden in 0.5.3 for warriors, and if so, how it was done.
-        self.set_uint64(UnitFields.UNIT_FIELD_COMBO_TARGET, self.combo_target if not hide else 0xffffffffffffffff)
+        target_value = self.combo_target if not hide else 0xffffffffffffffff
+
+        self.set_uint64(UnitFields.UNIT_FIELD_COMBO_TARGET, target_value)
+        self.set_uint32(UnitFields.UNIT_FIELD_BYTES_2, self.bytes_2, force=True)
 
     # override
     def remove_combo_points(self):
@@ -1418,10 +1472,11 @@ class PlayerManager(UnitManager):
             return
         self.combo_points = 0
         self.bytes_2 = self.get_bytes_2()
-        self.set_uint32(UnitFields.UNIT_FIELD_BYTES_2, self.bytes_2)
-
         self.combo_target = 0
+
         self.set_uint64(UnitFields.UNIT_FIELD_COMBO_TARGET, self.combo_target)
+        # Force field change on player. https://github.com/The-Alpha-Project/alpha-core/issues/1477
+        self.set_uint32(UnitFields.UNIT_FIELD_BYTES_2, self.bytes_2, force=True)
 
     # override
     def receive_damage(self, damage_info, source=None, casting_spell=None, is_periodic=False):
@@ -1474,9 +1529,6 @@ class PlayerManager(UnitManager):
 
         if now > self.last_tick > 0 and self.online:
             elapsed = now - self.last_tick
-
-            # Relocation timer.
-            self.relocation_call_for_help_timer += elapsed
 
             # Update played time.
             self.player.totaltime += elapsed
@@ -1540,15 +1592,13 @@ class PlayerManager(UnitManager):
                     # Check spell and aura move interrupts.
                     self.spell_manager.check_spell_interrupts(moved=self.has_moved, turned=self.has_turned)
                     self.aura_manager.check_aura_interrupts(moved=self.has_moved, turned=self.has_turned)
-                    # Relocate only if x, y changed.
-                    if self.has_moved and not self.pending_relocation:
-                        self.pending_relocation = True
                     # Reset flags.
                     self.set_has_moved(False, False, flush=True)
+                    self.get_map().get_detection_manager().queue_update_unit_placement(self)
 
             # Update system, propagate player changes to surrounding units.
-            if self.online and has_changes or has_inventory_changes:
-                self.get_map().update_object(self, has_changes=has_changes, has_inventory_changes=has_inventory_changes)
+            if self.online and (has_changes or has_inventory_changes):
+                self.get_map().update_object(self, has_changes, has_inventory_changes)
             # Not dirty, has a pending teleport and a teleport is not ongoing.
             elif not has_changes and not has_inventory_changes and self.pending_teleport_data and not self.update_lock:
                 self.trigger_teleport()
@@ -1559,12 +1609,6 @@ class PlayerManager(UnitManager):
 
             # If not teleporting, notify self movement to surrounding units for proximity aggro.
             if not self.update_lock:
-                # Relocation.
-                if self.relocation_call_for_help_timer >= 1:
-                    if self.pending_relocation:
-                        self._on_relocation()
-                    self.relocation_call_for_help_timer = 0
-
                 self.update_manager.process_tick_updates()
 
         self.last_tick = now
@@ -1620,13 +1664,23 @@ class PlayerManager(UnitManager):
         # Add Resurrection Sickness (2146) to the player.
         # TODO: Unsure if it should always be applied regardless of whether the player resurrected normally or was
         #  resurrected by another player, assuming it was always applied for now.
-        self.spell_manager.handle_cast_attempt(2146, self, SpellTargetMask.SELF, validate=False)
+        self.spell_manager.handle_cast_attempt(self.get_res_sickness_spell(), self, SpellTargetMask.SELF, validate=False)
+
+    def reclaim_corpse(self, corpse_guid):
+        corpses = self.get_map().get_surrounding_objects(self, [ObjectTypeIds.ID_CORPSE])[0]
+        corpse = next((c for c in corpses.values() if c.guid == corpse_guid and c.owner.guid == self.guid), None)
+        if not corpse:
+            return
+
+        # TODO: Unsure how reclaim corpse worked; for now, despawn corpse and remove res sickness upon corpse recovery.
+        corpse.get_map().remove_object(corpse)
+        self.aura_manager.cancel_auras_by_spell_id(self.get_res_sickness_spell())
 
     def resurrect(self, release_spirit=False):
         # Spawn its corpse.
         if not self.resurrect_data:
             from game.world.managers.objects.corpse.CorpseManager import CorpseManager
-            CorpseManager.spawn(self)
+            CorpseManager(owner=self).spawn()
 
         if self.resurrect_data and not release_spirit:
             is_instant = self.resurrect_data.resurrect_map == self.map_id and \
@@ -1665,38 +1719,15 @@ class PlayerManager(UnitManager):
         )
 
     # override
-    def get_bytes_0(self):
-        return ByteUtils.bytes_to_int(
-            self.power_type,  # Power type.
-            self.gender,  # Gender.
-            self.class_,  # Player class.
-            self.race  # Player race.
-        )
-
-    # override
-    def get_bytes_1(self):
-        return ByteUtils.bytes_to_int(
-            self.sheath_state,  # Sheath state.
-            self.shapeshift_form,  # Shapeshift form.
-            0,  # NPC flags (0 for players).
-            self.stand_state  # Stand state.
-        )
-
-    # override
-    def get_bytes_2(self):
-        return ByteUtils.bytes_to_int(
-            0,  # Unknown.
-            0,  # Pet flags (0 for players).
-            0,  # Misc flags (0 for players?).
-            self.combo_points  # Combo points.
-        )
+    def get_combo_points(self):
+        return self.combo_points
 
     # override
     def get_damages(self):
         return self.damage
 
     # override
-    def can_detect_target(self, target, distance=0):
+    def can_detect_target(self, target, distance=-1):
         # Party group.
         if self.group_manager and self.group_manager.is_party_member(target.guid):
             duel_arbiter = self.get_duel_arbiter()
@@ -1733,9 +1764,6 @@ class PlayerManager(UnitManager):
                 self.update_manager.enqueue_object_update(object_type=unit.get_type_id())
 
             self.stealth_detect_timer = 0
-
-    def _on_relocation(self):
-        self.notify_move_in_line_of_sight()
 
     # override
     def on_cell_change(self):

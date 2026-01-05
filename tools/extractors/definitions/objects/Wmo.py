@@ -1,16 +1,20 @@
+import os
+
 from tools.extractors.definitions.chunks.MOHD import MOHD
 from tools.extractors.definitions.objects.WmoGroupFile import WmoGroupFile
 from tools.extractors.definitions.reader.StreamReader import StreamReader
 from tools.extractors.pympqlib.MpqArchive import MpqArchive
+import struct
+import hashlib
 
+WMO_LIQ_FILES_HASH_MAP = {}
 
 class Wmo:
     def __init__(self, file_path):
         self.file_path = file_path
-        self.vertices = []
-        self.indices = []
-        self.has_geometry = False
-        self.mliq = None
+        self.liquids_data = None
+        self.has_liquids = False
+        self.hash_name = Wmo.get_hash_filename(self.file_path)
         self._read()
 
     def __enter__(self):
@@ -18,16 +22,29 @@ class Wmo:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.file_path = None
-        self.vertices.clear()
-        self.indices.clear()
-        if self.mliq is not None:
-            self.mliq.clear()
-        self.vertices = None
-        self.indices = None
-        self.mliq = None
+        self.liq_vertices = None
+        self.hash_name = None
 
-    def has_liquids(self):
-        return self.mliq is not None
+    @staticmethod
+    def get_hash_filename(file_path):
+        filename = os.path.basename(file_path)
+        hash_obj = hashlib.md5(filename.encode('utf-8'))
+        return hash_obj.hexdigest()
+
+    def save_liquid_data(self, folder_path):
+        file_name = os.path.join(folder_path, f'{self.hash_name}.liq')
+        WMO_LIQ_FILES_HASH_MAP[self.hash_name] = file_name
+
+        with open(file_name, 'wb') as f:
+            f.write(struct.pack('<i', len(self.liquids_data)))  # How many rows.
+            # Iterate over bounds and vertices together
+            for liq_type, vertices, liq_min_bound in self.liquids_data:
+                f.write(struct.pack('<Bfff', liq_type, liq_min_bound.X, liq_min_bound.Y, liq_min_bound.Z))
+                # Write the count of vertices for this bound.
+                f.write(struct.pack('<i', len(vertices)))
+                # Write each vertex.
+                for vertex in vertices:
+                    f.write(struct.pack('<fff', vertex.X, vertex.Y, vertex.Z))
 
     def _read(self):
         with MpqArchive(self.file_path) as archive:
@@ -137,8 +154,12 @@ class Wmo:
                     if error:
                         raise ValueError(f'{error}')
                     wmo_group_file = WmoGroupFile.from_reader(reader)
-                    if wmo_group_file.has_liquids():
-                        if not self.mliq:
-                            self.mliq = []
-                        for mliq in wmo_group_file.mliq:
-                            self.mliq.append(mliq)
+                    if not wmo_group_file.has_liquids():
+                        continue
+                    self.has_liquids = True
+                    # Initialize liquids data holder.
+                    if not self.liquids_data:
+                        self.liquids_data = []
+                    # Iterate each available mliq and save vertices and min liq bounding box for each.
+                    for mliq in wmo_group_file.mliqs:
+                        self.liquids_data.append((mliq.liquid_type, mliq.get_vertices(), mliq.min_bound))

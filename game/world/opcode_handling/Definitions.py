@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from game.world.opcode_handling.handlers.inventory.ItemQueryMultipleHandler import ItemQueryMultipleHandler
 from game.world.opcode_handling.handlers.inventory.WrapItemHandler import WrapItemHandler
 from game.world.opcode_handling.handlers.pet.PetAbandonHandler import PetAbandonHandler
@@ -354,6 +356,7 @@ HANDLER_DEFINITIONS = {
     OpCode.CMSG_PET_NAME_QUERY: PetNameQueryHandler.handle,
     OpCode.CMSG_RESURRECT_RESPONSE: ResurrectResponseHandler.handle,
     OpCode.CMSG_PVP_PORT: PvPPortHandler.handle,
+    OpCode.CMSG_RECLAIM_CORPSE: ResurrectResponseHandler.handle_reclaim_corpse,
 
     # Movement packets
     OpCode.MSG_MOVE_HEARTBEAT: MovementHandler.handle_movement_status,
@@ -383,6 +386,7 @@ HANDLER_DEFINITIONS = {
     OpCode.CMSG_FORCE_MOVE_ROOT_ACK: MovementHandler.handle_movement_status,
     OpCode.CMSG_FORCE_MOVE_UNROOT_ACK: MovementHandler.handle_movement_status,
     OpCode.CMSG_FORCE_SPEED_CHANGE_ACK: MovementHandler.handle_movement_status,
+    OpCode.CMSG_FORCE_SWIM_SPEED_CHANGE_ACK: MovementHandler.handle_movement_status,
 
     # Ignored packets (Use NullHandler)
     OpCode.CMSG_TUTORIAL_CLEAR: NullHandler.handle,
@@ -394,6 +398,7 @@ HANDLER_DEFINITIONS = {
 class Definitions:
 
     @staticmethod
+    @lru_cache
     def get_handler_from_packet(world_session, opcode):
         try:
             return HANDLER_DEFINITIONS[opcode], True

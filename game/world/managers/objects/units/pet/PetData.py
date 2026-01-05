@@ -10,8 +10,9 @@ from database.world.WorldModels import CreatureTemplate
 from utils import Formulas
 from utils.GuidUtils import GuidUtils
 from utils.constants.MiscCodes import HighGuid
-from utils.constants.PetCodes import PetReactState, PetCommandState, PetActionBarIndex
+from utils.constants.PetCodes import PetCommandState, PetActionBarIndex
 from utils.constants.SpellCodes import SpellAttributes
+from utils.constants.UnitCodes import CreatureReactStates
 
 
 class PetData:
@@ -34,7 +35,7 @@ class PetData:
         self._experience = experience
         self.next_level_xp = PetData._get_xp_to_next_level_for(self._level)
 
-        self.react_state = PetReactState.REACT_DEFENSIVE
+        self.react_state = CreatureReactStates.REACT_DEFENSIVE
         self.command_state = PetCommandState.COMMAND_FOLLOW
 
         self.spells = spells if spells else []
@@ -204,10 +205,10 @@ class PetData:
         # Load spell info.
         line_spells = [DbcDatabaseManager.SpellHolder.spell_get_by_id(line.Spell) for line in skill_line_abilities]
 
-        # Filter spells by pet level.
+        # Filter spells by pet level,
+        # ignore spells with no level information (pet talents).
         level = level_override if level_override != -1 else self._level
-        # TODO This level isn't always correct. We should do a lookup on the teaching spell instead.
-        return [spell.ID for spell in line_spells if ignore_level or spell.SpellLevel <= level]
+        return [spell.ID for spell in line_spells if spell.SpellLevel and (ignore_level or spell.SpellLevel <= level)]
 
     def can_learn_spell(self, spell_id):
         return spell_id in self.get_available_spells()
@@ -228,7 +229,7 @@ class PetData:
         for spell_id in self.spells:
             line_entry = DbcDatabaseManager.SkillLineAbilityHolder.skill_line_abilities_get_by_spell(spell_id)[0]
             if line_entry.SupercededBySpell in self.spells:
-                continue  # Only place highest ranks on action bar.
+                continue  # Only place the highest ranks on action bar.
 
             template = DbcDatabaseManager.SpellHolder.spell_get_by_id(spell_id)
             if not template.Attributes & SpellAttributes.SPELL_ATTR_PASSIVE:

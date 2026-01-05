@@ -5,10 +5,11 @@ from database.world.WorldDatabaseManager import WorldDatabaseManager
 from game.world.managers.abstractions.Vector import Vector
 from game.world.opcode_handling.HandlerValidator import HandlerValidator
 from utils.Logger import Logger
+from utils.constants.MiscCodes import ScriptTypes
 from utils.constants.UnitCodes import UnitFlags
 
 
-class AreaTriggerHandler(object):
+class AreaTriggerHandler:
 
     @staticmethod
     def handle(world_session, reader):
@@ -34,12 +35,15 @@ class AreaTriggerHandler(object):
                 Logger.debug(f'Player {player_mgr.get_name()} ignore Area Trigger ID {trigger_id} due distance.')
                 return 0
 
-            # TODO: ScriptManager -> OnAreaTrigger.
             # Reward quest exploration objective if any.
             player_mgr.quest_manager.reward_quest_exploration(trigger_id)
 
+            # Check scripts (If any).
+            player_mgr.get_map().enqueue_script(player_mgr, player_mgr, ScriptTypes.SCRIPT_TYPE_AREA_TRIGGER, trigger_id)
+
             area_trigger_teleport = WorldDatabaseManager.area_trigger_teleport_get_by_id(trigger_id)
             if not area_trigger_teleport:
+                Logger.warning(f'Area Trigger with id {trigger_id} not found in world database.')
                 return 0
 
             map_dbc = DbcDatabaseManager.map_get_by_id(area_trigger_teleport.target_map)

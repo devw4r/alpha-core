@@ -1,7 +1,9 @@
 import os
 import socket
 import traceback
+from typing import Any
 
+from database.auth.AuthDatabaseManager import AuthDatabaseManager
 from game.world.WorldSessionStateHandler import RealmDatabaseManager
 from network.packet.PacketWriter import *
 from network.sockets.SocketBuilder import SocketBuilder
@@ -10,7 +12,7 @@ from utils.Logger import Logger
 from utils.constants import EnvVars
 
 
-REALMLIST = {realm.realm_id: realm for realm in RealmDatabaseManager.realm_get_list()}
+REALMLIST = {realm.realm_id: realm for realm in AuthDatabaseManager.realm_get_list()}
 
 
 class RealmManager:
@@ -23,7 +25,7 @@ class RealmManager:
             is_realm_local = config.Server.Connection.Realm.local_realm_id == realm.realm_id
 
             name_bytes = PacketWriter.string_to_bytes(realm.realm_name)
-            # Only check if the forward address needs to be overriden if this realm is hosted on this same machine.
+            # Only check if the forward address needs to be overridden if this realm is hosted on this same machine.
             # Docker on Windows hackfix.
             # https://discord.com/channels/628574828038717470/653374433636909077/840314080073351238
             if is_realm_local:
@@ -33,7 +35,7 @@ class RealmManager:
                 forward_address = realm.proxy_address
 
             address_bytes = PacketWriter.string_to_bytes(f'{forward_address}:{realm.proxy_port}')
-            online_count = RealmDatabaseManager.realmlist_get_online_player_count(realm.realm_id)
+            online_count = AuthDatabaseManager.realm_get_online_player_count(realm.realm_id)
 
             realmlist_bytes += pack(
                 f'<{len(name_bytes)}s{len(address_bytes)}sI',
@@ -60,18 +62,19 @@ class RealmManager:
         sck.sendall(packet)
 
     @staticmethod
-    def start_realm(running, realm_server_ready):
+    def start_realm(shared_state: Any):
         local_realm = REALMLIST[config.Server.Connection.Realm.local_realm_id]
         with SocketBuilder.build_socket(local_realm.realm_address, local_realm.realm_port, timeout=2) as server_socket:
             server_socket.listen()
             real_binding = server_socket.getsockname()
             # Make sure all characters have online = 0 on realm start.
             RealmDatabaseManager.character_set_all_offline()
+            AuthDatabaseManager.realm_clear_online_count()
             Logger.success(f'Realm server started, listening on {real_binding[0]}:{real_binding[1]}')
-            realm_server_ready.value = 1
+            shared_state.REALM_SERVER_READY = True
 
             try:
-                while running.value:
+                while shared_state.RUNNING:
                     try:
                         client_socket, client_address = server_socket.accept()
                         RealmManager.serve_realmlist(client_socket)
@@ -87,16 +90,16 @@ class RealmManager:
         Logger.info("Realm server turned off.")
 
     @staticmethod
-    def start_proxy(running, proxy_server_ready):
+    def start_proxy(shared_state: Any):
         local_realm = REALMLIST[config.Server.Connection.Realm.local_realm_id]
         with SocketBuilder.build_socket(local_realm.proxy_address, local_realm.proxy_port, timeout=2) as server_socket:
             server_socket.listen()
             real_binding = server_socket.getsockname()
             Logger.success(f'Proxy server started, listening on {real_binding[0]}:{real_binding[1]}')
-            proxy_server_ready.value = 1
+            shared_state.PROXY_SERVER_READY = True
 
             try:
-                while running.value:
+                while shared_state.RUNNING:
                     try:
                         client_socket, client_address = server_socket.accept()
                         RealmManager.redirect_to_world(client_socket)

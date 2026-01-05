@@ -4,7 +4,6 @@ from database.realm.RealmDatabaseManager import RealmDatabaseManager, CharacterQ
 from database.world.WorldDatabaseManager import WorldDatabaseManager
 from game.world.WorldSessionStateHandler import WorldSessionStateHandler
 from game.world.managers.objects.ObjectManager import ObjectManager
-from game.world.managers.objects.item.ItemManager import ItemManager
 from game.world.managers.objects.script.ConditionChecker import ConditionChecker
 from game.world.managers.objects.units.player.quest.ActiveQuest import ActiveQuest
 from game.world.managers.objects.units.player.quest.QuestHelpers import QuestHelpers
@@ -19,7 +18,7 @@ from utils.constants.ItemCodes import InventoryError
 from utils.constants.OpCodes import OpCode
 from utils.constants.SpellCodes import SpellTargetMask
 from utils.constants.MiscCodes import QuestGiverStatus, QuestState, QuestFailedReasons, QuestMethod, \
-    QuestFlags, GameObjectTypes, HighGuid, ScriptTypes
+    QuestFlags, GameObjectTypes, HighGuid, ScriptTypes, ObjectTypeIds
 from utils.constants.UpdateFields import PlayerFields
 
 # Terminology:
@@ -29,7 +28,7 @@ from utils.constants.UpdateFields import PlayerFields
 MAX_QUEST_LOG = 16
 
 
-class QuestManager(object):
+class QuestManager:
     def __init__(self, player_mgr):
         self.player_mgr = player_mgr
         self.last_timer_update = 0
@@ -53,7 +52,7 @@ class QuestManager(object):
                 self.send_quest_query_response(active_quest.quest)
             else:
                 Logger.error(
-                    f"Quest database (guid={quest_db_state.guid}, quest_id={quest_db_state.quest}) has state {quest_db_state.state}. No handling.")
+                    f'Quest database (guid={quest_db_state.guid}, quest_id={quest_db_state.quest}) has state {quest_db_state.state}. No handling.')
 
     def is_quest_log_full(self):
         return len(self.active_quests) >= MAX_QUEST_LOG
@@ -112,6 +111,7 @@ class QuestManager(object):
         if quest_db_state:
             RealmDatabaseManager.character_delete_quest(quest_db_state.guid, quest_id)
 
+        should_update_status = quest_db_state or quest_id in self.completed_quests or quest_id in self.active_quests
         # Remove from completed if needed.
         if quest_id in self.completed_quests:
             self.completed_quests.remove(quest_id)
@@ -121,7 +121,7 @@ class QuestManager(object):
             self.remove_from_quest_log(quest_id)
 
         # Update surrounding quests.
-        if quest_db_state:
+        if should_update_status:
             self.update_surrounding_quest_status()
 
     def get_dialog_status(self, quest_giver):
@@ -247,7 +247,7 @@ class QuestManager(object):
             elif quest_entry in quest_giver_finish_quests and quest_state == QuestState.QUEST_ACCEPTED:
                 quest_menu.add_menu_item(quest, QuestGiverStatus.QUEST_GIVER_QUEST, QuestState.QUEST_ACCEPTED)
 
-        has_greeting, greeting_text, emote = QuestManager.get_quest_giver_gossip_string(quest_giver)
+        has_greeting, greeting_text, emote = QuestManager.get_quest_giver_gossip_string(quest_giver, self.player_mgr)
 
         # No quest menu items but has gossip greeting, display that.
         if len(quest_menu.items) == 0 and has_greeting:
@@ -285,6 +285,8 @@ class QuestManager(object):
             Logger.warning(f'Unhandled quest giver hello for quest giver entry {quest_giver.entry}')
 
     def get_quest_state(self, quest_entry):
+        if quest_entry in self.completed_quests:
+            return QuestState.QUEST_REWARD
         if quest_entry in self.active_quests:
             return self.active_quests[quest_entry].get_quest_state()
 
@@ -431,28 +433,59 @@ class QuestManager(object):
         return QuestManager._gossip_text_choose_by_gender(quest_giver, text_entry)
 
     @staticmethod
-    def get_quest_giver_gossip_string(quest_giver) -> tuple:  # has_custom_greeting, greeting str, emote
+    def get_quest_giver_gossip_string(quest_giver, player_mgr) -> tuple:  # has_custom_greeting, greeting str, emote
         quest_giver_gossip_entry: NpcGossip = WorldDatabaseManager.QuestGossipHolder.npc_gossip_get_by_guid(quest_giver.spawn_id)
-        text_entry: int = WorldDatabaseManager.QuestGossipHolder.DEFAULT_GREETING_TEXT_ID  # 68 textid = "Greetings $N".
         if quest_giver_gossip_entry:
             text_entry = quest_giver_gossip_entry.textid
+        else:
+            if quest_giver.is_unit():
+                gossip_entry = quest_giver.creature_template.gossip_menu_id
+            elif quest_giver.is_gameobject():
+                gossip_entry = quest_giver.gobject_template.data3
+            else:
+                Logger.error(
+                    f'Invalid quest giver type when retrieving gossip text. '
+                    f'Type: {ObjectTypeIds(quest_giver.get_type_id()).name}, '
+                    f'Spawn ID: {quest_giver.spawn_id}'
+                )
+                return False, None, 0
+
+            gossip_text = QuestManager._get_gossip_menu_gossip_text(quest_giver, player_mgr, gossip_entry)
+            if gossip_text:
+                return True, gossip_text, 0
+            # Fallback to default greeting.
+            text_entry: int = WorldDatabaseManager.QuestGossipHolder.DEFAULT_GREETING_TEXT_ID  # 68 textid = "Greetings $N".
+
         quest_giver_text_entry: NpcText = WorldDatabaseManager.QuestGossipHolder.npc_text_get_by_id(text_entry)
-
-        if not quest_giver_gossip_entry and quest_giver.is_gameobject():
-            gossip_text = QuestManager._get_gossip_menu_gossip_text(quest_giver, quest_giver.gobject_template.data3)
-            return True if gossip_text else False, gossip_text, 0
-
         quest_giver_greeting = QuestManager._gossip_text_choose_by_gender(quest_giver, quest_giver_text_entry)
         return True if quest_giver_gossip_entry else False, quest_giver_greeting, quest_giver_text_entry.em0_0
 
     @staticmethod
-    def _get_gossip_menu_gossip_text(quest_giver, gossip_entry):
+    def _get_gossip_menu_gossip_text(quest_giver, player_mgr, gossip_entry):
         if not gossip_entry:
             return None
-        gossip_menu = WorldDatabaseManager.QuestGossipHolder.gossip_menu_by_entry(gossip_entry)
-        if not gossip_menu or not gossip_menu.text_id:
+        gossip_menus = WorldDatabaseManager.QuestGossipHolder.gossip_menu_by_entry(gossip_entry)
+        if not gossip_menus:
             return None
-        npc_text = WorldDatabaseManager.QuestGossipHolder.npc_text_get_by_id(gossip_menu.text_id)
+
+        selected_gossip = None
+        # First, check those with a non-zero condition_id.
+        for gossip_menu in gossip_menus:
+            if gossip_menu.condition_id != 0:
+                if ConditionChecker.validate(gossip_menu.condition_id, player_mgr, player_mgr):
+                    selected_gossip = gossip_menu
+                    break
+        # If none of the condition_ids were true, pick the first with condition_id == 0.
+        if not selected_gossip:
+            for gossip_menu in gossip_menus:
+                if gossip_menu.condition_id == 0:
+                    selected_gossip = gossip_menu
+                    break
+        # Still no gossip? Then return None.
+        if not selected_gossip or not selected_gossip.text_id:
+            return None
+
+        npc_text = WorldDatabaseManager.QuestGossipHolder.npc_text_get_by_id(selected_gossip.text_id)
         if not npc_text:
             return None
         gossip_text = QuestManager._gossip_text_choose_by_gender(quest_giver, npc_text)
@@ -788,7 +821,8 @@ class QuestManager(object):
             self.send_cant_take_quest_response(QuestFailedReasons.QUEST_ALREADY_ON)
             return
 
-        if quest_id in self.completed_quests:
+        # Only one timed quest can be active.
+        if self.has_timed_quest():
             self.send_cant_take_quest_response(QuestFailedReasons.QUEST_ONLY_ONE_TIMED)
             return
 
@@ -837,9 +871,10 @@ class QuestManager(object):
         # Otherwise, the quest_giver would be None and this leads to a crash.
         # Same goes for item quest starters since they have no script handler.
         if quest_giver and not is_item:
+            script_id = quest.StartScript if quest.StartScript else quest_id
             quest_giver.get_map().enqueue_script(source=quest_giver, target=self.player_mgr,
                                                  script_type=ScriptTypes.SCRIPT_TYPE_QUEST_START,
-                                                 script_id=quest_id)
+                                                 script_id=script_id)
 
         # If player is in a group and quest has QUEST_FLAGS_PARTY_ACCEPT flag, let other members accept it too.
         if self.player_mgr.group_manager and not shared:
@@ -851,6 +886,9 @@ class QuestManager(object):
         active_quest.update_required_items_from_inventory()
         if active_quest.can_complete_quest():
             self.complete_quest(active_quest, update_surrounding=False)
+        # Check if we need to link escort and player.
+        elif quest_giver and quest_giver.is_escort() and QuestHelpers.is_event_quest(quest):
+            quest_giver.object_ai.attach_escort_link(self.player_mgr)
 
         self.update_surrounding_quest_status()
 
@@ -879,9 +917,11 @@ class QuestManager(object):
 
     def handle_remove_quest(self, slot):
         quest_entry = self.player_mgr.get_uint32(PlayerFields.PLAYER_QUEST_LOG_1_1 + (slot * 6))
-        if quest_entry in self.active_quests:
-            self.remove_from_quest_log(quest_entry)
-            RealmDatabaseManager.character_delete_quest(self.player_mgr.guid, quest_entry)
+        if quest_entry not in self.active_quests:
+            return
+
+        self.remove_from_quest_log(quest_entry)
+        RealmDatabaseManager.character_delete_quest(self.player_mgr.guid, quest_entry)
 
     def handle_complete_quest(self, quest_id, quest_giver_guid):
         quest = WorldDatabaseManager.QuestTemplateHolder.quest_get_by_entry(quest_id)
@@ -1004,10 +1044,11 @@ class QuestManager(object):
             self.cast_reward_spell(quest_giver.guid, active_quest)
 
         # Handle quest end script, if any.
+        script_id = quest.CompleteScript if quest.CompleteScript else quest_id
         if quest_giver:
             quest_giver.get_map().enqueue_script(source=quest_giver, target=self.player_mgr,
                                                  script_type=ScriptTypes.SCRIPT_TYPE_QUEST_END,
-                                                 script_id=quest_id)
+                                                 script_id=script_id)
 
         # Remove from active quests if needed.
         if quest.entry in self.active_quests:
@@ -1083,10 +1124,18 @@ class QuestManager(object):
                                                                SpellTargetMask.UNIT, validate=False)
 
     def remove_from_quest_log(self, quest_id):
-        if quest_id in self.active_quests:
-            del self.active_quests[quest_id]
-            self.build_update()
-            self.update_surrounding_quest_status()
+        active_quest = self.active_quests.get(quest_id, None)
+        if not active_quest:
+            return
+
+        # Try to remove player-escort link if needed.
+        quest_giver_starter = active_quest.get_quest_giver_starter()
+        if quest_giver_starter and quest_giver_starter.is_escort():
+            quest_giver_starter.object_ai.detach_escort_link(self.player_mgr)
+
+        del self.active_quests[quest_id]
+        self.build_update()
+        self.update_surrounding_quest_status()
 
     def add_to_quest_log(self, quest_id, active_quest):
         self.active_quests[quest_id] = active_quest
@@ -1150,8 +1199,10 @@ class QuestManager(object):
             else:
                 self.send_quest_complete_event(quest_id)
 
-    def reward_quest_event(self):
+    def reward_quest_event(self, quest_entry):
         for quest_id, active_quest in self.active_quests.items():
+            if quest_id != quest_entry:
+                continue
             if not QuestHelpers.is_event_quest(active_quest.quest):
                 continue
             self.update_single_quest(quest_id)
@@ -1187,6 +1238,11 @@ class QuestManager(object):
         if update_surrounding:
             self.update_surrounding_quest_status()
 
+        # Try to remove player-escort link if needed.
+        quest_giver_starter = active_quest.get_quest_giver_starter()
+        if quest_giver_starter and quest_giver_starter.is_escort():
+            quest_giver_starter.object_ai.detach_escort_link(self.player_mgr)
+
     def complete_quest(self, active_quest, update_surrounding=False, notify=False):
         active_quest.update_quest_state(QuestState.QUEST_REWARD)
         active_quest.set_explored_or_event_complete()
@@ -1196,6 +1252,11 @@ class QuestManager(object):
 
         if update_surrounding:
             self.update_surrounding_quest_status()
+
+        # Try to remove player-escort link if needed.
+        quest_giver_starter = active_quest.get_quest_giver_starter()
+        if quest_giver_starter and quest_giver_starter.is_escort():
+            quest_giver_starter.object_ai.detach_escort_link(self.player_mgr)
 
     def send_quest_complete_event(self, quest_id):
         data = pack('<I', quest_id)
@@ -1218,6 +1279,12 @@ class QuestManager(object):
 
         for active_quest in list(self.active_quests.values()):
             if active_quest.still_needs_item(item_template):
+                return True
+        return False
+
+    def has_timed_quest(self):
+        for active_quest in list(self.active_quests.values()):
+            if QuestHelpers.is_timed_quest(active_quest.quest):
                 return True
         return False
 

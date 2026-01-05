@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import math
 import random
 from struct import pack
-from typing import Optional
+from typing import Optional, Any
 
 from database.dbc.DbcDatabaseManager import DbcDatabaseManager
 from database.world.WorldDatabaseManager import WorldDatabaseManager
+from game.world.managers.maps.helpers.CellUtils import VIEW_DISTANCE
 from game.world.managers.objects.ObjectManager import ObjectManager
 from game.world.managers.objects.item.ItemManager import ItemManager
 from game.world.managers.objects.spell.aura.AuraManager import AuraManager
@@ -184,9 +184,9 @@ class UnitManager(ObjectManager):
         # Cheat flags, used by Players.
         self.beast_master = False
 
-        # Relocation (Players/Creatures) & Call for help (Creatures).
-        self.relocation_call_for_help_timer = 0
-        self.pending_relocation = False
+        # Call for help and swim updates (Creatures).
+        self.call_for_help_timer = 0
+        self.swim_checks_enabled = False
 
         # Defensive passive spells are not handled through the aura system.
         # The effects will instead flag the unit with these fields.
@@ -204,6 +204,8 @@ class UnitManager(ObjectManager):
         self.movement_info = MovementInfo(self)
         self.has_moved = False
         self.has_turned = False
+        # The QuadTreeNode in which this unit stands, if any.
+        self.quadtree_node = None
 
         self.invincibility_hp_level = 0
         self.melee_disabled = False
@@ -234,6 +236,9 @@ class UnitManager(ObjectManager):
 
         return super().is_hostile_to(target)
 
+    def has_aggro(self):
+        return self.threat_manager.has_aggro()
+
     def can_perform_melee_attack(self):
         return self.combat_target and self.has_melee() and not self.is_casting() \
             and not self.unit_state & UnitStates.STUNNED and not self.unit_flags & UnitFlags.UNIT_FLAG_PACIFIED \
@@ -257,22 +262,32 @@ class UnitManager(ObjectManager):
         if target.unit_state & UnitStates.SANCTUARY:
             return False
 
+        # Fleeing.
+        if self.unit_flags & UnitFlags.UNIT_FLAG_FLEEING:
+            return False
+
+        # Beastmaster.
+        has_aggro_from_target = self.threat_manager.has_aggro_from(target)
+        if not has_aggro_from_target and target.beast_master:
+            return False
+
         # Flight.
         if target.unit_flags & UnitFlags.UNIT_FLAG_TAXI_FLIGHT:
             return False
 
         # Player only checks.
         if self.is_player() or self.unit_flags & UnitFlags.UNIT_FLAG_PLAYER_CONTROLLED:
-            if target.unit_flags & UnitFlags.UNIT_FLAG_NOT_ATTACKABLE_OCC:
+            if target.unit_flags & UnitFlags.UNIT_FLAG_IMMUNE_TO_PLAYER:
                 return False
         # Creature only checks.
         elif target.is_unit():
             if not target.is_spawned:
                 return False
-            if target.unit_flags & UnitFlags.UNIT_FLAG_PASSIVE:
+            if target.unit_flags & UnitFlags.UNIT_FLAG_IMMUNE_TO_NPC:
                 return False
-            if self.is_unit() and self.unit_flags & UnitFlags.UNIT_FLAG_PASSIVE:
-                return False
+            if self.is_unit():
+                if self.unit_flags & UnitFlags.UNIT_FLAG_IMMUNE_TO_NPC:
+                    return False
 
         # Always short circuit on charmer/summoner relationship.
         charmer = self.get_charmer_or_summoner()
@@ -282,7 +297,8 @@ class UnitManager(ObjectManager):
         # Charmed unit whose charmer is dueling the target.
         if charmer and charmer.is_player():
             duel_arbiter = charmer.get_duel_arbiter()
-            if duel_arbiter and duel_arbiter.is_unit_involved(target):
+            from game.world.managers.objects.gameobjects.managers.DuelArbiterManager import DuelArbiterManager
+            if isinstance(duel_arbiter, DuelArbiterManager) and duel_arbiter.is_unit_involved(target):
                 return duel_arbiter.duel_state == DuelState.DUEL_STATE_STARTED
 
         is_enemy = super().can_attack_target(target)
@@ -290,7 +306,7 @@ class UnitManager(ObjectManager):
             return True
 
         # Might be neutral, but was attacked by target.
-        return target and self.threat_manager.has_aggro_from(target)
+        return target and has_aggro_from_target
 
     def attack(self, victim: UnitManager):
         if not victim or victim == self:
@@ -311,13 +327,18 @@ class UnitManager(ObjectManager):
         self.set_current_target(victim.guid)
         self.combat_target = victim
 
-        active_pet = self.pet_manager.get_active_controlled_pet()
-        if active_pet:
-            active_pet.creature.object_ai.owner_attacked(victim)
+        for pet_or_guardian in self.pet_manager.get_pet_and_guardians():
+            pet_or_guardian.object_ai.owner_attacked(victim)
 
         # Reset offhand weapon attack
         if self.has_offhand_weapon():
             self.set_attack_timer(AttackTypes.OFFHAND_ATTACK, self.offhand_attack_time)
+
+        if victim.is_player() or victim.is_player_controlled_pet():
+            if self.object_ai: # Send AI reaction.
+                self.object_ai.send_ai_reaction(victim, AIReactionStates.AI_REACT_HOSTILE)
+            # Force players or player pets in-combat.
+            victim.threat_manager.add_threat(source=self)
 
         self.send_attack_start(self.combat_target.guid)
 
@@ -364,13 +385,12 @@ class UnitManager(ObjectManager):
             return False
 
         swing_error = AttackSwingError.NONE
-        combat_angle = math.pi
 
         # Out of reach.
         if not self.is_within_interactable_distance(self.combat_target):
             swing_error = AttackSwingError.NOTINRANGE
         # Not proper angle.
-        elif not self.location.has_in_arc(self.combat_target.location, combat_angle):
+        elif not self.location.has_in_arc(self.combat_target.location):
             swing_error = AttackSwingError.BADFACING
         # Moving.
         elif self.movement_flags & MoveFlags.MOVEFLAG_MOTION_MASK:
@@ -465,7 +485,7 @@ class UnitManager(ObjectManager):
             return
 
         # Not attack from behind, ignore.
-        if self.location.has_in_arc(attacker.location, math.pi):
+        if self.location.has_in_arc(attacker.location):
             return
 
         # Check if already dazed.
@@ -1001,6 +1021,12 @@ class UnitManager(ObjectManager):
         return self.has_block_passive and not self.spell_manager.is_casting() and \
             not self.unit_state & UnitStates.STUNNED
 
+    def has_shield(self):
+        return False
+
+    def has_buckler(self):
+        return False
+
     def can_parry(self, attacker_location=None, in_combat=False):
         if not in_combat:
             return self.has_parry_passive
@@ -1025,10 +1051,10 @@ class UnitManager(ObjectManager):
         if self.in_combat:
             return False
 
-        # Make sure pet enters combat as well.
-        pet = self.pet_manager.get_active_controlled_pet()
-        if pet and not pet.creature.in_combat:
-            pet.creature.enter_combat()
+        # Make sure pet or guardians enter combat as well.
+        for pet_or_guardian in self.pet_manager.get_pet_and_guardians():
+            if not pet_or_guardian.in_combat:
+                pet_or_guardian.enter_combat()
 
         self.in_combat = True
         self.set_unit_flag(UnitFlags.UNIT_FLAG_IN_COMBAT, active=True)
@@ -1045,21 +1071,25 @@ class UnitManager(ObjectManager):
         self.swing_error = 0
         self.extra_attacks = 0
 
-        # Reset threat table.
-        self.threat_manager.reset()
-
         # Reset aura states.
         self.aura_manager.reset_aura_states()
+
+        # Remove casts.
+        self.spell_manager.remove_casts()
+
+        # Reset threat table.
+        self.threat_manager.reset()
 
         self.combat_target = None
         self.in_combat = False
 
-        # Make sure pet leaves combat if it has no aggro or no longer able to attack current target.
-        pet = self.pet_manager.get_active_controlled_pet()
-        if pet and (not pet.creature.threat_manager.has_aggro()
-                    or (pet.creature.combat_target and not pet.creature.can_attack_target(pet.creature.combat_target))):
-            pet.creature.spell_manager.remove_casts()
-            pet.creature.leave_combat()
+        # Make sure pet/guardians leave combat if they have no aggro or no longer able to attack current target.
+        for pet_or_guardian in self.pet_manager.get_pet_and_guardians():
+            combat_target = pet_or_guardian.combat_target
+            can_attack = combat_target and pet_or_guardian.can_attack_target(combat_target)
+            if not pet_or_guardian.has_aggro() or not can_attack:
+                pet_or_guardian.spell_manager.remove_casts()
+                pet_or_guardian.leave_combat()
 
         self.set_unit_flag(UnitFlags.UNIT_FLAG_IN_COMBAT, active=False)
         return True
@@ -1078,6 +1108,9 @@ class UnitManager(ObjectManager):
     def is_sitting(self):
         return self.stand_state == StandState.UNIT_SITTING
 
+    def is_standing(self):
+        return self.stand_state == StandState.UNIT_STANDING
+
     def set_stand_state(self, stand_state):
         if stand_state == self.stand_state:
             return
@@ -1093,14 +1126,24 @@ class UnitManager(ObjectManager):
             self.set_unit_state(UnitStates.SANCTUARY, active=False)
             self.sanctuary_timer = 0
 
+    def set_beast_master(self, active=True):
+        self.beast_master = active
+        for pet_or_guardian in self.pet_manager.get_pet_and_guardians():
+            pet_or_guardian.beast_master = active
+
     def update_sanctuary(self, elapsed):
-        if self.sanctuary_timer > 0:
-            self.sanctuary_timer = max(0, self.sanctuary_timer - elapsed)
-            if self.sanctuary_timer == 0:
-                self.set_sanctuary(False)
+        if not self.sanctuary_timer:
+            return
+        self.sanctuary_timer = max(0, self.sanctuary_timer - elapsed)
+        if not self.sanctuary_timer:
+            self.set_sanctuary(False)
 
     # Implemented by CreatureManager.
     def is_tameable(self):
+        return False
+
+    # Implemented by CreatureManager.
+    def is_sessile(self):
         return False
 
     def get_possessed_unit(self):
@@ -1186,7 +1229,7 @@ class UnitManager(ObjectManager):
             visible_distance = 0.0
 
         # Sneaking unit is behind, reduce visible distance.
-        if not self.location.has_in_arc(target.location, math.pi):
+        if not self.location.has_in_arc(target.location):
             visible_distance = max(0.0, visible_distance - 9.0)
 
         alert = False
@@ -1206,11 +1249,6 @@ class UnitManager(ObjectManager):
     def set_rooted(self, active=True, index=-1) -> bool:
         is_rooted = self.set_move_flag(MoveFlags.MOVEFLAG_ROOTED, active, index)
         is_rooted |= self.set_unit_state(UnitStates.ROOTED, active, index)
-
-        if is_rooted:
-            # Stop movement if needed.
-            self.movement_manager.stop()
-
         return is_rooted
 
     def set_stunned(self, active=True, index=-1) -> bool:
@@ -1221,7 +1259,7 @@ class UnitManager(ObjectManager):
 
         if not was_stunned and is_stunned:
             # Force move behavior stop.
-            self.movement_manager.stop()
+            self.movement_manager.stop(force=True)
             self.spell_manager.remove_casts(remove_active=False)
             self.set_current_target(0)
         elif was_stunned and not is_stunned:
@@ -1300,6 +1338,10 @@ class UnitManager(ObjectManager):
         else:
             self.movement_flags &= ~move_flag
 
+        # Force movement stop if rooted or immobilized.
+        if flag_changed and is_active and move_flag in {MoveFlags.MOVEFLAG_ROOTED, MoveFlags.MOVEFLAG_IMMOBILIZED}:
+            self.movement_manager.stop(force=True)
+
         # Only broadcast swimming, rooted, walking or immobilized.
         if flag_changed and move_flag in {MoveFlags.MOVEFLAG_SWIMMING, MoveFlags.MOVEFLAG_ROOTED,
                                           MoveFlags.MOVEFLAG_IMMOBILIZED, MoveFlags.MOVEFLAG_WALK}:
@@ -1344,7 +1386,30 @@ class UnitManager(ObjectManager):
             return
         range_ = config.World.Chat.ChatRange.emote_range
         data = pack('<IQ', emote, self.guid)
-        self.get_map().send_surrounding_in_range(PacketWriter.get_packet(OpCode.SMSG_EMOTE, data), self, range_)
+        packet = PacketWriter.get_packet(OpCode.SMSG_EMOTE, data)
+        self.get_map().send_surrounding_in_range(packet, self, range_)
+
+    def say_emote_text(self, emote_id, target=None):
+        emote = DbcDatabaseManager.emote_text_get_by_id(emote_id)
+        if not emote:
+            return
+
+        data = pack('<QI', self.guid, emote.ID)
+        if not target:
+            data += pack('<B', 0)
+        elif target.is_player():
+            player_name_bytes = PacketWriter.string_to_bytes(target.get_name())
+            data += pack(f'<{len(player_name_bytes)}s', player_name_bytes)
+        elif target.is_unit() and target.creature_template:
+            unit_name_bytes = PacketWriter.string_to_bytes(target.get_name())
+            data += pack(f'<{len(unit_name_bytes)}s', unit_name_bytes)
+            target.object_ai.receive_emote(self, emote.ID)  # Notify CreatureAI about emote sent to this creature.
+        else:
+            data += pack('<B', 0)
+
+        range_ = config.World.Chat.ChatRange.emote_range
+        packet = PacketWriter.get_packet(OpCode.SMSG_TEXT_EMOTE, data)
+        self.get_map().send_surrounding_in_range(packet, self, range_)
 
     def summon_mount(self, creature_entry):
         creature_template = WorldDatabaseManager.CreatureTemplateHolder.creature_get_by_entry(creature_entry)
@@ -1381,8 +1446,16 @@ class UnitManager(ObjectManager):
     def is_guardian(self):
         return False
 
+    # Implemented by CreatureManager.
+    def is_critter(self):
+        return False
+
+    # Implemented by CreatureManager.
+    def is_temp_summon_or_pet_or_guardian(self):
+        return False
+
     # Implemented by PlayerManager.
-    def get_duel_arbiter(self):
+    def get_duel_arbiter(self) -> Any:
         return None
 
     # Implemented by CreatureManager.
@@ -1400,8 +1473,9 @@ class UnitManager(ObjectManager):
 
     # Implemented by CreatureManager.
     def set_summoned_by(self, summoner, spell_id=0, subtype=CustomCodes.CreatureSubtype.SUBTYPE_GENERIC, remove=False):
-        # Link self to summoner.
-        summoner.set_uint64(UnitFields.UNIT_FIELD_SUMMON, self.guid if not remove else 0)
+        # Totems/Guardians are not linked to players (no portrait will appear).
+        if not self.is_totem() and not self.is_guardian():
+            summoner.set_uint64(UnitFields.UNIT_FIELD_SUMMON, self.guid if not remove else 0)
         # Set faction, either original or summoner. (Restored on CreatureManager/PlayerManager)
         self.set_uint32(UnitFields.UNIT_FIELD_FACTIONTEMPLATE, self.faction)
 
@@ -1776,9 +1850,9 @@ class UnitManager(ObjectManager):
             return False
         self.is_alive = False
 
-        self.pending_relocation = False
         self.set_has_moved(False, False, True)
-        self.relocation_call_for_help_timer = 0
+        self.call_for_help_timer = 0
+        self.swim_checks_enabled = False
 
         if self.object_ai:
             self.object_ai.just_died(killer)
@@ -1829,7 +1903,7 @@ class UnitManager(ObjectManager):
         return True
 
     # override
-    def despawn(self, ttl=0):
+    def despawn(self, ttl=0, respawn_delay=0):
         # Make sure to remove casts from units that are destroyed but not necessarily killed. e.g. Totems.
         if self.spell_manager:
             self.spell_manager.remove_casts()
@@ -1842,15 +1916,18 @@ class UnitManager(ObjectManager):
             if active_pet:
                 summon_spell = active_pet.get_pet_data().summon_spell_id
                 charmer.spell_manager.remove_cast_by_id(summon_spell)
-                charmer.aura_manager.remove_auras_by_caster(self.guid)
+
+                # Don't remove buffs from permanent pets on despawn (e.g. Sacrificial Shield).
+                if not active_pet.is_permanent():
+                    charmer.aura_manager.remove_auras_by_caster(self.guid)
 
         self.is_alive = False
-        super().despawn()
+        super().despawn(ttl, respawn_delay)
 
         charmer_or_summoner = self.get_charmer_or_summoner()
         # Detach from controller if this unit is an active pet and the summoner is a unit
         # (game objects can spawn creatures, but they don't have a PetManager).
-        if charmer_or_summoner and charmer_or_summoner.get_type_mask() & ObjectTypeFlags.TYPE_UNIT:
+        if charmer_or_summoner and charmer_or_summoner.is_unit(by_mask=True):
             charmer_or_summoner.pet_manager.detach_pet_by_guid(self.guid)
 
     def is_swimming(self):
@@ -1870,20 +1947,63 @@ class UnitManager(ObjectManager):
         self.remove_all_dynamic_flags()
         self.set_stand_state(StandState.UNIT_STANDING)
 
+    def get_ai_name(self):
+        if not self.object_ai:
+            return 'None'
+        return type(self.object_ai).__name__
+
     def is_in_world(self):
         pass
 
-    # Implemented by CreatureManager and PlayerManager
+    # Implemented by CreatureManager
+    def has_ooc_events(self):
+        pass
+
+    # Implemented by CreatureManager
+    def get_npc_flags(self):
+        return 0
+
+    # Implemented by CreatureManager
+    def get_unit_class(self):
+        return self.class_
+
+    # Implemented by PlayerManager
+    def get_combo_points(self):
+        return 0
+
     def get_bytes_0(self):
-        pass
+        return ByteUtils.bytes_to_int(
+            self.power_type,  # Power type.
+            self.gender,  # Gender.
+            self.get_unit_class(),  # Unit class.
+            self.race  # Unit race.
+        )
 
-    # Implemented by CreatureManager and PlayerManager
-    def get_bytes_1(self):
-        pass
+    # Implemented by CorpseManager
+    def get_bytes_1(self, is_create=False):
+        return ByteUtils.bytes_to_int(
+            self.sheath_state if not is_create else WeaponMode.SHEATHEDMODE,  # Sheath state.
+            self.shapeshift_form,  # Shapeshift form.
+            self.get_npc_flags(),  # NPC flags (0 for players).
+            self.stand_state  # Stand state.
+        )
 
-    # Implemented by CreatureManager and PlayerManager
+    # Implemented by CorpseManager.
     def get_bytes_2(self):
-        pass
+        return ByteUtils.bytes_to_int(
+            0,  # Unused.
+            0,  # Unused.
+            0,  # Unused.
+            self.get_combo_points()  # Combo points.
+        )
+
+    """
+        The client does not correctly update the sheath state for units following destroy/create operations. 
+        As a workaround, we first send the bytes_1 field bytes with all values zeroed out, 
+        and then send the actual state data afterward.
+    """
+    def get_bytes_1_state_update_bytes(self):
+        return self.get_single_field_update_bytes(UnitFields.UNIT_FIELD_BYTES_1, self.get_bytes_1())
 
     # Implemented by CreatureManager and PlayerManager
     def get_damages(self):
@@ -1894,93 +2014,52 @@ class UnitManager(ObjectManager):
         pass
 
     # Used by creatures.
-    def get_detection_range(self):
+    def get_detection_range(self, unit):
         return 0
 
-    def notify_move_in_line_of_sight(self):
-        if self.beast_master:
+    def update_visibility_bounds(self, visibility_bounds):
+        view_factor = VIEW_DISTANCE if not self.has_ooc_events() else 45  # Max detection range cap.
+        visibility_bounds.width = view_factor * 2
+        visibility_bounds.height = view_factor * 2
+        visibility_bounds.x = self.location.x - view_factor
+        visibility_bounds.y = self.location.y - view_factor
+
+    def has_moved_significantly(self, visibility_bounds):
+        if not self.quadtree_node:
+            return True
+        self.update_visibility_bounds(visibility_bounds)
+        node_bounds = self.quadtree_node.bounds
+        return not node_bounds.contains_box(visibility_bounds)
+
+    def notify_move_in_line_of_sight(self, map_, unit, ooc_event=False, in_range=False):
+        los_check = None
+
+        # Check ooc events for self (Which can have greater range than detection range).
+        if ooc_event:
+            los_check = map_.los_check(self.get_ray_position(), unit.get_ray_position())
+            if los_check:
+                self.object_ai.move_in_line_of_sight(unit, ai_event=True)
+
+        if not self.threat_manager.can_resolve_target():
             return
 
-        charmer_or_summoner = self.get_charmer_or_summoner()
-        if charmer_or_summoner and charmer_or_summoner.beast_master:
+        if not in_range or not self.is_hostile_to(unit) or not self.can_attack_target(unit):
             return
 
-        map_ = self.get_map()
-        self_is_player = self.is_player()
-        surrounding_units = map_.get_surrounding_units(self, not self_is_player)
-        self_has_ooc_los_events = not self_is_player and self.object_ai.ai_event_handler.has_ooc_los_events()
+        # Check for stealth/invisibility.
+        can_detect_unit, alert = self.can_detect_target(unit, self.location.distance(unit.location))
+        if alert and unit.is_player() and not self.is_player():
+            self.object_ai.send_ai_reaction(self, AIReactionStates.AI_REACT_ALERT)
 
-        # Merge units and players.
-        if not self_is_player:
-            surrounding_units = list(surrounding_units[0].values()) + list(surrounding_units[1].values())
-        # Only creatures.
-        else:
-            surrounding_units = surrounding_units.values()
+        if not can_detect_unit or self.is_player():
+            return
 
-        for unit in surrounding_units:
-            if unit.unit_state & UnitStates.STUNNED or unit.unit_flags & UnitFlags.UNIT_FLAG_PACIFIED:
-                continue
-
-            unit_is_player = unit.is_player()
-            unit_has_ooc_los_events = not unit_is_player and unit.object_ai.ai_event_handler.has_ooc_los_events()
-
-            los_check = None
-            # If self or unit has ooc los events.
-            if self_has_ooc_los_events or unit_has_ooc_los_events:
-                los_check = map_.los_check(unit.get_ray_position(), self.get_ray_position())
-                if los_check:
-                    # Player notifies creature.
-                    if self_is_player and unit.object_ai:
-                        unit.object_ai.move_in_line_of_sight(unit=self, ai_event=True)
-                    # Self notifies player/creature presence.
-                    elif not self_is_player and self.object_ai:
-                        self.object_ai.move_in_line_of_sight(unit=unit, ai_event=True)
-
-            distance = unit.location.distance(self.location)
-
-            detection_range = self.get_detection_range() if unit_is_player else unit.get_detection_range()
-            max_detection_range = detection_range
-
-            # Adjustments due to level differences, cap at 25 level difference. Aggro radius seems to vary at a rate of
-            # 1 yard per level (it can both grow or shrink). Only make this effective if one of the parties involved is
-            # a player (or a player controlled pet) and always take its level into account, not the level from the
-            # creature.
-            if unit_is_player or unit.is_player_controlled_pet() or unit.is_guardian():
-                detection_range -= max(-25, min(unit.level - self.level, 25))
-            elif self_is_player or self.is_player_controlled_pet() or self.is_guardian():
-                detection_range -= max(-25, min(self.level - unit.level, 25))
-            # Minimum aggro radius seems to be combat distance.
-            detection_range = max(detection_range, UnitFormulas.combat_distance(self, unit))
-
-            # Cap on creature template detection range.
-            if not self_is_player and detection_range > max_detection_range:
-                detection_range = max_detection_range
-
-            if distance > detection_range or not unit.is_hostile_to(self) or not unit.can_attack_target(self):
-                continue
-            if unit.threat_manager.has_aggro_from(self):
-                continue
-
-            # Check for stealth/invisibility.
-            unit_can_detect_self, alert = unit.can_detect_target(self, distance)
-            if alert and self_is_player:
-                unit.object_ai.send_ai_reaction(self, AIReactionStates.AI_REACT_ALERT)
-            if not unit_can_detect_self:
-                continue
-
-            los_check = los_check if los_check is not None else map_.los_check(unit.get_ray_position(),
+        los_check = los_check if los_check is not None else map_.los_check(unit.get_ray_position(),
                                                                                self.get_ray_position())
-            if not los_check:
-                continue
+        if not los_check:
+            return
 
-            # Player standing still case.
-            if unit_is_player and not unit.pending_relocation and not unit.beast_master:
-                unit.pending_relocation = True
-            elif not unit_is_player:
-                charmer_or_summoner = unit.get_charmer_or_summoner()
-                if charmer_or_summoner and charmer_or_summoner.beast_master:
-                    continue
-                unit.object_ai.move_in_line_of_sight(self)
+        self.object_ai.move_in_line_of_sight(unit)
 
     def set_has_moved(self, has_moved, has_turned, flush=False):
         # Only turn off once processed.

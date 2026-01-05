@@ -13,6 +13,7 @@ class GroupMovement(BaseMovement):
         self.last_waypoint_movement = 0
         self.wait_time_seconds = 0
         self._is_lagging = False
+        self._lagging_speed_mod = 0
 
     # override
     def initialize(self, unit):
@@ -22,7 +23,7 @@ class GroupMovement(BaseMovement):
     # override
     def update(self, now, elapsed):
         # We require a leader, always.
-        if not self.unit.creature_group.leader:
+        if not self.unit.creature_group or not self.unit.creature_group.leader:
             return
 
         if self._can_perform_waypoint(now):
@@ -42,17 +43,27 @@ class GroupMovement(BaseMovement):
     # override
     def on_new_position(self, new_position, waypoint_completed, remaining_waypoints):
         super().on_new_position(new_position, waypoint_completed, remaining_waypoints)
-        # Always update home position.
-        self.unit.spawn_position = new_position.copy()
-        if not waypoint_completed or not self.unit.creature_group.is_leader(self.unit):
+        # Always update tmp home position.
+        self.unit.tmp_home_position = new_position.copy()
+        if not waypoint_completed:
             return
-        current_wp = self._get_waypoint()
-        self._waypoint_push_back()
-        if not current_wp.script_id:
-            return
-        self.unit.get_map().enqueue_script(source=self.unit, target=self.unit,
-                                           script_type=ScriptTypes.SCRIPT_TYPE_CREATURE_MOVEMENT,
-                                           script_id=current_wp.script_id)
+        self.handle_waypoint_complete()
+
+    def handle_waypoint_complete(self):
+        # Leader.
+        if self.unit.creature_group and self.unit.creature_group.is_leader(self.unit):
+            current_wp = self._get_waypoint()
+            self._waypoint_push_back()
+            if current_wp.script_id:
+                self.unit.get_map().enqueue_script(source=self.unit, target=self.unit,
+                                                   script_type=ScriptTypes.SCRIPT_TYPE_CREATURE_MOVEMENT,
+                                                   script_id=current_wp.script_id)
+        # Follower.
+        else:
+            leader = self.unit.creature_group.leader
+            # Face in the same angle as the leader if needed.
+            if not self.unit.location.has_in_arc(leader.location):
+                self.unit.movement_manager.face_angle(leader.location.o)
 
     # override
     def reset(self):
@@ -105,31 +116,40 @@ class GroupMovement(BaseMovement):
         if creature_mgr.guid not in creature_group.members or not creature_group.leader:
             return None, 0
         group_member = creature_group.members[creature_mgr.guid]
-        speed = self._get_speed(creature_group)
-        leader_distance = max(0.2, group_member.distance_leader - (elapsed * speed))
-        location = creature_group.leader.location.get_point_in_radius_and_angle(leader_distance, group_member.angle)
-        creature_distance = group_member.creature.location.distance(location) - (elapsed * speed)
+        base_speed = self._get_speed(creature_group)
+        full_distance = group_member.distance_leader
+
+        # Set follow distance very close to 100%.
+        target_distance = max(0.2, full_distance - (elapsed * base_speed + self._lagging_speed_mod))
+        location = creature_group.compute_relative_position(group_member, target_distance)
+        if not location:
+            return None, 0
+
+        creature_distance = group_member.creature.location.distance(location) - (elapsed * base_speed + self._lagging_speed_mod)
 
         # Check if unit is lagging.
         if creature_distance > group_member.distance_leader:
-            # If distance is greater than current cell size, teleport the unit to the location.
-            if creature_distance > CellUtils.CELL_SIZE:
+            # Near teleport if lagging above defined lag correction distance.
+            if creature_distance > CellUtils.FOLLOW_LAG_CORRECTION_DISTANCE:
                 self.unit.near_teleport(location)
                 return None, 0
             if not self._is_lagging:
                 self._is_lagging = creature_distance > group_member.distance_leader * 2
-        else:  # Within desired range, skip move.
+        else:
             self._is_lagging = False
+            self._lagging_speed_mod = 0
             return None, 0
 
-        # Catch up if lagging behind.
+        # Adjust speed if lagging.
         if self._is_lagging:
-            speed += 0.05 * creature_distance * creature_distance * elapsed
-        # If follower is within distance, use leader Z which is usually a hardcoded waypoint with proper value.
-        else:
-            location.z = creature_group.leader.location.z
+            self._lagging_speed_mod = 0.05 * creature_distance * creature_distance * elapsed
 
-        return location, speed
+        # Smoothing factor (adjust for desired smoothness; lower is smoother)
+        smooth_factor = min(1, elapsed / 0.1)
+        # Interpolate between current position and target position.
+        new_location = self.unit.location.lerp(location, smooth_factor)
+
+        return new_location, base_speed + self._lagging_speed_mod
 
     def _get_waypoint(self):
         # Updating ongoing wp.

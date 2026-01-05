@@ -7,7 +7,7 @@ from database.world.WorldDatabaseManager import WorldDatabaseManager
 from game.world.managers.objects.spell.CastingSpell import CastingSpell
 from game.world.managers.objects.units.creature.CreatureBuilder import CreatureBuilder
 from game.world.managers.objects.units.creature.CreatureManager import CreatureManager
-from game.world.managers.objects.units.movement.behaviors.PetMovement import PetMovement
+from game.world.managers.objects.units.movement.behaviors.PetMovement import PET_FOLLOW_DISTANCE, PET_FOLLOW_ANGLE
 from game.world.managers.objects.units.pet.ActivePet import ActivePet
 from game.world.managers.objects.units.pet.PetData import PetData
 from network.packet.PacketWriter import PacketWriter
@@ -53,7 +53,7 @@ class PetManager:
     def set_creature_as_pet(self, creature: CreatureManager, summon_spell_id: int, pet_slot: PetSlot,
                             pet_level=-1, pet_index=-1, is_permanent=False) -> Optional[ActivePet]:
         if not self._try_detach_dead_pet(pet_slot):
-            return  # Pet slot already occupied by alive creature.
+            return None # Pet slot already occupied by alive creature.
 
         # Modify and link owner and creature.
         self._handle_creature_spawn_detach(creature, is_permanent)
@@ -86,7 +86,14 @@ class PetManager:
         creature.leave_combat()
 
         self.send_pet_spell_info()
+
+        # Set level and initialize pet stats.
         active_pet.set_level(pet_level)
+
+        # Apply passive effects.
+        for spell in active_pet.get_pet_data().spells:
+            spell_template = DbcDatabaseManager.SpellHolder.spell_get_by_id(spell)
+            creature.spell_manager.apply_passive_spell_effects(spell_template)
 
         if pet_data.is_hunter_pet():
             creature.set_can_rename(pet_data.rename_time == 0)  # Only allow one rename.
@@ -146,8 +153,7 @@ class PetManager:
                     pet_index = i
                     break
 
-        spawn_position = self.owner.location.get_point_in_radius_and_angle(PetMovement.PET_FOLLOW_DISTANCE,
-                                                                           PetMovement.PET_FOLLOW_ANGLE)
+        spawn_position = self.owner.location.get_point_in_radius_and_angle(PET_FOLLOW_DISTANCE, PET_FOLLOW_ANGLE)
         creature_manager = CreatureBuilder.create(creature_id, spawn_position,
                                                   self.owner.map_id, self.owner.instance_id,
                                                   summoner=self.owner, faction=self.owner.faction,
@@ -156,7 +162,7 @@ class PetManager:
                                                   subtype=CustomCodes.CreatureSubtype.SUBTYPE_PET)
 
         if not creature_manager:
-            Logger.warning(f"Attempted to summon nonexistent creature {creature_id} via spell {spell_id}.")
+            Logger.warning(f'Attempted to summon nonexistent creature {creature_id} via spell {spell_id}.')
             return
 
         # Match summoner level for creature summons. Otherwise, set to the level in PetData.
@@ -165,11 +171,11 @@ class PetManager:
                                               pet_level=pet_level, pet_index=pet_index, is_permanent=True)
 
         # On initial creature summon, teach available spells according to the summon spell's level.
-        if not is_hunter_pet and pet_index == -1:
+        if active_pet and not is_hunter_pet and pet_index == -1:
             spell_level = DbcDatabaseManager.SpellHolder.spell_get_by_id(spell_id).SpellLevel
             active_pet.initialize_spells(level_override=spell_level)
 
-        self.owner.get_map().spawn_object(world_object_instance=creature_manager)
+        self.owner.get_map().spawn_object(instance=creature_manager)
 
     def detach_active_pets(self, is_logout=False):
         for index, pet in list(self.active_pets.items()):
@@ -222,7 +228,8 @@ class PetManager:
         return True
 
     def detach_totem(self, totem_slot: TotemSlots):
-        self.detach_pet_by_slot(PetSlot.PET_SLOT_TOTEM_START + totem_slot)
+        pet_slot = PetSlot(PetSlot.PET_SLOT_TOTEM_START + totem_slot)
+        self.detach_pet_by_slot(pet_slot)
 
     def detach_pets_by_entry(self, entry):
         for slot, active_pet in list(self.active_pets.items()):
@@ -242,6 +249,17 @@ class PetManager:
                 return PetSlot(slot)
         return None
 
+    def get_pet_and_guardians(self):
+        result = []
+        controlled_pet = self.get_active_controlled_pet()
+        if controlled_pet and controlled_pet.creature.is_alive:
+            result.append(controlled_pet.creature)
+        for active_pet in self.active_pets.values():
+            if not active_pet.creature.is_alive or not active_pet.creature.is_guardian():
+                continue
+            result.append(active_pet.creature)
+        return result
+
     def get_active_controlled_pet(self) -> Optional[ActivePet]:
         permanent_pet = self.active_pets.get(PetSlot.PET_SLOT_PERMANENT)
         charm = self.active_pets.get(PetSlot.PET_SLOT_CHARM)
@@ -255,6 +273,7 @@ class PetManager:
                 if guid and guid != active_pet.creature.guid:
                     continue
                 return active_pet
+        return None
 
     def get_active_pet_by_guid(self, guid) -> Optional[ActivePet]:
         for active_pet in self.active_pets.values():
@@ -263,7 +282,8 @@ class PetManager:
         return None
 
     def get_active_totem(self, totem_slot: TotemSlots) -> Optional[ActivePet]:
-        return self.active_pets.get(PetSlot.PET_SLOT_TOTEM_START + totem_slot)
+        pet_slot = PetSlot(PetSlot.PET_SLOT_TOTEM_START + totem_slot)
+        return self.active_pets.get(pet_slot)
 
     def get_active_permanent_pet(self) -> Optional[ActivePet]:
         return self.active_pets.get(PetSlot.PET_SLOT_PERMANENT)

@@ -2,7 +2,7 @@ import datetime
 from database.world.WorldDatabaseManager import WorldDatabaseManager
 from utils.constants.ConditionCodes import ConditionType, ConditionFlags, ConditionTargetsInternal, EscortConditionFlags
 from utils.Logger import Logger
-from utils.constants.MiscCodes import QuestState, ObjectTypeFlags
+from utils.constants.MiscCodes import QuestState
 from utils.constants.UnitCodes import Genders, PowerTypes, UnitFlags
 
 MAX_3368_SPELL_ID = 7913
@@ -35,20 +35,19 @@ class ConditionChecker:
             result = CONDITIONS[condition.type](condition, source, target)
             if condition.flags & ConditionFlags.CONDITION_FLAG_REVERSE_RESULT:
                 return not result
-
             return result
 
-        else:
-            Logger.warning(f'ConditionChecker: Condition {condition.type} does not exist.')
-            return False
+        Logger.warning(f'ConditionChecker: Condition {condition.type} does not exist.')
+        return False
 
     @staticmethod
     def _check_param_requirements(condition_type, source, target):
         internal_condition_target = CONDITIONAL_TARGETS_INTERNAL_MAP.get(condition_type, None)
         if internal_condition_target is not None:  # Can be 0.
             return CONDITIONAL_TARGETS_INTERNAL[internal_condition_target](source, target)
-        else:
-            Logger.warning(f'Unable to resolve internal condition target for type {condition_type}')
+
+        Logger.warning(f'Unable to resolve internal condition target for type {condition_type}')
+        return False
 
     @staticmethod
     def is_player(target):
@@ -381,7 +380,7 @@ class ConditionChecker:
         # Condition_value1 = patch id.
         # Condition_value2 = 0 equal, 1 equal and higher, 2 equal and lower.
 
-        # Allow patch 0 (1.2 vMangos) equal or greater condition to evaluate true.
+        # Allow patch 0 (1.2 VMaNGOS) equal or greater condition to evaluate true.
         if condition.value1 == 0:
             return True
 
@@ -507,7 +506,7 @@ class ConditionChecker:
         # Condition_value1 = index.
         # Condition_value2 = data.
         # Condition_value3 = 0 equal, 1 equal or higher, 2 equal or lower.
-        # Seems to be only used by vMangos C++ scripting.
+        # Seems to be only used by VMaNGOS C++ scripting.
         Logger.warning('CONDITION_INSTANCE_DATA is not implemented.')
         return False
 
@@ -697,15 +696,26 @@ class ConditionChecker:
         Logger.warning('CONDITION_OBJECT_LOOT_STATE is not implemented.')
         return False
 
+    # TODO: Find example to test this, since our handling of spawns is different than VMaNGOS.
     @staticmethod
-    def check_condition_object_fit_condition(_condition, _source, _target):
-        # Requires Map.
+    def check_condition_object_fit_condition(condition, source, target):
         # Check if the target object with guid exists and satisfies the given condition.
         # Condition_value1 = object guid.
         # Condition_value2 = condition id.
-        # Unused in 0.5.3.
-        Logger.warning('CONDITION_OBJECT_FIT_CONDITION is not implemented.')
-        return False
+        source = source if source and source.is_gameobject() else target if target and target.is_gameobject() else None
+        if not source:
+            return False
+        map_ = source.get_map()
+        if not map_:
+            return False
+        go_spawn = map_.get_surrounding_gameobject_spawn_by_spawn_id(source, condition.value1)
+        if not go_spawn:
+            return False
+        data = go_spawn.gameobject_spawn
+        go_instance = go_spawn.gameobject_instance
+        if not data or not go_instance:
+            return False
+        return ConditionChecker.validate(condition.value2, go_instance, source)
 
     @staticmethod
     def check_condition_pvp_rank(_condition, _source, _target):
@@ -832,8 +842,7 @@ class ConditionChecker:
 
     @staticmethod
     def check_target_any_worldobject(source, target):
-        return (source and source.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT) \
-            or (target and target.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT)
+        return source and source.is_object(by_mask=True) or target and target.is_object(by_mask=True)
 
     @staticmethod
     def check_target_source_unit(source, _target):
@@ -845,11 +854,11 @@ class ConditionChecker:
 
     @staticmethod
     def check_target_map_or_worldobject(source, target):
-        return (source and source.is_object(by_mask=True)) or (target and target.is_object(by_mask=True))
+        return source and source.is_object(by_mask=True) or target and target.is_object(by_mask=True)
 
     @staticmethod
     def check_target_worldobject(_source, target):
-        return target and target.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT
+        return target and target.is_object(by_mask=True)
 
     @staticmethod
     def check_target_source_creature(source, _target):
@@ -857,8 +866,7 @@ class ConditionChecker:
 
     @staticmethod
     def check_target_both_worldobjects(source, target):
-        return (source and source.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT) \
-            and (target and target.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT)
+        return source and source.is_object(by_mask=True) and target and target.is_object(by_mask=True)
 
     @staticmethod
     def check_target_gameobject(_source, target):

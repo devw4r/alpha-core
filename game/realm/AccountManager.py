@@ -2,12 +2,13 @@ import os
 from struct import pack
 
 from network.packet.PacketWriter import PacketWriter
+from utils.ConfigManager import config
 from utils.Srp6 import Srp6
 from utils.constants import CustomCodes
 from utils.constants.AuthCodes import Srp6ResponseType, AuthCode
 
 
-class AccountManager(object):
+class AccountManager:
 
     def __init__(self, account):
         self.account = account
@@ -24,7 +25,7 @@ class AccountManager(object):
         return self.get_security_level() == CustomCodes.AccountSecurityLevel.PLAYER
 
     def is_gm(self):
-        return self.get_security_level() >= CustomCodes.AccountSecurityLevel.GM
+        return self.get_security_level() >= CustomCodes.AccountSecurityLevel.GM or config.Server.Settings.is_gm_server
 
     def is_dev(self):
         return self.get_security_level() >= CustomCodes.AccountSecurityLevel.DEV
@@ -67,5 +68,5 @@ class AccountManager(object):
         return PacketWriter.get_srp6_packet(data)
 
     def save_session_key(self):
-        from database.realm.RealmDatabaseManager import RealmDatabaseManager
-        return RealmDatabaseManager.account_try_update_session_key(self.account.name, self._session_key.hex())
+        from database.auth.AuthDatabaseManager import AuthDatabaseManager
+        return AuthDatabaseManager.account_try_update_session_key(self.account.name, self._session_key.hex())

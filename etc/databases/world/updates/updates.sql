@@ -1,1300 +1,13989 @@
 delimiter $
 begin not atomic
 
-    -- 01/09/2024 1
-    if (select count(*) from applied_updates where id='010920241') = 0 then
-        -- Apprentice Physician  
-        UPDATE `trainer_template` SET `skillpointcost` = '2' WHERE (`template_entry` = '500') and (`spell` = '3279');
-        -- Journeyman Physician
-        UPDATE `trainer_template` SET `skillpointcost` = '4' WHERE (`template_entry` = '500') and (`spell` = '3280');
-        -- Leatherworking
-        UPDATE `trainer_template` SET `skillpointcost` = '4' WHERE (`template_entry` = '509') and (`spell` = '2155');
-        UPDATE `trainer_template` SET `skillpointcost` = '7' WHERE (`template_entry` = '509') and (`spell` = '2154');
-        UPDATE `trainer_template` SET `skillpointcost` = '10' WHERE (`template_entry` = '509') and (`spell` = '3812');
-        -- Cooking
-        UPDATE `trainer_template` SET `skillpointcost` = '2' WHERE (`template_entry` = '501') and (`spell` = '2551');
-        UPDATE `trainer_template` SET `skillpointcost` = '3' WHERE (`template_entry` = '501') and (`spell` = '3412');
-        UPDATE `trainer_template` SET `skillpointcost` = '4' WHERE (`template_entry` = '501') and (`spell` = '2552');
-        -- Tailoring
-        UPDATE `trainer_template` SET `skillpointcost` = '4' WHERE (`template_entry` = '507') and (`spell` = '3911');
-        UPDATE `trainer_template` SET `skillpointcost` = '7' WHERE (`template_entry` = '507') and (`spell` = '3912');
-        UPDATE `trainer_template` SET `skillpointcost` = '10' WHERE (`template_entry` = '507') and (`spell` = '3913');
+    -- 31/10/2025 1
+    if (select count(*) from applied_updates where id='311020251') = 0 then
+        -- Fix Chickens not being melee attackable.
+        UPDATE creature_template SET npc_flags = 0 WHERE entry = 620;
 
-        -- Lockpicking
-        -- From 0.9 patch notes. 'Now only rogues may train in Lock Picking, which they will do from their Rogue class trainers.'
-        INSERT INTO `trainer_template` (`template_entry`, `spell`, `playerspell`, `spellcost`, `talentpointcost`, `skillpointcost`, `reqskill`, `reqskillvalue`, `reqlevel`, `req_spell_1`, `req_spell_2`, `req_spell_3`) VALUES ('25', '6480', '1804', '0', '0', '5', '0', '0', '16', '0', '0', '0');
-        INSERT INTO `trainer_template` (`template_entry`, `spell`, `playerspell`, `spellcost`, `talentpointcost`, `skillpointcost`, `reqskill`, `reqskillvalue`, `reqlevel`, `req_spell_1`, `req_spell_2`, `req_spell_3`) VALUES ('25', '6481', '6461', '0', '0', '5', '0', '75', '20', '1804', '0', '0');
-        INSERT INTO `trainer_template` (`template_entry`, `spell`, `playerspell`, `spellcost`, `talentpointcost`, `skillpointcost`, `reqskill`, `reqskillvalue`, `reqlevel`, `req_spell_1`, `req_spell_2`, `req_spell_3`) VALUES ('25', '6482', '6463', '0', '0', '5', '0', '150', '24', '6461', '0', '0');
-        INSERT INTO `trainer_template` (`template_entry`, `spell`, `playerspell`, `spellcost`, `talentpointcost`, `skillpointcost`, `reqskill`, `reqskillvalue`, `reqlevel`, `req_spell_1`, `req_spell_2`, `req_spell_3`) VALUES ('26', '6480', '1804', '0', '0', '5', '0', '0', '16', '0', '0', '0');
-        INSERT INTO `trainer_template` (`template_entry`, `spell`, `playerspell`, `spellcost`, `talentpointcost`, `skillpointcost`, `reqskill`, `reqskillvalue`, `reqlevel`, `req_spell_1`, `req_spell_2`, `req_spell_3`) VALUES ('26', '6481', '6461', '0', '0', '5', '0', '75', '20', '1804', '0', '0');
-        INSERT INTO `trainer_template` (`template_entry`, `spell`, `playerspell`, `spellcost`, `talentpointcost`, `skillpointcost`, `reqskill`, `reqskillvalue`, `reqlevel`, `req_spell_1`, `req_spell_2`, `req_spell_3`) VALUES ('26', '6482', '6463', '0', '0', '5', '0', '150', '24', '6461', '0', '0');
-        
-        -- Use secondary profession (181 Lockpicking) isntead of class skill (242)
-        UPDATE `trainer_template` SET `spell` = '1809' WHERE (`template_entry` = '25') and (`spell` = '6480');
-        UPDATE `trainer_template` SET `spell` = '1809' WHERE (`template_entry` = '26') and (`spell` = '6480');
-        UPDATE `trainer_template` SET `spell` = '1810', `reqskill` = '181' WHERE (`template_entry` = '25') and (`spell` = '6481');
-        UPDATE `trainer_template` SET `spell` = '1810', `reqskill` = '181' WHERE (`template_entry` = '26') and (`spell` = '6481');
-        UPDATE `trainer_template` SET `spell` = '6460', `reqskill` = '181' WHERE (`template_entry` = '25') and (`spell` = '6482');
-        UPDATE `trainer_template` SET `spell` = '6460', `reqskill` = '181' WHERE (`template_entry` = '26') and (`spell` = '6482');
-
-        -- Lockpicking Trainers template.
-        INSERT INTO `trainer_template` (`template_entry`, `spell`, `playerspell`, `spellcost`, `talentpointcost`, `skillpointcost`, `reqskill`, `reqskillvalue`, `reqlevel`, `req_spell_1`, `req_spell_2`, `req_spell_3`) VALUES ('27', '1809', '1804', '0', '0', '5', '0', '0', '16', '0', '0', '0');
-        INSERT INTO `trainer_template` (`template_entry`, `spell`, `playerspell`, `spellcost`, `talentpointcost`, `skillpointcost`, `reqskill`, `reqskillvalue`, `reqlevel`, `req_spell_1`, `req_spell_2`, `req_spell_3`) VALUES ('27', '1810', '6461', '0', '0', '5', '181', '75', '20', '1804', '0', '0');
-        INSERT INTO `trainer_template` (`template_entry`, `spell`, `playerspell`, `spellcost`, `talentpointcost`, `skillpointcost`, `reqskill`, `reqskillvalue`, `reqlevel`, `req_spell_1`, `req_spell_2`, `req_spell_3`) VALUES ('27', '6460', '6463', '0', '0', '5', '181', '150', '24', '6461', '0', '0');
-
-        UPDATE `creature_template` SET `trainer_id` = '27' WHERE (`entry` = '2737');
-        UPDATE `creature_template` SET `trainer_id` = '27' WHERE (`entry` = '2795');
-        UPDATE `creature_template` SET `trainer_id` = '27' WHERE (`entry` = '2796');
-        UPDATE `creature_template` SET `trainer_id` = '27' WHERE (`entry` = '3182');
-        UPDATE `creature_template` SET `trainer_id` = '27' WHERE (`entry` = '3402');
-        UPDATE `creature_template` SET `trainer_id` = '27' WHERE (`entry` = '5027');
-        
-        -- Lucian Fenner -> Lockpicking Trainer.
-        UPDATE `creature_template` SET `subname` = 'Lockpicking Trainer', `npc_flags` = '8', `trainer_id` = '27' WHERE (`entry` = '2799');
-        
-        -- Tynnus Venomsprout <Shady Dealer> -> Poison Vendor
-        UPDATE `creature_template` SET `subname` = 'Poison Vendor' WHERE (`entry` = '5169');
-        
-        -- Sewa Mistrunner - Placement
-        UPDATE `spawns_creatures` SET `position_x` = '-1176.36', `position_y` = '-66.7109', `position_z` = '162.231' WHERE (`spawn_id` = '26653');
-        -- Aska Mistrunner - Placement
-        UPDATE `spawns_creatures` SET `position_x` = '-1222.345', `position_y` = '-13.229', `position_z` = '165.890', `orientation` = '5.32' WHERE (`spawn_id` = '26649');
-
-        insert into applied_updates values ('010920241');
+        insert into applied_updates values ('311020251');
     end if;
 
-    -- 04/09/2024 1
-    if (select count(*) from applied_updates where id='040920241') = 0 then
-        -- Removing unused script actions.
-        DELETE FROM `creature_ai_scripts` WHERE `id` IN (185203);
+    -- 31/10/2025 2
+    if (select count(*) from applied_updates where id='311020252') = 0 then
+        -- Remove wrong text said at the end of Skirmish at Echo Ridge.
+        -- This text should be said upon accepting Report to Goldshire.
+        -- Proof: https://www.youtube.com/watch?v=SH3HhIsDZ4k&t=373s
+        DELETE FROM `quest_end_scripts` WHERE `id`=21;
+        UPDATE `quest_template` SET `CompleteScript`=0 WHERE `entry`=21;
 
-        -- Events list for Araj the Summoner
-        DELETE FROM `creature_ai_events` WHERE `creature_id`=1852;
-        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES (185201, 1852, 0, 9, 0, 100, 1, 0, 8, 14000, 20000, 185201, 0, 0, 'Araj the Summoner - Cast Frost Nova');
-        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES (185202, 1852, 0, 1, 0, 100, 0, 1000, 1000, 0, 0, 185202, 0, 0, 'Araj the Summoner - Cast Frost Armor on Spawn');
-        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES (185204, 1852, 0, 7, 0, 100, 0, 0, 0, 0, 0, 185204, 0, 0, 'Araj the Summoner - Remove Guardians on Evade');
+        insert into applied_updates values ('311020252');
+    end if;
 
-        DELETE FROM `creature_ai_scripts` WHERE `id`=185401;
+    -- 02/11/2025 1
+    if (select count(*) from applied_updates where id='021120251') = 0 then
+        -- Fix level for Healing Wards.
+        -- Closes https://github.com/The-Alpha-Project/alpha-core/issues/1531
+        UPDATE `creature_template` SET `level_min` = 1, `level_max` = 1 WHERE `entry` IN (2992, 3560, 3844);
+
+        insert into applied_updates values ('021120251');
+    end if;
+
+    -- 03/11/2025 1
+    if (select count(*) from applied_updates where id='031120251') = 0 then
+        -- Closes https://github.com/The-Alpha-Project/alpha-core/issues/1503
+        -- Events list for Snufflenose Gopher
+        DELETE FROM `creature_ai_events` WHERE `creature_id`=4781;
+        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES
+        (478101, 4781, 122101, 1, 0, 40, 1, 2000, 30000, 20000, 30000, 478101, 0, 0, 'Snufflenose');
+
+        DELETE FROM `creature_ai_scripts` WHERE `id`=478101;
         INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (185401, 0, 0, 15, 1006, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'High Priest Thel danis - Cast Spell Inner Fire');
+        (478101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1592, 0, 0, 0, 0, 0, 0, 0, 0, 'Snufflenose - Sniff Text'),
+        (478101, 0, 0, 15, 6900, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Snufflenose - Create Tuber');
 
-        DELETE FROM `creature_ai_scripts` WHERE `id`=185202;
-        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (185202, 0, 0, 15, 7301, 3, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Araj the Summoner - Cast Spell Frost Armor');
-
-        DELETE FROM `creature_ai_scripts` WHERE `id`=185201;
-        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (185201, 0, 0, 15, 6131, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Araj the Summoner - Cast Spell Frost Nova');
-
-
-        -- Removing unused script actions.
-        DELETE FROM `creature_ai_scripts` WHERE `id` IN (183101);
-
-        -- Events list for Scarlet Hunter
-        DELETE FROM `creature_ai_events` WHERE `creature_id`=1831;
-        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES (183102, 1831, 0, 2, 0, 100, 0, 15, 0, 0, 0, 183102, 0, 0, 'Scarlet Hunter - Flee at 15% HP');
-
-        DELETE FROM `creature_ai_scripts` WHERE `id`=178701;
-        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (178701, 0, 0, 15, 1608, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Skeletal Executioner - Cast Spell Strike');
-
-        -- Removing unused script actions.
-        DELETE FROM `creature_ai_scripts` WHERE `id` IN (120003, 120004);
-
-        -- Events list for Morbent Fel
-        DELETE FROM `creature_ai_events` WHERE `creature_id`=1200;
-
-        insert into applied_updates values ('040920241');
-    end if;
-    
-    -- 04/09/2024 2
-    if (select count(*) from applied_updates where id='040920242') = 0 then
-        -- Grave Robber
-        UPDATE `creature_template` SET `display_id1` = '1287', `display_id2` = '1289' WHERE (`entry` = '218');     
-        -- Report to Orgnil (805) should be turned in to Orgnil (3188)
-        UPDATE `creature_quest_finisher` SET `entry` = '3142' WHERE (`entry` = '3188') and (`quest` = '805');
-        -- XP 440
-        UPDATE `quest_template` SET `RewXP` = '440' WHERE (`entry` = '805');
-        -- Orgnil should start quest 823. (Master Gadrin)
-        UPDATE `creature_quest_starter` SET `entry` = '3142' WHERE (`entry` = '3188') and (`quest` = '823');
-        -- Should be turned in to Master Gadrin (3188)
-        UPDATE `creature_quest_finisher` SET `entry` = '3188' WHERE (`entry` = '3142') and (`quest` = '823');
-        -- Chain quests, and modify xp to 210.
-        UPDATE `quest_template` SET `NextQuestId` = '823' WHERE (`entry` = '805');
-        UPDATE `quest_template` SET `PrevQuestId` = '805', `RewXP` = '210' WHERE (`entry` = '823');
-        UPDATE `quest_template` SET `PrevQuestId` = '792', `NextQuestId` = '805' WHERE (`entry` = '794');
-        UPDATE `quest_template` SET `NextQuestInChain` = '823' WHERE (`entry` = '805');
+        DELETE FROM `conditions` WHERE `condition_entry` in (122101, 122102, 122103, 122104);
+        -- 122101: (122102: GameObject 20920 Is Within 50 Yards Of The Target) And (122103:  Not (GameObject 20920 Is Within 5 Yards Of The Target)) And (122104: Friendly Player Within 15 Yards Of The Target)
+        INSERT INTO `conditions` (`condition_entry`, `type`, `value1`, `value2`, `value3`, `value4`, `flags`) VALUES (122101, -1, 122102, 122103, 122104, 0, 0);
+        -- 122102: GameObject 20920 Is Within 50 Yards Of The Target
+        INSERT INTO `conditions` (`condition_entry`, `type`, `value1`, `value2`, `value3`, `value4`, `flags`) VALUES (122102, 21, 20920, 50, 0, 0, 0);
+        -- 122103:  Not (GameObject 20920 Is Within 5 Yards Of The Target)
+        INSERT INTO `conditions` (`condition_entry`, `type`, `value1`, `value2`, `value3`, `value4`, `flags`) VALUES (122103, 21, 20920, 5, 0, 0, 1);
+        -- 122104: Friendly Player Within 15 Yards Of The Target
+        INSERT INTO `conditions` (`condition_entry`, `type`, `value1`, `value2`, `value3`, `value4`, `flags`) VALUES (122104, 56, 2, 15, 0, 0, 0);
         
-        -- 421 Prove Your Worth, 422 Arugal's Folly, 423 Arugal's Folly, 424 Arugal's Folly, 99 Arugal's Folly, 1014 Arugal Must Die
-        UPDATE `quest_template` SET `NextQuestInChain` = '1014' WHERE (`entry` = '99');
-        UPDATE `quest_template` SET `PrevQuestId` = '99' WHERE (`entry` = '1014');
+        -- Remove all reference to non existent Command Stick, change blueleaf -> redleaf. Must delete pagetextcache.wdb cache.
+        UPDATE `quest_template` SET `Objectives` = 'Grab a Crate with Holes. Grab a Snufflenose Command Stick. Grab and read the Snufflenose Owner\'s Manual. In Razorfen Kraul, use the Crate with Holes to summon a Snufflenose Gopher and let him search for Tubers while he follows you. Bring 10 Redleaf Tubers and the Crate with Holes to Mebok Mizzyrix in Ratchet.' WHERE (`entry` = '1221');
         
-        -- Chest placement.
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-5603.735', `spawn_positionY` = '646.926', `spawn_positionZ` = '393.223' WHERE (`spawn_id` = '9940');
+        UPDATE `page_text` SET `text` = 'CONGRATULATIONS!\n\nYou are the proud new owner of the amazing snufflenose gopher!  Although a shy creature, we are positive you\'ll find your new pet\'s fuzzy cuteness and incredible olfactory capabilities endearing.\n\nIn the following pages, you\'ll find information on your gopher\'s:\n\n1. Feeding and care\n2. Eccentric (and adorable) behavior\n3. Finding Tubers\n\nAgain, congratulations.  You won\'t be disappounted,\n\n-Marwig Rustbolt\nOwner, Snuff Inc.\n\n' WHERE (`entry` = '467');
+
+        UPDATE `page_text` SET `text` = 'FEEDING AND CARE:\n\nWe are committed to providing you with everything needed to care for your pet.  Our customers have come to expect this level of service from Snuff Inc, and we agree!\n\nTo that end, we have designed sturdy gopher crates with small holes, perfect for keeping your pet safe, secure and out of the light.\n\nFor your convenience, inside every crate is a food pellet receptacle, infused with the alluring scent of redleaf tubers (the snufflenose gopher\'s favorite treat)!' WHERE (`entry` = '771');
+
+        UPDATE `page_text` SET `text` = 'WALKING YOUR GOPHER\n\nThe snufflenose gopher likes small, dark places.  And it is very shy.\n\nIf you wish to walk your gopher, then you must take it to a place that feels like home.  And you MUST take it to where your gopher can smell its favorite food: redleaf tubers!\n\nThe closest such place is the \"trench\" area of Razorfen Kraul.  If you open your crate near the trench, and your gopher can smell any nearby tubers, then he will venture out and follow you.' WHERE (`entry` = '1211');
+
+        UPDATE `page_text` SET `text` = 'FINDING TUBERS\n\nThe snufflenose gopher is an amazing animal.  Not only does it inspire love and affection from even the most ornery plainstrider, it can smell a buried redleaf tuber from up to fifty yards away!\n\nAs your gopher follows you, it will sniff and dig for hidden reedleaf tubers; once they appear, be sure to collect them.\n', `next_page` = '0' WHERE (`entry` = '1212');
         
-        -- Gennia Runetotem - Placement.
-        -- https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Kalimdor/Mulgore/561843-534914_20040426_057.jpg
-        UPDATE `spawns_creatures` SET `position_x` = '-2291.692', `position_y` = '-457.035', `position_z` = '-5.927', `orientation` = '0.087' WHERE (`spawn_id` = '26903');
-        -- Narm Skychaser - Placement.
-        UPDATE `spawns_creatures` SET `position_x` = '-2278.957', `position_y` = '-448.956', `position_z` = '-5.027', `orientation` = '3.88' WHERE (`spawn_id` = '26906');
-        -- Harken Windtotem - Placement.
-        UPDATE `spawns_creatures` SET `position_x` = '-2278.524', `position_y` = '-464.750', `position_z` = '-5.92', `orientation` = '2.035' WHERE (`spawn_id` = '24798');
-        -- Burning Embers - Ignore
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '20439');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '20468');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '20445');
-        -- Fix waypoints for Brave Wildrunner
-        UPDATE `creature_movement_template` SET `position_z` = '-9.811' WHERE (`entry` = '3222') and (`point` = '4');
-        UPDATE `creature_movement_template` SET `position_x` = '-2229.903', `position_y` = '-459.384', `position_z` = '-8.333' WHERE (`entry` = '3222') and (`point` = '34');
-        UPDATE `creature_movement_template` SET `position_x` = '-2244.761', `position_y` = '-485.080', `position_z` = '-6.249' WHERE (`entry` = '3222') and (`point` = '35');
-        UPDATE `creature_movement_template` SET `position_x` = '-2272.884', `position_y` = '-497.443', `position_z` = '-8.947' WHERE (`entry` = '3222') and (`point` = '36');
-        UPDATE `creature_movement_template` SET `position_x` = '-2318.375', `position_y` = '-509.266', `position_z` = '-9.314' WHERE (`entry` = '3222') and (`point` = '37');
-        UPDATE `creature_movement_template` SET `position_x` = '-2294.070', `position_y` = '-434.362', `position_z` = '-5.496' WHERE (`entry` = '3222') and (`point` = '40');
-        UPDATE `creature_movement_template` SET `position_x` = '-2306.613', `position_y` = '-417.435', `position_z` = '-8.294' WHERE (`entry` = '3222') and (`point` = '41');
-        UPDATE `creature_movement_template` SET `position_x` = '-2306.613', `position_y` = '-417.435', `position_z` = '-8.294' WHERE (`entry` = '3222') and (`point` = '42');
-        UPDATE `creature_movement_template` SET `position_x` = '-2306.613', `position_y` = '-417.435', `position_z` = '-8.294' WHERE (`entry` = '3222') and (`point` = '43');
+        -- Set all Redleaf Tubers spawn ignored, they are created by a spell.
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_entry` = '20920');
+
+        -- Bonfire Z.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '35.200' WHERE (`spawn_id` = '48743');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '41.050' WHERE (`spawn_id` = '48738');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '53.225' WHERE (`spawn_id` = '48705');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '43.400' WHERE (`spawn_id` = '48701');
+
+        -- Barrel of Milk Z.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '33.746' WHERE (`spawn_id` = '39055');
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1569
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE `spawn_id` in ('20458', '31619', 20459);
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1535
+        UPDATE `quest_template` SET `Details` = 'Velinde Starsong was my predecessor here in Ashenvale Forest. At first it seemed she had the situation in Felwood under control, but little by little her efforts faltered. One day, she simply disappeared.\n\nI was sent here to continue her work. I\'m afraid I know nothing of the priestess, however. Perhaps Shandris Feathermoon, commander of the Sentinels, knows further details of her disappearance that I was not a party to.\n\nSurely she will understand the import of such information.', `Objectives` = 'Speak with Shandris Feathermoon at the Hall of Justice in Darnassus.' WHERE (`entry` = '1037');
+
+        UPDATE `creature_quest_finisher` SET `entry` = '3936' WHERE (`entry` = '8026') and (`quest` = '1037');
         
-        -- Ignore quest A Lesson to Learn (Aquatic Form chain)
-        UPDATE `quest_template` SET `ignored` = '1' WHERE (`entry` = '27');
-        -- Ignore quest Finding the Source, invalid items, invalid spells.
-        UPDATE `quest_template` SET `ignored` = '1' WHERE (`entry` = '974');
-        -- Enable 'The Great Lift' elevators.
-        UPDATE `spawns_gameobjects` SET `ignored` = '0' WHERE (`spawn_id` = '16876');
-        UPDATE `spawns_gameobjects` SET `ignored` = '0' WHERE (`spawn_id` = '16874');
-        -- Food Crate Z.
-        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '-6.55' WHERE (`spawn_id` = '43044');
-        -- Fix chest state.
-        UPDATE `spawns_gameobjects` SET `spawn_state` = '1' WHERE (`spawn_id` = '60099');
-        
-        -- Missing gold for chests.
-        UPDATE `gameobject_template` SET `mingold` = 267, `maxgold` = 267 WHERE `entry` IN (3714, 4095);
-        UPDATE `gameobject_template` SET `mingold` = 242, `maxgold` = 242 WHERE `entry` IN (3715, 105579);
-        UPDATE `gameobject_template` SET `mingold` = 30, `maxgold` = 75 WHERE `entry` IN (106318);
-        UPDATE `gameobject_template` SET `mingold` = 1879, `maxgold` = 1879 WHERE `entry` IN (131978, 153468);
-        UPDATE `gameobject_template` SET `mingold` = 401, `maxgold` = 791 WHERE `entry` IN (153451);
-        UPDATE `gameobject_template` SET `mingold` = 1628, `maxgold` = 2366 WHERE `entry` IN (153462, 153463);
-
-        -- Defias Traitor - Spawn time 7-9 minutes. (From 30 seconds)
-        -- Remove run flag, double the event time limit to 20 minutes.
-        -- https://crawler.thealphaproject.eu/mnt/crawler/media/Patch-Note/unofficial_beta_patchnotes.txt
-        UPDATE `spawns_creatures` SET `spawntimesecsmin` = '420', `spawntimesecsmax` = '540' WHERE (`spawn_id` = '90214');
-        DELETE FROM `quest_start_scripts` WHERE `id`=155;
-        INSERT INTO `quest_start_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (155, 0, 0, 61, 155, 1200, 0, 0, 0, 0, 0, 8, 0, 15502, 1019, 15501, 0, 0, 0, 0, 0, 'The Defias Brotherhood: Start Scripted Map Event'),
-        (155, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 'The Defias Brotherhood: The Defias Traitor - Say Text'),
-        (155, 0, 2, 4, 147, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Defias Brotherhood: The Defias Traitor - Remove Questgiver Flag'),
-        (155, 3, 4, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Defias Brotherhood: The Defias Traitor - Start Waypoints');
-        
-        -- Chest placement.
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '10720.001', `spawn_positionY` = '758.654', `spawn_positionZ` = '1322.234' WHERE (`spawn_id` = '49528');
-
-        -- Down the Scarlet Path (ID 261) https://github.com/The-Alpha-Project/alpha-core/issues/1438
-        UPDATE `quest_template` SET `ZoneOrSort` = '10', `MinLevel` = '23', `QuestLevel` = '28', `Details` = 'I will be frank.  We are at war with the Scourge.  It is an evil that corrupts our people and infects our land.  It must be stopped before it washes over our last bastions and drags our world into shadow.  We of the Scarlet Crusade have sworn to fight the Scourge with body and soul.$B$BIf you would take this same oath, then gather your courage and prove your allegiance - wage war with the Undead of Duskwood, and return to me with proof of your deeds. $B$BDo this, and the Crusade will embrace you.', `Objectives` = 'Bring 12 Shriveled Eyes to Brother Anton in Stormwind.', `ReqCreatureOrGOId1` = '2477', `ReqCreatureOrGOCount1` = '12', `RewXP` = '2050', `RewOrReqMoney` = '2000' WHERE (`entry` = '261');
-        
-        -- Down the Scarlet Path (ID 1052) https://github.com/The-Alpha-Project/alpha-core/issues/1438
-        UPDATE `quest_template` SET `ZoneOrSort` = '10', `MinLevel` = '23', `QuestLevel` = '28', `Details` = 'We of the Scarlet Crusade lay claim to strongholds from Hearthglen to Tirisfal Glades. We are quite proud of our bastions of cleansing throughout Lordaeron.$b$bYou have proven yourself against the undead in southern Azeroth. But the true threat of the plague lies in the northern lands of Lordaeron.$b$bTravel to the town of Southshore, in the Eastern Kingdoms. Seek out a crusader named Raleigh the Devout. Give him this letter of commendation bearing my seal and he will escort you to a place of honor in our Scarlet Monastery.', `RewXP` = '1200' WHERE (`entry` = '1052');
-
-        -- In the Name of the Light (ID 1053) https://github.com/The-Alpha-Project/alpha-core/issues/1438
-        UPDATE `quest_template` SET `ZoneOrSort` = '271',  `MinLevel` = '23', `QuestLevel` = '35', `RewItemId1` = '1217', `RewItemCount1` = '1', `RewXP` = '8650' WHERE (`entry` = '1053');
-
-        -- Brother Anton, no equipment and level.
-        UPDATE `creature_template` SET `level_min` = '50', `level_max` = '50', `equipment_id` = '0' WHERE (`entry` = '1182');
-        
-        -- Fix Raleigh the Devout Hammer, remove offhand non existent book.
-        UPDATE `creature_equip_template` SET `equipentry1` = '2524', `equipentry2` = '0' WHERE (`entry` = '3980');
-        
-        -- Ravager's Skull (ID 2477) should be renamed to "Shriveled Eye"
-        UPDATE `item_template` SET `name` = 'Shriveled Eye' WHERE (`entry` = '2477');
-
-        -- Ravager's Skull (ID 2477) drop. Brain Eaters, Plague Spreaders, Bone Chewers, Fetid Corpses and Rotted Ones.
-        DELETE FROM `creature_loot_template` WHERE (`item` = '2477');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('570', '2477', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('604', '2477', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('210', '2477', '-40', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('127', '2477', '-15', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('948', '2477', '-15', '0', '1', '1', '0');
-    
-        -- Fix Raleigh the Devout timing for Respawn Gobject, should appear right when 'Raleigh the Devout throws Anton's letter down on the table.' happens.
-        DELETE FROM `quest_end_scripts` WHERE `id`=1052;
-        INSERT INTO `quest_end_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (1052, 0, 0, 1, 69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Emote'),
-        (1052, 0, 0, 4, 147, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Modify Flags'),
-        (1052, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1377, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Talk'),
-        (1052, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1378, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Talk'),
-        (1052, 7, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Emote'),
-        (1052, 8, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -848.237, -577.427, 18.546, 0, 0, 'Raleigh the Devout - Move'),
-        (1052, 14, 0, 1, 61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Emote'),
-        (1052, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1379, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Talk'),
-        (1052, 15, 0, 9, 133, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Respawn Gobject'),
-        (1052, 20, 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 1906, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Set Equipment'),
-        (1052, 23, 0, 1, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Emote'),
-        (1052, 24, 0, 13, 0, 0, 0, 0, 133, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Activate Gobject'),
-        (1052, 26, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -844.878, -580.284, 18.5459, 2.391, 0, 'Raleigh the Devout - Move'),
-        (1052, 28, 0, 19, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Set Equipment'),
-        (1052, 31, 0, 4, 147, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Raleigh the Devout - Modify Flags');
-
-        -- Anton's Letter of Commendation
-        UPDATE `gameobject_template` SET `flags` = '4' WHERE (`entry` = '19534');
-
-        -- Missing Goldshire guard.
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400464', '1423', '0', '0', '0', '0', '-9497.842', '67.635', '56.367', '6.131', '300', '300', '0', '100', '100', '0', '0', '0', '0');
-
-        -- Addon - Equipment id.
-        INSERT INTO `creature_addon` (`guid`, `display_id`, `mount_display_id`, `equipment_id`, `stand_state`, `sheath_state`, `emote_state`) VALUES ('400464', '0', '0', '400464', '0', '1', '0');
-        INSERT INTO `creature_equip_template` (`entry`, `equipentry1`, `equipentry2`, `equipentry3`) VALUES ('400464', '2714', '143', '1899');
-
-        insert into applied_updates values ('040920242');
-    end if;
-    
-    -- 25/09/2024 1
-    if (select count(*) from applied_updates where id='250920241') = 0 then
-        -- Resupplying the Excavation (273), partial fix for https://github.com/The-Alpha-Project/alpha-core/issues/1400
-        -- Missing script for ambush event but quest is now completable.
-        INSERT INTO `areatrigger_quest_relation` (`id`, `quest`) VALUES ('171', '273');
-        
-        -- Relocate Kor'ghan to Sen'jin Village.
-        -- https://crawler.thealphaproject.eu/mnt/crawler/media/Website/warcry.com/Atlas-May-June-2004/WoW%20Warcry%20-%20Content%20-%20Atlas%20-%20Durotar.php.html
-        -- https://warcraft.wiki.gg/wiki/Kor%27ghan
-        UPDATE `spawns_creatures` SET `position_x` = '-839.403', `position_y` = '-4941.380', `position_z` = '20.992', `orientation` = '1.237' WHERE (`spawn_id` = '6458');
-        
-        -- Bring back 2 beta quests for Kor'ghan, 810 and 811.
-        INSERT INTO `quest_template` (`entry`, `Method`, `ZoneOrSort`, `MinLevel`, `MaxLevel`, `QuestLevel`, `Type`, `RequiredClasses`, `RequiredRaces`, `RequiredSkill`, `RequiredSkillValue`, `RequiredCondition`, `RepObjectiveFaction`, `RepObjectiveValue`, `RequiredMinRepFaction`, `RequiredMinRepValue`, `RequiredMaxRepFaction`, `RequiredMaxRepValue`, `SuggestedPlayers`, `LimitTime`, `QuestFlags`, `SpecialFlags`, `PrevQuestId`, `NextQuestId`, `ExclusiveGroup`, `NextQuestInChain`, `SrcItemId`, `SrcItemCount`, `SrcSpell`, `Title`, `Details`, `Objectives`, `OfferRewardText`, `RequestItemsText`, `EndText`, `ObjectiveText1`, `ObjectiveText2`, `ObjectiveText3`, `ObjectiveText4`, `ReqItemId1`, `ReqItemId2`, `ReqItemId3`, `ReqItemId4`, `ReqItemCount1`, `ReqItemCount2`, `ReqItemCount3`, `ReqItemCount4`, `ReqSourceId1`, `ReqSourceId2`, `ReqSourceId3`, `ReqSourceId4`, `ReqSourceCount1`, `ReqSourceCount2`, `ReqSourceCount3`, `ReqSourceCount4`, `ReqCreatureOrGOId1`, `ReqCreatureOrGOId2`, `ReqCreatureOrGOId3`, `ReqCreatureOrGOId4`, `ReqCreatureOrGOCount1`, `ReqCreatureOrGOCount2`, `ReqCreatureOrGOCount3`, `ReqCreatureOrGOCount4`, `ReqSpellCast1`, `ReqSpellCast2`, `ReqSpellCast3`, `ReqSpellCast4`, `RewChoiceItemId1`, `RewChoiceItemId2`, `RewChoiceItemId3`, `RewChoiceItemId4`, `RewChoiceItemId5`, `RewChoiceItemId6`, `RewChoiceItemCount1`, `RewChoiceItemCount2`, `RewChoiceItemCount3`, `RewChoiceItemCount4`, `RewChoiceItemCount5`, `RewChoiceItemCount6`, `RewItemId1`, `RewItemId2`, `RewItemId3`, `RewItemId4`, `RewItemCount1`, `RewItemCount2`, `RewItemCount3`, `RewItemCount4`, `RewRepFaction1`, `RewRepFaction2`, `RewRepFaction3`, `RewRepFaction4`, `RewRepFaction5`, `RewRepValue1`, `RewRepValue2`, `RewRepValue3`, `RewRepValue4`, `RewRepValue5`, `RewXP`, `RewOrReqMoney`, `RewSpell`, `RewSpellCast`, `RewMailTemplateId`, `RewMailDelaySecs`, `RewMailMoney`, `PointMapId`, `PointX`, `PointY`, `PointOpt`, `DetailsEmote1`, `DetailsEmote2`, `DetailsEmote3`, `DetailsEmote4`, `DetailsEmoteDelay1`, `DetailsEmoteDelay2`, `DetailsEmoteDelay3`, `DetailsEmoteDelay4`, `IncompleteEmote`, `CompleteEmote`, `OfferRewardEmote1`, `OfferRewardEmote2`, `OfferRewardEmote3`, `OfferRewardEmote4`, `OfferRewardEmoteDelay1`, `OfferRewardEmoteDelay2`, `OfferRewardEmoteDelay3`, `OfferRewardEmoteDelay4`, `StartScript`, `CompleteScript`, `ignored`, `parse_timestamp`) VALUES ('810', '2', '367', '1', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '811', '0', '811', '0', '0', '0', 'Clattering Scorpids', 'You would do well to learn how dangerous this land can be, $C.$B$BThe wildlife here can teach us such things... if we are wise and observant.$B$BThe scorpids are a perfect example of survival in Durotar. If you are to survive, it would be wise to take on some of their characteristics as your own. Their hardened carapaces can protect you from the harshness of the sun, or even a deadly weapon.$B$BBring me 6 Small Scorpid Carapaces from the Clattering Scorpids, $N, and I shall see about rewarding you justly.', 'Bring 6 Small Scorpid Carapaces to Kor\'ghan in Sen\'jin Village.', '', 'Did you get my 6 Small Scorpid Carapaces, $N?', '', '', '', '', '', '4884', '0', '0', '0', '6', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '200', '55', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '2004-05-04');
-        
-        INSERT INTO `quest_template` (`entry`, `Method`, `ZoneOrSort`, `MinLevel`, `MaxLevel`, `QuestLevel`, `Type`, `RequiredClasses`, `RequiredRaces`, `RequiredSkill`, `RequiredSkillValue`, `RequiredCondition`, `RepObjectiveFaction`, `RepObjectiveValue`, `RequiredMinRepFaction`, `RequiredMinRepValue`, `RequiredMaxRepFaction`, `RequiredMaxRepValue`, `SuggestedPlayers`, `LimitTime`, `QuestFlags`, `SpecialFlags`, `PrevQuestId`, `NextQuestId`, `ExclusiveGroup`, `NextQuestInChain`, `SrcItemId`, `SrcItemCount`, `SrcSpell`, `Title`, `Details`, `Objectives`, `OfferRewardText`, `RequestItemsText`, `EndText`, `ObjectiveText1`, `ObjectiveText2`, `ObjectiveText3`, `ObjectiveText4`, `ReqItemId1`, `ReqItemId2`, `ReqItemId3`, `ReqItemId4`, `ReqItemCount1`, `ReqItemCount2`, `ReqItemCount3`, `ReqItemCount4`, `ReqSourceId1`, `ReqSourceId2`, `ReqSourceId3`, `ReqSourceId4`, `ReqSourceCount1`, `ReqSourceCount2`, `ReqSourceCount3`, `ReqSourceCount4`, `ReqCreatureOrGOId1`, `ReqCreatureOrGOId2`, `ReqCreatureOrGOId3`, `ReqCreatureOrGOId4`, `ReqCreatureOrGOCount1`, `ReqCreatureOrGOCount2`, `ReqCreatureOrGOCount3`, `ReqCreatureOrGOCount4`, `ReqSpellCast1`, `ReqSpellCast2`, `ReqSpellCast3`, `ReqSpellCast4`, `RewChoiceItemId1`, `RewChoiceItemId2`, `RewChoiceItemId3`, `RewChoiceItemId4`, `RewChoiceItemId5`, `RewChoiceItemId6`, `RewChoiceItemCount1`, `RewChoiceItemCount2`, `RewChoiceItemCount3`, `RewChoiceItemCount4`, `RewChoiceItemCount5`, `RewChoiceItemCount6`, `RewItemId1`, `RewItemId2`, `RewItemId3`, `RewItemId4`, `RewItemCount1`, `RewItemCount2`, `RewItemCount3`, `RewItemCount4`, `RewRepFaction1`, `RewRepFaction2`, `RewRepFaction3`, `RewRepFaction4`, `RewRepFaction5`, `RewRepValue1`, `RewRepValue2`, `RewRepValue3`, `RewRepValue4`, `RewRepValue5`, `RewXP`, `RewOrReqMoney`, `RewSpell`, `RewSpellCast`, `RewMailTemplateId`, `RewMailDelaySecs`, `RewMailMoney`, `PointMapId`, `PointX`, `PointY`, `PointOpt`, `DetailsEmote1`, `DetailsEmote2`, `DetailsEmote3`, `DetailsEmote4`, `DetailsEmoteDelay1`, `DetailsEmoteDelay2`, `DetailsEmoteDelay3`, `DetailsEmoteDelay4`, `IncompleteEmote`, `CompleteEmote`, `OfferRewardEmote1`, `OfferRewardEmote2`, `OfferRewardEmote3`, `OfferRewardEmote4`, `OfferRewardEmoteDelay1`, `OfferRewardEmoteDelay2`, `OfferRewardEmoteDelay3`, `OfferRewardEmoteDelay4`, `StartScript`, `CompleteScript`, `ignored`, `parse_timestamp`) VALUES ('811', '2', '367', '1', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '810', '0', '0', '0', '0', '0', '0', 'Armored Scorpids', 'One of the other traits of the scorpids is their fierce loyalty. They will protect one another if they are in danger--you\'ve probably already seen this behavior in your first scorpid hunt.$B$BYou would do well to heed that lesson and adapt it for yourself: we are stronger as one; we are weak when we are divided into many.$B$BBring me 8 Large Scorpid Carapaces from the Armored Scorpids and I shall reward you for learning this wisdom.', 'Bring 8 Large Scorpid Carapaces to Kor\'ghan in Sen\'jin Village.', '', 'Did you get my 8 Large Scorpid Carapaces, $N?', '', '', '', '', '', '4885', '0', '0', '0', '8', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '350', '110', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '2004-05-04');
-        
-        -- Kor'ghan starter/finisher.
-        INSERT INTO `creature_quest_finisher` (`entry`, `quest`) VALUES ('3189', '810');
-        INSERT INTO `creature_quest_finisher` (`entry`, `quest`) VALUES ('3189', '811');
-        INSERT INTO `creature_quest_starter` (`entry`, `quest`) VALUES ('3189', '810');
-        INSERT INTO `creature_quest_starter` (`entry`, `quest`) VALUES ('3189', '811');
-        
-        --  Small/Large Scorpid Carapace, no longer deprecated.
-        UPDATE `item_template` SET `name` = 'Small Scorpid Carapace' WHERE (`entry` = '4884');
-        UPDATE `item_template` SET `name` = 'Large Scorpid Carapace' WHERE (`entry` = '4885');
-
-        -- Armored Scorpid, drop Large Scorpid Carapace.
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('3126', '4885', '-80', '0', '1', '1', '0');
-        -- Clattering Scorpid, drop Small Scorpid Carapace.
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('3125', '4884', '-80', '0', '1', '1', '0');
-
-        -- Update Need for a cure quest (812), Orgrimmar -> Sen\'jin Village
-        UPDATE `quest_template` SET `Details` = '$N... your timing is perfect. I just hope I can compliment your haste as well.$B$BI was careless while fighting a few of the venomtails nearby, and one of them stung me deeply. I can feel its poison weakening me even as we speak. At this rate, I got maybe an hour left to live. But I\'ll need your help if I\'m to do so...$B$BKor\'ghan in Sen\'jin Village knows how to make the antidote. Find him... and hurry, $N. I won\'t be able to last much longer.', `Objectives` = 'Find Kor\'ghan in Sen\'jin Village and get the Venomtail Antidote. Then bring the antidote to Rhinag near the northwestern border of Durotar.' WHERE (`entry` = '812');
-        
-        -- Update Finding the antidote quest (813), Orgrimmar -> Sen\'jin Village
-        UPDATE `quest_template` SET `Objectives` = 'Bring 4 Venomtail Poison Sacs to Kor\'ghan in Sen\'jin Village.' WHERE (`entry` = '813');
-
-        insert into applied_updates values ('250920241');
-    end if;
-  
-    -- 26/09/2024 1
-    if (select count(*) from applied_updates where id='260920241') = 0 then
-    
-        -- Capo the Mean, exact location is unknown but given 3494 wdb, we known he is inside DM cave, unknown loot.
-        -- Also, his abilities were already available on alpha, Frenzied Capo the Mean spell 5220 and Spinning Slash 7394.
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400465', '601', '0', '0', '0', '0', '-11188.385', '1468.725', '15.050', '1.963', '300', '300', '0', '100', '100', '0', '0', '0', '0');
-
-        UPDATE `creature_template` SET `level_min` = '19', `level_max` = '19', `faction` = '17', `equipment_id` = '594', `spell_list_id` = '601' WHERE (`entry` = '601');
-        
-        -- New creature spell lists.
-        REPLACE INTO `creature_spells` (`entry`, `name`, `spellId_1`, `probability_1`, `castTarget_1`, `targetParam1_1`, `targetParam2_1`, `castFlags_1`, `delayInitialMin_1`, `delayInitialMax_1`, `delayRepeatMin_1`, `delayRepeatMax_1`, `scriptId_1`, `spellId_2`, `probability_2`, `castTarget_2`, `targetParam1_2`, `targetParam2_2`, `castFlags_2`, `delayInitialMin_2`, `delayInitialMax_2`, `delayRepeatMin_2`, `delayRepeatMax_2`, `scriptId_2`, `spellId_3`, `probability_3`, `castTarget_3`, `targetParam1_3`, `targetParam2_3`, `castFlags_3`, `delayInitialMin_3`, `delayInitialMax_3`, `delayRepeatMin_3`, `delayRepeatMax_3`, `scriptId_3`, `spellId_4`, `probability_4`, `castTarget_4`, `targetParam1_4`, `targetParam2_4`, `castFlags_4`, `delayInitialMin_4`, `delayInitialMax_4`, `delayRepeatMin_4`, `delayRepeatMax_4`, `scriptId_4`, `spellId_5`, `probability_5`, `castTarget_5`, `targetParam1_5`, `targetParam2_5`, `castFlags_5`, `delayInitialMin_5`, `delayInitialMax_5`, `delayRepeatMin_5`, `delayRepeatMax_5`, `scriptId_5`, `spellId_6`, `probability_6`, `castTarget_6`, `targetParam1_6`, `targetParam2_6`, `castFlags_6`, `delayInitialMin_6`, `delayInitialMax_6`, `delayRepeatMin_6`, `delayRepeatMax_6`, `scriptId_6`, `spellId_7`, `probability_7`, `castTarget_7`, `targetParam1_7`, `targetParam2_7`, `castFlags_7`, `delayInitialMin_7`, `delayInitialMax_7`, `delayRepeatMin_7`, `delayRepeatMax_7`, `scriptId_7`, `spellId_8`, `probability_8`, `castTarget_8`, `targetParam1_8`, `targetParam2_8`, `castFlags_8`, `delayInitialMin_8`, `delayInitialMax_8`, `delayRepeatMin_8`, `delayRepeatMax_8`, `scriptId_8`) VALUES (601, 'Capo the mean', 7394, 100, 1, 0, 0, 0, 10, 18, 24, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        
-        -- Frenzy below 15%.
-        -- Events list for 
-        DELETE FROM `creature_ai_events` WHERE `creature_id`=601;
-        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES (60101, 601, 0, 2, 0, 100, 0, 15, 0, 0, 0, 60101, 0, 0, 'Capo the mean, franzy when health below 15%.');
-
-        DELETE FROM `creature_ai_scripts` WHERE `id`=60101;
-        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (60101, 0, 0, 15, 5220, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Capo the mean cast Frenzied Capo the Mean');
-        
-        -- Fix Delicate Feather display id. https://crawler.thealphaproject.eu/mnt/crawler/media/Database/Ogaming/ogaming_item_wdb.htm
-        UPDATE `item_template` SET `display_id` = '11205' WHERE (`entry` = '5636');
-        
-        -- Add Corrupted Scorpids from sniffs.
-        -- Note: We are missing a lot of spawns for all 'Corrupted' types: Surf Crawlers, Scorpids, Mottled Boars, Dreadmaw Crocilisks and Bloodtalon Scythemaw.
-        -- Maybe normal mobs had two spawn entries? Either normal or corrupted.
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('12410', '3226', '0', '0', '0', '1', '1293.653', '-4576.758', '21.45764', '3.23245', '300', '300', '5', '100', '0', '1', '0', '0', '0');
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('12411', '3226', '0', '0', '0', '1', '1233.18', '-4670.237', '16.61242', '4.85345', '300', '300', '5', '100', '0', '1', '0', '0', '0');
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('12412', '3226', '0', '0', '0', '1', '1265.554', '-4562.387', '19.00636', '1.36241', '300', '300', '5', '100', '0', '1', '0', '0', '0');
-        
-        -- Durotar corrupted mobs, drop Scorched Heart.
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('3227', '4868', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('3231', '4868', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('3225', '4868', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('3226', '4868', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('3228', '4868', '-80', '0', '1', '1', '0');
-
-        -- Scorched Heart no longer deprecated.
-        UPDATE `item_template` SET `name` = 'Scorched Heart', `flags` = '0' WHERE (`entry` = '4868');
-
-        -- Bring back quest 807. https://www.wowhead.com/classic/quest=807/unused
-        INSERT INTO `quest_template` (`entry`, `Method`, `ZoneOrSort`, `MinLevel`, `MaxLevel`, `QuestLevel`, `Type`, `RequiredClasses`, `RequiredRaces`, `RequiredSkill`, `RequiredSkillValue`, `RequiredCondition`, `RepObjectiveFaction`, `RepObjectiveValue`, `RequiredMinRepFaction`, `RequiredMinRepValue`, `RequiredMaxRepFaction`, `RequiredMaxRepValue`, `SuggestedPlayers`, `LimitTime`, `QuestFlags`, `SpecialFlags`, `PrevQuestId`, `NextQuestId`, `ExclusiveGroup`, `NextQuestInChain`, `SrcItemId`, `SrcItemCount`, `SrcSpell`, `Title`, `Details`, `Objectives`, `OfferRewardText`, `RequestItemsText`, `EndText`, `ObjectiveText1`, `ObjectiveText2`, `ObjectiveText3`, `ObjectiveText4`, `ReqItemId1`, `ReqItemId2`, `ReqItemId3`, `ReqItemId4`, `ReqItemCount1`, `ReqItemCount2`, `ReqItemCount3`, `ReqItemCount4`, `ReqSourceId1`, `ReqSourceId2`, `ReqSourceId3`, `ReqSourceId4`, `ReqSourceCount1`, `ReqSourceCount2`, `ReqSourceCount3`, `ReqSourceCount4`, `ReqCreatureOrGOId1`, `ReqCreatureOrGOId2`, `ReqCreatureOrGOId3`, `ReqCreatureOrGOId4`, `ReqCreatureOrGOCount1`, `ReqCreatureOrGOCount2`, `ReqCreatureOrGOCount3`, `ReqCreatureOrGOCount4`, `ReqSpellCast1`, `ReqSpellCast2`, `ReqSpellCast3`, `ReqSpellCast4`, `RewChoiceItemId1`, `RewChoiceItemId2`, `RewChoiceItemId3`, `RewChoiceItemId4`, `RewChoiceItemId5`, `RewChoiceItemId6`, `RewChoiceItemCount1`, `RewChoiceItemCount2`, `RewChoiceItemCount3`, `RewChoiceItemCount4`, `RewChoiceItemCount5`, `RewChoiceItemCount6`, `RewItemId1`, `RewItemId2`, `RewItemId3`, `RewItemId4`, `RewItemCount1`, `RewItemCount2`, `RewItemCount3`, `RewItemCount4`, `RewRepFaction1`, `RewRepFaction2`, `RewRepFaction3`, `RewRepFaction4`, `RewRepFaction5`, `RewRepValue1`, `RewRepValue2`, `RewRepValue3`, `RewRepValue4`, `RewRepValue5`, `RewXP`, `RewOrReqMoney`, `RewSpell`, `RewSpellCast`, `RewMailTemplateId`, `RewMailDelaySecs`, `RewMailMoney`, `PointMapId`, `PointX`, `PointY`, `PointOpt`, `DetailsEmote1`, `DetailsEmote2`, `DetailsEmote3`, `DetailsEmote4`, `DetailsEmoteDelay1`, `DetailsEmoteDelay2`, `DetailsEmoteDelay3`, `DetailsEmoteDelay4`, `IncompleteEmote`, `CompleteEmote`, `OfferRewardEmote1`, `OfferRewardEmote2`, `OfferRewardEmote3`, `OfferRewardEmote4`, `OfferRewardEmoteDelay1`, `OfferRewardEmoteDelay2`, `OfferRewardEmoteDelay3`, `OfferRewardEmoteDelay4`, `StartScript`, `CompleteScript`, `ignored`, `parse_timestamp`) VALUES ('807', '2', '367', '1', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'Corrupted Wildlife', 'My scouts report that some of the Durotar wildlife have become infected with a demonic taint. They were seen to the north and west.$B$BThey wander among their brethren as normal beasts, but evil powers flow through them, and burning within each one is a heart scorched by black magic.$B$BThese beasts must be destroyed!$B$BIf you find such an animal while you explore Durotar, kill it and collect its Scorched Heart. Bring the hearts to me and I will have them studied, then destroyed.', 'Bring 5 Scorched Hearts to Orgnil Soulscar in Razor Hill.', '', 'Did you get my 5 Scorched Hearts, $N?', '', '', '', '', '', '4868', '0', '0', '0', '5', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '150', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '2004-05-04');
-       
-        -- Orgnil Soulscar, starter/finisher for restored quest 807.
-        INSERT INTO `creature_quest_finisher` (`entry`, `quest`) VALUES ('3142', '807');
-        INSERT INTO `creature_quest_starter` (`entry`, `quest`) VALUES ('3142', '807');
-        
-        -- Update Dark Storms quest (806) no longer requires 823.
-        UPDATE `quest_template` SET `PrevQuestId` = '0', `NextQuestInChain` = '0' WHERE (`entry` = '806');
-
-        -- Bring back quest 462 Maruk Wyrmscale.
-        -- https://warcraft.wiki.gg/wiki/Ma%27ruk_Wyrmscale
-        -- https://www.wowhead.com/classic/quest=462/unused
-        INSERT INTO `quest_template` (`entry`, `Method`, `ZoneOrSort`, `MinLevel`, `MaxLevel`, `QuestLevel`, `Type`, `RequiredClasses`, `RequiredRaces`, `RequiredSkill`, `RequiredSkillValue`, `RequiredCondition`, `RepObjectiveFaction`, `RepObjectiveValue`, `RequiredMinRepFaction`, `RequiredMinRepValue`, `RequiredMaxRepFaction`, `RequiredMaxRepValue`, `SuggestedPlayers`, `LimitTime`, `QuestFlags`, `SpecialFlags`, `PrevQuestId`, `NextQuestId`, `ExclusiveGroup`, `NextQuestInChain`, `SrcItemId`, `SrcItemCount`, `SrcSpell`, `Title`, `Details`, `Objectives`, `OfferRewardText`, `RequestItemsText`, `EndText`, `ObjectiveText1`, `ObjectiveText2`, `ObjectiveText3`, `ObjectiveText4`, `ReqItemId1`, `ReqItemId2`, `ReqItemId3`, `ReqItemId4`, `ReqItemCount1`, `ReqItemCount2`, `ReqItemCount3`, `ReqItemCount4`, `ReqSourceId1`, `ReqSourceId2`, `ReqSourceId3`, `ReqSourceId4`, `ReqSourceCount1`, `ReqSourceCount2`, `ReqSourceCount3`, `ReqSourceCount4`, `ReqCreatureOrGOId1`, `ReqCreatureOrGOId2`, `ReqCreatureOrGOId3`, `ReqCreatureOrGOId4`, `ReqCreatureOrGOCount1`, `ReqCreatureOrGOCount2`, `ReqCreatureOrGOCount3`, `ReqCreatureOrGOCount4`, `ReqSpellCast1`, `ReqSpellCast2`, `ReqSpellCast3`, `ReqSpellCast4`, `RewChoiceItemId1`, `RewChoiceItemId2`, `RewChoiceItemId3`, `RewChoiceItemId4`, `RewChoiceItemId5`, `RewChoiceItemId6`, `RewChoiceItemCount1`, `RewChoiceItemCount2`, `RewChoiceItemCount3`, `RewChoiceItemCount4`, `RewChoiceItemCount5`, `RewChoiceItemCount6`, `RewItemId1`, `RewItemId2`, `RewItemId3`, `RewItemId4`, `RewItemCount1`, `RewItemCount2`, `RewItemCount3`, `RewItemCount4`, `RewRepFaction1`, `RewRepFaction2`, `RewRepFaction3`, `RewRepFaction4`, `RewRepFaction5`, `RewRepValue1`, `RewRepValue2`, `RewRepValue3`, `RewRepValue4`, `RewRepValue5`, `RewXP`, `RewOrReqMoney`, `RewSpell`, `RewSpellCast`, `RewMailTemplateId`, `RewMailDelaySecs`, `RewMailMoney`, `PointMapId`, `PointX`, `PointY`, `PointOpt`, `DetailsEmote1`, `DetailsEmote2`, `DetailsEmote3`, `DetailsEmote4`, `DetailsEmoteDelay1`, `DetailsEmoteDelay2`, `DetailsEmoteDelay3`, `DetailsEmoteDelay4`, `IncompleteEmote`, `CompleteEmote`, `OfferRewardEmote1`, `OfferRewardEmote2`, `OfferRewardEmote3`, `OfferRewardEmote4`, `OfferRewardEmoteDelay1`, `OfferRewardEmoteDelay2`, `OfferRewardEmoteDelay3`, `OfferRewardEmoteDelay4`, `StartScript`, `CompleteScript`, `ignored`, `parse_timestamp`) VALUES ('462', '2', '150', '20', '0', '23', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'Maruk Wyrmscale', 'Other than you, we sent two scouts through Algaz. Only one returned. Here\'s what he discovered:$B$BThe Dragonmaws sent one of their Lieutenants, Maruk Wyrmscale, to organize a crew of orcs in Algaz and cut off the land route to Menethil Harbor!$B$BWe have to stop this, now. Take out Maruk, and then report to Valstag Ironjaw in Menethil Harbor.$B$BMaruk is headquartered in a small cave, across a pond between the second and third tunnels of Algaz. Menethil is through Algaz, then west along the road.', 'Kill Maruk Wyrmscale and report to Valstag Ironjaw in Menethil Harbor.', '', 'Have you killed Maruk Wyrmscale, $N?', '', '', '', '', '', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '2090', '0', '0', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '2750', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '2004-05-04');
-        
-        -- Valstag Ironjaw starter/finisher. 
-        INSERT INTO `creature_quest_finisher` (`entry`, `quest`) VALUES ('2086', '462');
-        INSERT INTO `creature_quest_starter` (`entry`, `quest`) VALUES ('2086', '462');
-        
-        -- Bring back removed quest 820 'What Do You Rely On?'.
-        -- https://www.wowhead.com/classic/quest=820/unused
-        -- https://database.turtle-wow.org/?quest=820
-        INSERT INTO `quest_template` (`entry`, `Method`, `ZoneOrSort`, `MinLevel`, `MaxLevel`, `QuestLevel`, `Type`, `RequiredClasses`, `RequiredRaces`, `RequiredSkill`, `RequiredSkillValue`, `RequiredCondition`, `RepObjectiveFaction`, `RepObjectiveValue`, `RequiredMinRepFaction`, `RequiredMinRepValue`, `RequiredMaxRepFaction`, `RequiredMaxRepValue`, `SuggestedPlayers`, `LimitTime`, `QuestFlags`, `SpecialFlags`, `PrevQuestId`, `NextQuestId`, `ExclusiveGroup`, `NextQuestInChain`, `SrcItemId`, `SrcItemCount`, `SrcSpell`, `Title`, `Details`, `Objectives`, `OfferRewardText`, `RequestItemsText`, `EndText`, `ObjectiveText1`, `ObjectiveText2`, `ObjectiveText3`, `ObjectiveText4`, `ReqItemId1`, `ReqItemId2`, `ReqItemId3`, `ReqItemId4`, `ReqItemCount1`, `ReqItemCount2`, `ReqItemCount3`, `ReqItemCount4`, `ReqSourceId1`, `ReqSourceId2`, `ReqSourceId3`, `ReqSourceId4`, `ReqSourceCount1`, `ReqSourceCount2`, `ReqSourceCount3`, `ReqSourceCount4`, `ReqCreatureOrGOId1`, `ReqCreatureOrGOId2`, `ReqCreatureOrGOId3`, `ReqCreatureOrGOId4`, `ReqCreatureOrGOCount1`, `ReqCreatureOrGOCount2`, `ReqCreatureOrGOCount3`, `ReqCreatureOrGOCount4`, `ReqSpellCast1`, `ReqSpellCast2`, `ReqSpellCast3`, `ReqSpellCast4`, `RewChoiceItemId1`, `RewChoiceItemId2`, `RewChoiceItemId3`, `RewChoiceItemId4`, `RewChoiceItemId5`, `RewChoiceItemId6`, `RewChoiceItemCount1`, `RewChoiceItemCount2`, `RewChoiceItemCount3`, `RewChoiceItemCount4`, `RewChoiceItemCount5`, `RewChoiceItemCount6`, `RewItemId1`, `RewItemId2`, `RewItemId3`, `RewItemId4`, `RewItemCount1`, `RewItemCount2`, `RewItemCount3`, `RewItemCount4`, `RewRepFaction1`, `RewRepFaction2`, `RewRepFaction3`, `RewRepFaction4`, `RewRepFaction5`, `RewRepValue1`, `RewRepValue2`, `RewRepValue3`, `RewRepValue4`, `RewRepValue5`, `RewXP`, `RewOrReqMoney`, `RewSpell`, `RewSpellCast`, `RewMailTemplateId`, `RewMailDelaySecs`, `RewMailMoney`, `PointMapId`, `PointX`, `PointY`, `PointOpt`, `DetailsEmote1`, `DetailsEmote2`, `DetailsEmote3`, `DetailsEmote4`, `DetailsEmoteDelay1`, `DetailsEmoteDelay2`, `DetailsEmoteDelay3`, `DetailsEmoteDelay4`, `IncompleteEmote`, `CompleteEmote`, `OfferRewardEmote1`, `OfferRewardEmote2`, `OfferRewardEmote3`, `OfferRewardEmote4`, `OfferRewardEmoteDelay1`, `OfferRewardEmoteDelay2`, `OfferRewardEmoteDelay3`, `OfferRewardEmoteDelay4`, `StartScript`, `CompleteScript`, `ignored`, `parse_timestamp`) VALUES ('820', '2', '367', '5', '0', '10', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'What do you rely on?', 'Truly a spirit of strength resides in your body, willing to help an old man brew his potions.$B$BThe generosity found in our new home and the strength of relying on our allies is what sets us apart from others, $c.$B$BI need one more thing to begin brewing a batch of my potion, eight shimmerweed.$B$BYou can find the herbs northwest of Razor Hill in Thunder Ridge, and be careful, $n.', 'Bring 8 Shimmerweed to Master Vornal in Sen\'jin Village.', 'You\'ve done me a great kindness this day, $n.$B$BWith my vision restored, I will be able to help out more around the village.$B$BMore than strength, you\'ve a spirit of honor.', 'Have you retrieved the herbs?', '', '', '', '', '', '2676', '0', '0', '0', '8', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '450', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '2004-05-04');
-
-        -- Master Vornal starter/finisher.
-        INSERT INTO `creature_quest_starter` (`entry`, `quest`) VALUES ('3304', '820');
-        INSERT INTO `creature_quest_finisher` (`entry`, `quest`) VALUES ('3304', '820');
-        
-        -- Add Shimmerweed Bush
-        INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `faction`, `flags`, `size`, `data0`, `data1`, `data2`, `data3`, `data4`, `data5`, `data6`, `data7`, `data8`, `data9`, `mingold`, `maxgold`, `script_name`) VALUES ('4000000', '3', '28', 'Shimmerweed Bush', '0', '4', '1', '43', '797', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '');
-        
-        -- Spawns in Thunder Ridge.
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000000', '4000000', '1', '853.423', '-4209.097', '-11.083', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000001', '4000000', '1', '847.923', '-4203.996', '-10.910', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000002', '4000000', '1', '856.671', '-4171.845', '-14.110', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000003', '4000000', '1', '926.438', '-4190.888', '-6.040', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000004', '4000000', '1', '926.063', '-4197.030', '-6.050', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000005', '4000000', '1', '925.511', '-4128.280', '-9.090', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000006', '4000000', '1', '986.987', '-4059.055', '-10.979', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000007', '4000000', '1', '883.882', '-4048.109', '-8.366', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000008', '4000000', '1', '880.123', '-4048.973', '-6.754', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        INSERT INTO `spawns_gameobjects` (`spawn_id`, `spawn_entry`, `spawn_map`, `spawn_positionX`, `spawn_positionY`, `spawn_positionZ`, `spawn_orientation`, `spawn_rotation0`, `spawn_rotation1`, `spawn_rotation2`, `spawn_rotation3`, `spawn_spawntimemin`, `spawn_spawntimemax`, `spawn_animprogress`, `spawn_state`, `spawn_flags`, `spawn_visibility_mod`, `ignored`) VALUES ('4000009', '4000000', '1', '754.667', '-4020.691', '-6.072', '0', '0', '0', '0', '1', '300', '300', '100', '1', '0', '0', '0');
-        
-        -- Bring back quest 814, Work for food.
-        INSERT INTO `quest_template` (`entry`, `Method`, `ZoneOrSort`, `MinLevel`, `MaxLevel`, `QuestLevel`, `Type`, `RequiredClasses`, `RequiredRaces`, `RequiredSkill`, `RequiredSkillValue`, `RequiredCondition`, `RepObjectiveFaction`, `RepObjectiveValue`, `RequiredMinRepFaction`, `RequiredMinRepValue`, `RequiredMaxRepFaction`, `RequiredMaxRepValue`, `SuggestedPlayers`, `LimitTime`, `QuestFlags`, `SpecialFlags`, `PrevQuestId`, `NextQuestId`, `ExclusiveGroup`, `NextQuestInChain`, `SrcItemId`, `SrcItemCount`, `SrcSpell`, `Title`, `Details`, `Objectives`, `OfferRewardText`, `RequestItemsText`, `EndText`, `ObjectiveText1`, `ObjectiveText2`, `ObjectiveText3`, `ObjectiveText4`, `ReqItemId1`, `ReqItemId2`, `ReqItemId3`, `ReqItemId4`, `ReqItemCount1`, `ReqItemCount2`, `ReqItemCount3`, `ReqItemCount4`, `ReqSourceId1`, `ReqSourceId2`, `ReqSourceId3`, `ReqSourceId4`, `ReqSourceCount1`, `ReqSourceCount2`, `ReqSourceCount3`, `ReqSourceCount4`, `ReqCreatureOrGOId1`, `ReqCreatureOrGOId2`, `ReqCreatureOrGOId3`, `ReqCreatureOrGOId4`, `ReqCreatureOrGOCount1`, `ReqCreatureOrGOCount2`, `ReqCreatureOrGOCount3`, `ReqCreatureOrGOCount4`, `ReqSpellCast1`, `ReqSpellCast2`, `ReqSpellCast3`, `ReqSpellCast4`, `RewChoiceItemId1`, `RewChoiceItemId2`, `RewChoiceItemId3`, `RewChoiceItemId4`, `RewChoiceItemId5`, `RewChoiceItemId6`, `RewChoiceItemCount1`, `RewChoiceItemCount2`, `RewChoiceItemCount3`, `RewChoiceItemCount4`, `RewChoiceItemCount5`, `RewChoiceItemCount6`, `RewItemId1`, `RewItemId2`, `RewItemId3`, `RewItemId4`, `RewItemCount1`, `RewItemCount2`, `RewItemCount3`, `RewItemCount4`, `RewRepFaction1`, `RewRepFaction2`, `RewRepFaction3`, `RewRepFaction4`, `RewRepFaction5`, `RewRepValue1`, `RewRepValue2`, `RewRepValue3`, `RewRepValue4`, `RewRepValue5`, `RewXP`, `RewOrReqMoney`, `RewSpell`, `RewSpellCast`, `RewMailTemplateId`, `RewMailDelaySecs`, `RewMailMoney`, `PointMapId`, `PointX`, `PointY`, `PointOpt`, `DetailsEmote1`, `DetailsEmote2`, `DetailsEmote3`, `DetailsEmote4`, `DetailsEmoteDelay1`, `DetailsEmoteDelay2`, `DetailsEmoteDelay3`, `DetailsEmoteDelay4`, `IncompleteEmote`, `CompleteEmote`, `OfferRewardEmote1`, `OfferRewardEmote2`, `OfferRewardEmote3`, `OfferRewardEmote4`, `OfferRewardEmoteDelay1`, `OfferRewardEmoteDelay2`, `OfferRewardEmoteDelay3`, `OfferRewardEmoteDelay4`, `StartScript`, `CompleteScript`, `ignored`, `parse_timestamp`) VALUES ('814', '2', '362', '4', '0', '6', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'Work for Food', 'Cook and clean--that\'s all I do!$B$BYou want to eat, you get me some more meat! I don\'t have all day to hunt and prepare food for all these louses. You got to learn to pull your own weight around here if you wanna be treated equal.$B$BGet me some Chunks of Boar Meat if you want to make yourself useful... or you don\'t want to starve to death.', 'Bring 10 Chunks of Boar Meat to Cook Torka in Razor Hill.', 'Get me some Chunks of Boar Meat if you want to make yourself useful...', 'You want to eat, you get me some more meat!', '', '', '', '', '', '769', '0', '0', '0', '10', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '540', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '2004-05-04');
-        
-        -- Reward item. Beer Basted Boar Ribs
-        UPDATE `quest_template` SET `RewItemId1` = '2888', `RewItemCount1` = '10' WHERE (`entry` = '814');
-        
-        -- Torka starter/finisher.
-        INSERT INTO `creature_quest_finisher` (`entry`, `quest`) VALUES ('3191', '814');
-        INSERT INTO `creature_quest_starter` (`entry`, `quest`) VALUES ('3191', '814');
-        
-        -- Fix Razor Hill Torka coocking table.
-        -- https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Kalimdor/Durotar/images_6584.jpg
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '336.859', `spawn_positionY` = '-4713.270', `spawn_positionZ` = '12.583' WHERE (`spawn_id` = '399');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '99805');
-        -- Tall Brazier.
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '1658');
-        -- Smoking Rack.
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '329.005', `spawn_positionY` = '-4709.503', `spawn_positionZ` = '13.138' WHERE (`spawn_id` = '1365');
-        -- Cauldron.
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '331.229', `spawn_positionY` = '-4707.580', `spawn_positionZ` = '13.714' WHERE (`spawn_id` = '1733');
-        -- Food Crate.
-        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '15.11' WHERE (`spawn_id` = '44078');
-        -- Barrel of Milk.
-        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '14.2856' WHERE (`spawn_id` = '44051');
-        -- Campfire.
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '401');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '402');
-        -- Torka
-        UPDATE `spawns_creatures` SET `position_x` = '333.661', `position_y` = '-4710.038', `position_z` = '13.193', `orientation` = '4.26' WHERE (`spawn_id` = '6460');
-        -- Grimtak <Butcher>
-        UPDATE `spawns_creatures` SET `position_x` = '326.98', `position_y` = '-4712.133', `position_z` = '12.731', `orientation` = '5.054' WHERE (`spawn_id` = '10425');
-        -- Braziers.
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '11978');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '11979');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '11980');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '11981');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '11985');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12065');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12066');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '1591');
-        -- Wuark.
-        UPDATE `spawns_creatures` SET `position_x` = '353.706', `position_y` = '-4702.942', `position_z` = '14.566', `orientation` = '3.49' WHERE (`spawn_id` = '7289');
-        -- Krunn
-        -- https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Kalimdor/Durotar/23%20april%2004%20-%20148.jpg
-        UPDATE `spawns_creatures` SET `position_x` = '364.366', `position_y` = '-4705.106', `position_z` = '16.181', `orientation` = '3.35' WHERE (`spawn_id` = '7674');
-        -- Ghrawt
-        UPDATE `spawns_creatures` SET `position_x` = '330.364', `position_y` = '-4827.328', `position_z` = '10.524', `orientation` = '2.85' WHERE (`spawn_id` = '7667');
-        -- Cutac
-        UPDATE `spawns_creatures` SET `position_x` = '339.667', `position_y` = '-4767.068', `position_z` = '12.634', `orientation` = '2.038' WHERE (`spawn_id` = '7672');
-        
-        -- Bring back quest 490.
-        INSERT INTO `quest_template` (`entry`, `Method`, `ZoneOrSort`, `MinLevel`, `MaxLevel`, `QuestLevel`, `Type`, `RequiredClasses`, `RequiredRaces`, `RequiredSkill`, `RequiredSkillValue`, `RequiredCondition`, `RepObjectiveFaction`, `RepObjectiveValue`, `RequiredMinRepFaction`, `RequiredMinRepValue`, `RequiredMaxRepFaction`, `RequiredMaxRepValue`, `SuggestedPlayers`, `LimitTime`, `QuestFlags`, `SpecialFlags`, `PrevQuestId`, `NextQuestId`, `ExclusiveGroup`, `NextQuestInChain`, `SrcItemId`, `SrcItemCount`, `SrcSpell`, `Title`, `Details`, `Objectives`, `OfferRewardText`, `RequestItemsText`, `EndText`, `ObjectiveText1`, `ObjectiveText2`, `ObjectiveText3`, `ObjectiveText4`, `ReqItemId1`, `ReqItemId2`, `ReqItemId3`, `ReqItemId4`, `ReqItemCount1`, `ReqItemCount2`, `ReqItemCount3`, `ReqItemCount4`, `ReqSourceId1`, `ReqSourceId2`, `ReqSourceId3`, `ReqSourceId4`, `ReqSourceCount1`, `ReqSourceCount2`, `ReqSourceCount3`, `ReqSourceCount4`, `ReqCreatureOrGOId1`, `ReqCreatureOrGOId2`, `ReqCreatureOrGOId3`, `ReqCreatureOrGOId4`, `ReqCreatureOrGOCount1`, `ReqCreatureOrGOCount2`, `ReqCreatureOrGOCount3`, `ReqCreatureOrGOCount4`, `ReqSpellCast1`, `ReqSpellCast2`, `ReqSpellCast3`, `ReqSpellCast4`, `RewChoiceItemId1`, `RewChoiceItemId2`, `RewChoiceItemId3`, `RewChoiceItemId4`, `RewChoiceItemId5`, `RewChoiceItemId6`, `RewChoiceItemCount1`, `RewChoiceItemCount2`, `RewChoiceItemCount3`, `RewChoiceItemCount4`, `RewChoiceItemCount5`, `RewChoiceItemCount6`, `RewItemId1`, `RewItemId2`, `RewItemId3`, `RewItemId4`, `RewItemCount1`, `RewItemCount2`, `RewItemCount3`, `RewItemCount4`, `RewRepFaction1`, `RewRepFaction2`, `RewRepFaction3`, `RewRepFaction4`, `RewRepFaction5`, `RewRepValue1`, `RewRepValue2`, `RewRepValue3`, `RewRepValue4`, `RewRepValue5`, `RewXP`, `RewOrReqMoney`, `RewSpell`, `RewSpellCast`, `RewMailTemplateId`, `RewMailDelaySecs`, `RewMailMoney`, `PointMapId`, `PointX`, `PointY`, `PointOpt`, `DetailsEmote1`, `DetailsEmote2`, `DetailsEmote3`, `DetailsEmote4`, `DetailsEmoteDelay1`, `DetailsEmoteDelay2`, `DetailsEmoteDelay3`, `DetailsEmoteDelay4`, `IncompleteEmote`, `CompleteEmote`, `OfferRewardEmote1`, `OfferRewardEmote2`, `OfferRewardEmote3`, `OfferRewardEmote4`, `OfferRewardEmoteDelay1`, `OfferRewardEmoteDelay2`, `OfferRewardEmoteDelay3`, `OfferRewardEmoteDelay4`, `StartScript`, `CompleteScript`, `ignored`, `parse_timestamp`) VALUES ('490', '2', '141', '5', '0', '7', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'Gnarlpine Bounty', 'By strict orders from the Council of Darnassus, I am commissioning a bounty on the Gnarlpine Tribe. They are no longer friends of the forest. Their corruption has left them mindless threats to our people and the creatures of the glade.$B$BAs decreed by the Council, you shall be rewarded for removing the furbolg menaces from Kalidar. Bring to me their fangs as proof of your deeds.', 'Bring 20 Gnarlpine Fangs to Shayla Nightbreeze.', '', 'Have you collected the Gnarlpine Fangs? $N', '', '', '', '', '', '5220', '0', '0', '0', '20', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '630', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '2004-05-04');
-        
-        -- Sentinel Shayla Nightbreeze starter/finisher.
-        INSERT INTO `creature_quest_starter` (`entry`, `quest`) VALUES ('2155', '490');
-        INSERT INTO `creature_quest_finisher` (`entry`, `quest`) VALUES ('2155', '490');
-
-        -- Gnarlpine's, drop Gnarlpine Fang.
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2152', '5220', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2011', '5220', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2013', '5220', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2010', '5220', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2007', '5220', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2012', '5220', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2009', '5220', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2014', '5220', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2006', '5220', '-80', '0', '1', '1', '0');
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES ('2008', '5220', '-80', '0', '1', '1', '0');
-        
-        -- Fix item count req for 459.
-        UPDATE `quest_template` SET `Objectives` = 'Collect 6 Fel Moss and bring them to Tarindrella.', `RequestItemsText` = 'Satisfy my suspicions, $N.  Bring to me 6 Fel Moss.' WHERE (`entry` = '459');
-        
-        -- Master Tailor <Cheesy Test Tailor>
-        UPDATE `creature_template` SET `trainer_type` = '2', `trainer_id` = '507', `faction` = '150', `npc_flags` = '8' WHERE (`entry` = '996');
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400466', '996', '0', '0', '0', '1', '-3847.802', '-4449.579', '17.245', '6.203', '300', '300', '0', '100', '100', '0', '0', '0', '0');
-
-        insert into applied_updates values ('260920241');
-    end if;
-    
-    -- 29/09/2024 1
-    if (select count(*) from applied_updates where id='290920241') = 0 then
-        -- Invalid script spells for Son of Cenarius 4057
-        DELETE FROM `creature_ai_scripts` WHERE `id` IN (405701);
-        DELETE FROM `creature_ai_events` WHERE `creature_id`=4057;
-
-        -- Vendor items, Kiro <War Harness Maker> and Sura Wildmane <War Harness Vendor>
-        INSERT INTO `npc_vendor` (`entry`, `item`, `maxcount`, `incrtime`, `itemflags`, `slot`) VALUES ('3023', '6523', '0', '0', '0', '0');
-        INSERT INTO `npc_vendor` (`entry`, `item`, `maxcount`, `incrtime`, `itemflags`, `slot`) VALUES ('3023', '6524', '0', '0', '0', '1');
-        INSERT INTO `npc_vendor` (`entry`, `item`, `maxcount`, `incrtime`, `itemflags`, `slot`) VALUES ('3023', '6525', '0', '0', '0', '2');
-        INSERT INTO `npc_vendor` (`entry`, `item`, `maxcount`, `incrtime`, `itemflags`, `slot`) VALUES ('3023', '6526', '0', '0', '0', '3');
-        INSERT INTO `npc_vendor` (`entry`, `item`, `maxcount`, `incrtime`, `itemflags`, `slot`) VALUES ('3359', '6523', '0', '0', '0', '0');
-        INSERT INTO `npc_vendor` (`entry`, `item`, `maxcount`, `incrtime`, `itemflags`, `slot`) VALUES ('3359', '6524', '0', '0', '0', '1');
-        INSERT INTO `npc_vendor` (`entry`, `item`, `maxcount`, `incrtime`, `itemflags`, `slot`) VALUES ('3359', '6525', '0', '0', '0', '2');
-        INSERT INTO `npc_vendor` (`entry`, `item`, `maxcount`, `incrtime`, `itemflags`, `slot`) VALUES ('3359', '6526', '0', '0', '0', '3');
-        
-        -- Enable Battle Harness, Buckled Harness, Grunt's Harness and Studded Leather Harness
-        UPDATE `item_template` SET `display_id` = '9040', `ignored` = '0' WHERE (`entry` = '6523');
-        UPDATE `item_template` SET `display_id` = '9536', `ignored` = '0' WHERE (`entry` = '6524');
-        UPDATE `item_template` SET `display_id` = '9548', `ignored` = '0' WHERE (`entry` = '6525');
-        UPDATE `item_template` SET `display_id` = '9995', `ignored` = '0' WHERE (`entry` = '6526');
-        
-        -- Marez Cowl - Invalid spell.
-        DELETE FROM `creature_ai_scripts` WHERE `id` IN (278301);
-        DELETE FROM `creature_ai_events` WHERE `creature_id`=2783;
-        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES (278302, 2783, 0, 2, 0, 100, 0, 15, 0, 0, 0, 278302, 0, 0, 'Marez Cowl - Flee at 15% HP');
-
-        -- Darbel Montrose - Summon Succubus on Spawn
-        DELETE FROM `creature_ai_scripts` WHERE `id`=259802;
-        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (259802, 0, 0, 15, 712, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Darbel Montrose - Cast Spell Summon Succubus');
-        
-        -- Dylan Bissel - Wolf Trainer - Level 50.
-        UPDATE `creature_template` SET `level_min` = '50', `level_max` = '50' WHERE (`entry` = '2942');
-        -- Whladak - Spider Trainer - Level 50
-        UPDATE `creature_template` SET `level_min` = '50', `level_max` = '50' WHERE (`entry` = '2872');
-        -- Aldric - Bear Trainer - Level 50
-        UPDATE `creature_template` SET `level_min` = '50', `level_max` = '50' WHERE (`entry` = '2938');
-        -- Talar - Bear Trainer - Level 50
-        UPDATE `creature_template` SET `level_min` = '50', `level_max` = '50' WHERE (`entry` = '4206');
-        -- Kyln Longclaw - Boar Trainer - Level 30
-        UPDATE `creature_template` SET `level_min` = '30', `level_max` = '30' WHERE (`entry` = '3697');
-        -- Kysandia - Cat Trainer - Level 30
-        UPDATE `creature_template` SET `level_min` = '30', `level_max` = '30' WHERE (`entry` = '4153');
-        -- Nerra - Cat Trainer - Level 30
-        UPDATE `creature_template` SET `level_min` = '30', `level_max` = '30' WHERE (`entry` = '3699');
-        -- Kenna - Crocilisk Pet Trainer - Level 37
-        UPDATE `creature_template` SET `level_min` = '37', `level_max` = '37' WHERE (`entry` = '4901');
-        
-        -- Fixes to quests poi's from wdb.
-        UPDATE `quest_template` SET `PointOpt` = '1' WHERE (`entry` = '61');
-        UPDATE `quest_template` SET `PointX` = '-9663.55', `PointY` = '688.122', `PointOpt` = '1' WHERE (`entry` = '239');
-        UPDATE `quest_template` SET `PointX` = '-10509', `PointY` = '1047', `PointOpt` = '1' WHERE (`entry` = '109');
-        UPDATE `quest_template` SET `PointOpt` = '1' WHERE (`entry` = '333');
-        UPDATE `quest_template` SET `PointOpt` = '1' WHERE (`entry` = '353');
-        -- Brock Stoneseeker <Cartography Trainer> - Remove mining template.
-        UPDATE `creature_template` SET `trainer_id` = '0' WHERE (`entry` = '1681');
-        -- Karm Ironquill <Cartography Supplies> - Remove mining vendor entries.
-        DELETE FROM `npc_vendor` WHERE (`entry` = '372') and (`item` = '2880');
-        DELETE FROM `npc_vendor` WHERE (`entry` = '372') and (`item` = '2901');
-        DELETE FROM `npc_vendor` WHERE (`entry` = '372') and (`item` = '3466');
-        DELETE FROM `npc_vendor` WHERE (`entry` = '372') and (`item` = '3857');
-        
-        insert into applied_updates values ('290920241');
-    end if;
-
-    -- 06/10/2024 1
-    if (select count(*) from applied_updates where id='061020241') = 0 then
-    
-        -- Item Deprecated Dwarven Novice's Robe
-        UPDATE `item_template` SET `display_id` = 8288 WHERE `entry` = 97;
-
-        -- Item Leather Helmet D (Test)
-        UPDATE `item_template` SET `display_id` = 3086 WHERE `entry` = 1020;
-
-        -- Item Leather Helmet A (test)
-        UPDATE `item_template` SET `display_id` = 1124 WHERE `entry` = 1021;
-
-        -- Item Mail Helmet D (test)
-        UPDATE `item_template` SET `display_id` = 4180 WHERE `entry` = 1022;
-
-        -- Item Mail Helmet C (test)
-        UPDATE `item_template` SET `display_id` = 3135 WHERE `entry` = 1023;
-
-        -- Item Plate Helmet D2 (test)
-        UPDATE `item_template` SET `display_id` = 2995 WHERE `entry` = 1024;
-
-        -- Item Plate Helmet D3 (test)
-        UPDATE `item_template` SET `display_id` = 4145 WHERE `entry` = 1026;
-
-        -- Item Mail Helmet A (Test)
-        UPDATE `item_template` SET `display_id` = 3044 WHERE `entry` = 1027;
-
-        -- Item Deprecated Dented Skullcap
-        UPDATE `item_template` SET `display_id` = 3044 WHERE `entry` = 1028;
-
-        -- Item Rod of the Sleepwalker
-        UPDATE `item_template` SET `display_id` = 11251 WHERE `entry` = 1155;
-
-        -- Item Pirates Patch (Test)
-        UPDATE `item_template` SET `display_id` = 3047 WHERE `entry` = 1162;
-
-        -- Item Dwarven Explorer's Monocle (Test)
-        UPDATE `item_template` SET `display_id` = 3215 WHERE `entry` = 1163;
-
-        -- Item Deprecated Overseer's Helm
-        UPDATE `item_template` SET `display_id` = 3044 WHERE `entry` = 1192;
-
-        -- Item Deprecated Soft Leather Hood
-        UPDATE `item_template` SET `display_id` = 3086 WHERE `entry` = 1279;
-
-        -- Item Shadowhide Scalper
-        UPDATE `item_template` SET `display_id` = 3398 WHERE `entry` = 1459;
-
-        -- Item Robe of the Magi
-        UPDATE `item_template` SET `display_id` = 10469 WHERE `entry` = 1716;
-
-        -- Item Fighter Broadsword
-        UPDATE `item_template` SET `display_id` = 9444 WHERE `entry` = 2027;
-
-        -- Item Deprecated Cougar Head Cap
-        UPDATE `item_template` SET `display_id` = 1124 WHERE `entry` = 2038;
-
-        -- Item Deprecated Cowl of Forlorn Spirits
-        UPDATE `item_template` SET `display_id` = 3869 WHERE `entry` = 2045;
-
-        -- Item Deprecated Sentinel Coif
-        UPDATE `item_template` SET `display_id` = 3128 WHERE `entry` = 2275;
-
-        -- Item Battered Leather Harness
-        UPDATE `item_template` SET `display_id` = 9182 WHERE `entry` = 2370;
-
-        -- Item Battered Leather Pants
-        UPDATE `item_template` SET `display_id` = 9988 WHERE `entry` = 2372;
-
-        -- Item Battered Leather Boots
-        UPDATE `item_template` SET `display_id` = 9992 WHERE `entry` = 2373;
-
-        -- Item Smoky Torch
-        UPDATE `item_template` SET `display_id` = 2998 WHERE `entry` = 2410;
-
-        -- Item Studded Doublet
-        UPDATE `item_template` SET `display_id` = 9545 WHERE `entry` = 2463;
-
-        -- Item Reinforced Leather Boots
-        UPDATE `item_template` SET `display_id` = 4484 WHERE `entry` = 2473;
-
-        -- Item Death Speaker Sceptre
-        UPDATE `item_template` SET `display_id` = 3191 WHERE `entry` = 2816;
-
-        -- Item Deprecated Coif of Inner Strength
-        UPDATE `item_template` SET `display_id` = 3044 WHERE `entry` = 2918;
-
-        -- Item (OLD)Medium Throwing Knife
-        UPDATE `item_template` SET `display_id` = 3274 WHERE `entry` = 2945;
-
-        -- Item Magister's Vest
-        UPDATE `item_template` SET `display_id` = 2472 WHERE `entry` = 2969;
-
-        -- Item Seer's Robe
-        UPDATE `item_template` SET `display_id` = 11471 WHERE `entry` = 2981;
-
-        -- Item Deprecated Inscribed Leather Helm
-        UPDATE `item_template` SET `display_id` = 3086 WHERE `entry` = 2993;
-
-        -- Item Deprecated Seer's Monocle
-        UPDATE `item_template` SET `display_id` = 3087 WHERE `entry` = 2994;
-
-        -- Item Deprecated Burnished Chain Coif
-        UPDATE `item_template` SET `display_id` = 3128 WHERE `entry` = 2995;
-
-        -- Item Deprecated Glinting Scale Crown
-        UPDATE `item_template` SET `display_id` = 3128 WHERE `entry` = 3046;
-
-        -- Item Deprecated Winter Mail Coif
-        UPDATE `item_template` SET `display_id` = 3044 WHERE `entry` = 3052;
-
-        -- Item Deprecated Forest Leather Helm
-        UPDATE `item_template` SET `display_id` = 3086 WHERE `entry` = 3059;
-
-        -- Item Deprecated Deepwood Helm
-        UPDATE `item_template` SET `display_id` = 4386 WHERE `entry` = 3063;
-
-        -- Item Frostweave Cowl
-        UPDATE `item_template` SET `display_id` = 11544 WHERE `entry` = 3068;
-
-        -- Item Flameweave Robe
-        UPDATE `item_template` SET `display_id` = 5882 WHERE `entry` = 3069;
-
-        -- Item Smoldering Robe
-        UPDATE `item_template` SET `display_id` = 10620 WHERE `entry` = 3072;
-
-        -- Item Deprecated Stonecloth Cowl
-        UPDATE `item_template` SET `display_id` = 3356 WHERE `entry` = 3077;
-
-        -- Item (OLD)Wicked Throwing Dagger
-        UPDATE `item_template` SET `display_id` = 3276 WHERE `entry` = 3109;
-
-        -- Item (OLD)Medium Throwing Axe
-        UPDATE `item_template` SET `display_id` = 3281 WHERE `entry` = 3128;
-
-        -- Item (OLD)Heavy Throwing Axe
-        UPDATE `item_template` SET `display_id` = 3284 WHERE `entry` = 3136;
-
-        -- Item Copper Chain Boots
-        UPDATE `item_template` SET `display_id` = 4330 WHERE `entry` = 3469;
-
-        -- Item Black Night Elf Helm
-        UPDATE `item_template` SET `display_id` = 3135 WHERE `entry` = 3529;
-
-        -- Item Demon Hunter Blindfold
-        UPDATE `item_template` SET `display_id` = 3830 WHERE `entry` = 3536;
-
-        -- Item Robe of Solomon
-        UPDATE `item_template` SET `display_id` = 8853 WHERE `entry` = 3555;
-
-        -- Item Interlaced Pants
-        UPDATE `item_template` SET `display_id` = 9945 WHERE `entry` = 3797;
-
-        -- Item Interlaced Shoulderpads
-        UPDATE `item_template` SET `display_id` = 8374 WHERE `entry` = 3798;
-
-        -- Item Hardened Leather Belt
-        UPDATE `item_template` SET `display_id` = 4599 WHERE `entry` = 3800;
-
-        -- Item Hardened Leather Vest
-        UPDATE `item_template` SET `display_id` = 3278 WHERE `entry` = 3807;
-
-        -- Item Golden Scale Coif
-        UPDATE `item_template` SET `display_id` = 9070 WHERE `entry` = 3837;
-
-        -- Item Deprecated Thick Cloth Hat
-        UPDATE `item_template` SET `display_id` = 3960 WHERE `entry` = 3883;
-
-        -- Item Deprecated Cured Leather Cap
-        UPDATE `item_template` SET `display_id` = 4176 WHERE `entry` = 3884;
-
-        -- Item Deprecated Scalemail Cap
-        UPDATE `item_template` SET `display_id` = 3589 WHERE `entry` = 3885;
-
-        -- Item Deprecated Padded Cloth Hat
-        UPDATE `item_template` SET `display_id` = 3960 WHERE `entry` = 3886;
-
-        -- Item Deprecated Cuirboulli Cap
-        UPDATE `item_template` SET `display_id` = 4176 WHERE `entry` = 3887;
-
-        -- Item Deprecated Polished Scale Cap
-        UPDATE `item_template` SET `display_id` = 3589 WHERE `entry` = 3888;
-
-        -- Item Embroidered Hat
-        UPDATE `item_template` SET `display_id` = 3960 WHERE `entry` = 3892;
-
-        -- Item Crochet Boots
-        UPDATE `item_template` SET `display_id` = 9672 WHERE `entry` = 3937;
-
-        -- Item Crochet Vest
-        UPDATE `item_template` SET `display_id` = 10113 WHERE `entry` = 3943;
-
-        -- Item Twill Belt
-        UPDATE `item_template` SET `display_id` = 8375 WHERE `entry` = 3944;
-
-        -- Item Twill Boots
-        UPDATE `item_template` SET `display_id` = 9788 WHERE `entry` = 3945;
-
-        -- Item Twill Pants
-        UPDATE `item_template` SET `display_id` = 7587 WHERE `entry` = 3949;
-
-        -- Item Mesh Belt
-        UPDATE `item_template` SET `display_id` = 9888 WHERE `entry` = 3952;
-
-        -- Item Mesh Boots
-        UPDATE `item_template` SET `display_id` = 1911 WHERE `entry` = 3953;
-
-        -- Item Mesh Gloves
-        UPDATE `item_template` SET `display_id` = 10508 WHERE `entry` = 3956;
-
-        -- Item Thick Leather Shoulderpads
-        UPDATE `item_template` SET `display_id` = 4968 WHERE `entry` = 3967;
-
-        -- Item Smooth Leather Belt
-        UPDATE `item_template` SET `display_id` = 5827 WHERE `entry` = 3969;
-
-        -- Item Smooth Leather Bracers
-        UPDATE `item_template` SET `display_id` = 3381 WHERE `entry` = 3971;
-
-        -- Item Smooth Leather Gloves
-        UPDATE `item_template` SET `display_id` = 3081 WHERE `entry` = 3973;
-
-        -- Item Smooth Leather Pants
-        UPDATE `item_template` SET `display_id` = 3078 WHERE `entry` = 3974;
-
-        -- Item Strapped Pants
-        UPDATE `item_template` SET `display_id` = 5947 WHERE `entry` = 3982;
-
-        -- Item Overlinked Chain Shoulderpads
-        UPDATE `item_template` SET `display_id` = 10166 WHERE `entry` = 4006;
-
-        -- Item Sterling Chain Armor
-        UPDATE `item_template` SET `display_id` = 4412 WHERE `entry` = 4015;
-
-        -- Item Frostweave Robe
-        UPDATE `item_template` SET `display_id` = 3734 WHERE `entry` = 4035;
-
-        -- Item Mistscape Boots
-        UPDATE `item_template` SET `display_id` = 9771 WHERE `entry` = 4047;
-
-        -- Item Emblazoned Helm
-        UPDATE `item_template` SET `display_id` = 4381 WHERE `entry` = 4048;
-
-        -- Item Insignia Helm
-        UPDATE `item_template` SET `display_id` = 3589 WHERE `entry` = 4052;
-
-        -- Item Imperial Leather Bracers
-        UPDATE `item_template` SET `display_id` = 11655 WHERE `entry` = 4061;
-
-        -- Item Imperial Leather Pants
-        UPDATE `item_template` SET `display_id` = 11661 WHERE `entry` = 4062;
-
-        -- Item Imperial Leather Gloves
-        UPDATE `item_template` SET `display_id` = 11656 WHERE `entry` = 4063;
-
-        -- Item Mail Combat Helm
-        UPDATE `item_template` SET `display_id` = 3044 WHERE `entry` = 4077;
-
-        -- Item Blackforge Gauntlets
-        UPDATE `item_template` SET `display_id` = 2951 WHERE `entry` = 4083;
-
-        -- Item Robe of Crystal Waters
-        UPDATE `item_template` SET `display_id` = 11635 WHERE `entry` = 4120;
-
-        -- Item Cap of Harmony
-        UPDATE `item_template` SET `display_id` = 4386 WHERE `entry` = 4124;
-
-        -- Item Deprecated Feathered Helm
-        UPDATE `item_template` SET `display_id` = 3135 WHERE `entry` = 4193;
-
-        -- Item Dark Leather Shoulders
-        UPDATE `item_template` SET `display_id` = 9528 WHERE `entry` = 4252;
-
-        -- Item Heavy Woolen Gloves
-        UPDATE `item_template` SET `display_id` = 11036 WHERE `entry` = 4310;
-
-        -- Item TEST QUEST HELM
-        UPDATE `item_template` SET `display_id` = 5084 WHERE `entry` = 4853;
-
-        -- Item Razormane Backstabber
-        UPDATE `item_template` SET `display_id` = 5069 WHERE `entry` = 5093;
-
-        -- Item Empty Greater Bloodstone
-        UPDATE `item_template` SET `display_id` = 5333 WHERE `entry` = 5229;
-
-        -- Item Deprecated Skipper's Hat
-        UPDATE `item_template` SET `display_id` = 7529 WHERE `entry` = 5307;
-
-        -- Item Deprecated Whisperwind Headdress
-        UPDATE `item_template` SET `display_id` = 7670 WHERE `entry` = 5358;
-
-        -- Item Shane Test (DELETE ME)
-        UPDATE `item_template` SET `display_id` = 7712 WHERE `entry` = 5378;
-
-        -- Item Fast Test Thrown
-        UPDATE `item_template` SET `display_id` = 8124 WHERE `entry` = 5559;
-
-        -- Item Deprecated Band of the Order
-        UPDATE `item_template` SET `display_id` = 8446 WHERE `entry` = 5625;
-
-        -- Item Snow Boots
-        UPDATE `item_template` SET `display_id` = 10935 WHERE `entry` = 6173;
-
-        -- Item Twain Random Sword
-        UPDATE `item_template` SET `display_id` = 10356 WHERE `entry` = 6174;
-
-        -- Item 15 Pound Mud Snapper
-        UPDATE `item_template` SET `display_id` = 10816 WHERE `entry` = 6295;
-
-        -- Item 22 Pound Catfish
-        UPDATE `item_template` SET `display_id` = 3572 WHERE `entry` = 6311;
-
-        -- Item 26 Pound Catfish
-        UPDATE `item_template` SET `display_id` = 3572 WHERE `entry` = 6363;
-
-        -- Item 32 Pound Catfish
-        UPDATE `item_template` SET `display_id` = 3572 WHERE `entry` = 6364;
-
-        insert into applied_updates values ('061020241');
-    end if;
-     
-    -- 10/10/2024 1
-    if (select count(*) from applied_updates where id='101020241') = 0 then
-        -- Waypoints for Creature Miran (Entry: 1379 Guid: 68)
-        DELETE FROM creature_movement_template WHERE entry = 1379;
+        -- Healing Wards - Ignore combat. (Passive - Don't acquire targets.')
+        UPDATE `creature_template` SET `static_flags` = '34655494' WHERE (`entry` = '2992');
+        UPDATE `creature_template` SET `static_flags` = '34655494' WHERE (`entry` = '3560');
+        UPDATE `creature_template` SET `static_flags` = '34655494' WHERE (`entry` = '3844');
+
+        -- Report to Goldshire reward.
+        UPDATE `quest_template` SET `RewItemId1` = '6078', `RewItemCount1` = '1' WHERE (`entry` = '54');
+        -- Unused model for Defias Profiteer.
+        UPDATE `creature_template` SET `display_id1` = '515', `equipment_id` = '598' WHERE (`entry` = '1669');
+        -- Fix Aedis Brom spawn, he should start besides Christoph Faral.
+        UPDATE `spawns_creatures` SET `position_x` = '-8605.97', `position_y` = '388.41', `position_z` = '102.925', `orientation` = '5.41052' WHERE (`spawn_id` = '79752');
+        -- Fix Geoffrey Hartwell placement.
+        UPDATE `spawns_creatures` SET `position_x` = '1657.234', `position_y` = '305.609' WHERE (`spawn_id` = '41837');
+        -- Fix Benijah Fenner placement.
+        UPDATE `spawns_creatures` SET `position_x` = '1659.186', `position_y` = '303.587', `position_z` = '-42.692' WHERE (`spawn_id` = '38426');
+        -- Fix Francis Eliot placement.
+        UPDATE `spawns_creatures` SET `position_x` = '1661.217', `position_y` = '301.482', `position_z` = '-42.688' WHERE (`spawn_id` = '38109');
+        -- Fix Joanna Whitehall placement. https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Cities/Undercity/000904.jpg
+        UPDATE `spawns_creatures` SET `position_x` = '1630.627', `position_y` = '331.262', `position_z` = '-45.486', `orientation` = '1.029' WHERE (`spawn_id` = '38112');
+        -- Fix Leona Tharpe placement. https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Cities/Undercity/000904.jpg
+        UPDATE `spawns_creatures` SET `position_x` = '1634.472', `position_y` = '331.704', `position_z` = '-45.481', `orientation` = '2.639' WHERE (`spawn_id` = '38111');
+        -- Fix Father Lankester placement.
+        UPDATE `spawns_creatures` SET `orientation` = '4.753' WHERE (`spawn_id` = '41835');
+
+        -- Fix Theresa waypoints and scripts.
+        DELETE FROM `generic_scripts` WHERE `id`=569602;
+        INSERT INTO `generic_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (569602, 1, 0, 35, 0, 0, 0, 0, 41840, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Set Orientation'),
+        (569602, 2, 0, 19, 0, 0, 0, 0, 41840, 0, 9, 2, 2716, 0, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Set Equipment (Theresa)'),
+        (569602, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1995, 0, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Say Text'),
+        (569602, 3, 0, 0, 0, 0, 0, 0, 41840, 0, 9, 2, 1998, 0, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Say Text (Theresa)'),
+        (569602, 3, 0, 1, 2, 0, 0, 0, 41840, 0, 9, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Emote (Theresa)'),
+        (569602, 5, 0, 35, 1, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 4.93928, 0, 'Gerard Abernathy - Set Orientation'),
+        (569602, 6, 0, 60, 0, 1, 0, 0, 41840, 0, 9, 2, 0, 5697, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Start Waypoints (Theresa)'),
+        (569602, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2003, 2002, 1994, 2000, 0, 0, 0, 0, 0, 'Gerard Abernathy - Say Text'),
+        (569602, 32, 0, 39, 569901, 569902, 0, 0, 38111, 0, 9, 2, 50, 50, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Start Random Script (Leona Tharpe)'),
+        (569602, 37, 0, 1, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Emote'),
+        (569602, 41, 0, 39, 569603, 569604, 0, 0, 0, 0, 0, 0, 50, 50, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Start Random Script'),
+        (569602, 44, 0, 1, 21, 0, 0, 0, 38112, 0, 9, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Emote (Joanna Whitehall)'),
+        (569602, 48, 0, 39, 569801, 569802, 0, 0, 38112, 0, 9, 2, 50, 50, 0, 0, 0, 0, 0, 0, 0, 'Gerard Abernathy - Start Random Script (Joanna Whitehall)');
+
+        DELETE FROM creature_movement_template WHERE entry = 5697;
         INSERT INTO creature_movement_template (entry, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
-        (1379, 1, -5764.81, -3433.93, 305.89, 0, 0, 0, 0),
-        (1379, 2, -5754.81, -3445.92, 303.189, 0, 0, 0, 0),
-        (1379, 3, -5738.74, -3483.18, 302.208, 0, 0, 0, 0),
-        (1379, 4, -5731.07, -3496.83, 302.508, 0, 0, 0, 0),
-        (1379, 5, -5718.45, -3517.26, 302.915, 0, 0, 0, 0),
-        (1379, 6, -5714.55, -3524.18, 303.876, 0, 0, 0, 0),
-        (1379, 7, -5699.35, -3557.07, 306.828, 0, 0, 0, 0),
-        (1379, 8, -5691.3, -3570.81, 308.974, 0, 0, 0, 0),
-        (1379, 9, -5683.69, -3580.33, 309.811, 0, 0, 0, 0),
-        (1379, 10, -5676.5, -3598.45, 312.262, 0, 0, 0, 0),
-        (1379, 11, -5672.3, -3622.29, 311.37, 0, 0, 0, 0),
-        (1379, 12, -5676.67, -3641.2, 313.65, 0, 0, 0, 0),
-        (1379, 13, -5681.06, -3647.38, 315.143, 0, 0, 0, 0),
-        (1379, 14, -5689.83, -3664.69, 312.214, 0, 0, 0, 0),
-        (1379, 15, -5698.71, -3695.64, 314.55, 0, 0, 0, 0),
-        (1379, 16, -5698.75, -3729.51, 318.328, 0, 0, 0, 137901),
-        (1379, 17, -5701.32, -3752.99, 321.503, 0, 0, 0, 0),
-        (1379, 18, -5694.12, -3766.42, 324.254, 0, 0, 0, 0),
-        (1379, 19, -5688.71, -3781.44, 322.824, 0, 0, 0, 0),
-        (1379, 20, -5689.67, -3784.97, 322.740, 0, 0, 0, 0),
-        (1379, 21, -5698.17, -3791.22, 322.410, 0, 0, 0, 0),
-        (1379, 22, -5699.12, -3792.01, 322.410, 0, 0, 0, 137902);
+        (5697, 0, 1634.04, 334.478, -45.489, 0, 0, 0, 0),
+        (5697, 1, 1631.67, 322.464, -45.454, 0, 0, 0, 0),
+        (5697, 2, 1650.14, 313.159, -53.675, 0, 0, 0, 0),
+        (5697, 3, 1655.89, 313.231, -55.858, 0, 0, 0, 0),
+        (5697, 4, 1664.89, 315.865, -59.744, 0, 0, 0, 0),
+        (5697, 5, 1669.15, 316.876, -59.781, 0, 0, 0, 0),
+        (5697, 6, 1680.35, 308.525, -59.781, 0, 0, 0, 0),
+        (5697, 7, 1684.66, 305.521, -62.172, 0, 0, 0, 0),
+        (5697, 8, 1704.87, 307.305, -62.189, 0, 0, 0, 0),
+        (5697, 9, 1710.92, 308.151, -61.479, 0, 0, 0, 0),
+        (5697, 10, 1714.12, 314.301, -60.484, 0, 0, 0, 0),
+        (5697, 11, 1709.16, 321.078, -55.392, 0, 0, 0, 0),
+        (5697, 12, 1708.59, 326.214, -55.179, 0, 0, 0, 0),
+        (5697, 13, 1713.28, 329.564, -52.638, 0, 0, 0, 0),
+        (5697, 14, 1720.43, 334.741, -49.161, 0, 0, 0, 0),
+        (5697, 15, 1724.53, 338.031, -49.747, 0, 0, 0, 0),
+        (5697, 16, 1728.15, 340.93, -52.341, 0, 0, 0, 0),
+        (5697, 17, 1733.97, 345.234, -55.393, 0, 0, 0, 0),
+        (5697, 18, 1737.62, 343.292, -55.394, 0, 0, 0, 0),
+        (5697, 19, 1742.77, 336.882, -60.242, 0, 0, 0, 0),
+        (5697, 20, 1750.69, 334.731, -60.484, 0, 0, 0, 0),
+        (5697, 21, 1755.53, 334.747, -62.32, 0, 0, 0, 0),
+        (5697, 22, 1770.12, 340.421, -62.307, 0, 0, 0, 0),
+        (5697, 23, 1779.96, 348.428, -62.36, 0, 0, 0, 0),
+        (5697, 24, 1785.56, 355.539, -62.37, 0, 0, 0, 0),
+        (5697, 25, 1789.97, 362.803, -60.222, 0, 0, 0, 0),
+        (5697, 26, 1793.02, 371.206, -60.159, 0, 0, 0, 0),
+        (5697, 27, 1791.2, 378.762, -60.116, 0, 0, 0, 0),
+        (5697, 28, 1788.47, 386.16, -57.413, 0, 0, 0, 0),
+        (5697, 29, 1778.15, 397.858, -57.215, 0, 17000, 0, 569701),
+        (5697, 30, 1784.1, 392.651, -57.209, 0, 0, 0, 0),
+        (5697, 31, 1787.31, 387, -57.207, 0, 0, 0, 0),
+        (5697, 32, 1791.56, 378.861, -60.131, 0, 0, 0, 0),
+        (5697, 33, 1792.95, 370.933, -60.159, 0, 0, 0, 0),
+        (5697, 34, 1789.82, 363.689, -60.159, 0, 0, 0, 0),
+        (5697, 35, 1785.81, 355.755, -62.323, 0, 0, 0, 0),
+        (5697, 36, 1770.4, 342.749, -62.307, 0, 0, 0, 0),
+        (5697, 37, 1756.33, 338.599, -62.26, 0, 0, 0, 0),
+        (5697, 38, 1752.49, 337.824, -60.484, 0, 0, 0, 0),
+        (5697, 39, 1743.17, 336.952, -60.484, 0, 0, 0, 0),
+        (5697, 40, 1738.07, 342.982, -55.427, 0, 0, 0, 0),
+        (5697, 41, 1733.01, 344.982, -55.164, 0, 0, 0, 0),
+        (5697, 42, 1728.92, 341.689, -52.85, 0, 0, 0, 0),
+        (5697, 43, 1721.89, 336.424, -49.206, 0, 0, 0, 0),
+        (5697, 44, 1717.12, 332.7, -49.807, 0, 0, 0, 0),
+        (5697, 45, 1713.31, 329.612, -52.617, 0, 0, 0, 0),
+        (5697, 46, 1708.53, 326.246, -55.19, 0, 0, 0, 0),
+        (5697, 47, 1703.63, 327.763, -55.4, 0, 0, 0, 0),
+        (5697, 48, 1698.68, 334.199, -60.499, 0, 0, 0, 0),
+        (5697, 49, 1686.4, 331.878, -60.482, 0, 0, 0, 0),
+        (5697, 50, 1678.53, 331.036, -62.152, 0, 0, 0, 0),
+        (5697, 51, 1664.61, 331.803, -62.172, 0, 0, 0, 0),
+        (5697, 52, 1662.33, 326.736, -61.939, 0, 0, 0, 0),
+        (5697, 53, 1664.95, 323.971, -59.781, 0, 0, 0, 0),
+        (5697, 54, 1664.74, 315.839, -59.703, 0, 0, 0, 0),
+        (5697, 55, 1655.922, 313.054, -55.85, 0, 0, 0, 0),
+        (5697, 56, 1648.88, 313.721, -53.145, 0, 0, 0, 0),
+        (5697, 57, 1631.84, 322.268, -45.513, 0, 0, 0, 0),
+        (5697, 58, 1634.04, 334.555, -45.477, 0, 0, 0, 569702);
 
-        DELETE FROM `creature_movement_scripts` WHERE `id`=137901;
-        INSERT INTO `creature_movement_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (137901, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 510, 0, 0, 0, 0, 0, 0, 0, 0, 'Protecting the Shipment - Miran - Say Text'),
-        (137901, 0, 0, 10, 2149, 180000, 0, 0, 1379, 20, 8, 0, 0, 0, -1, 9, -5696.19, -3736.78, 318.581, 2.40855, 0, 'Protecting the Shipment - Spawn Dark Iron Raider'),
-        (137901, 0, 0, 10, 2149, 180000, 0, 0, 1379, 20, 8, 0, 0, 0, -1, 9, -5705.01, -3736.66, 318.567, 0.575959, 0, 'Protecting the Shipment - Spawn Dark Iron Raider');
+        -- Fix Davitt Hickson and creature group waypoints.
+        DELETE FROM creature_movement_template WHERE entry = 5706;
+        INSERT INTO creature_movement_template (entry, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (5706, 0, 1597.29, 103.896, -53.34, 0, 0, 0, 0),
+        (5706, 1, 1591.431, 103.977, -53.373, 0, 0, 0, 0),
+        (5706, 2, 1574.73, 104.075, -62.179, 0, 0, 0, 0),
+        (5706, 3, 1570.562, 108.344, -62.178, 0, 0, 0, 0),
+        (5706, 4, 1571.783, 117.036, -62.264, 0, 0, 0, 0),
+        (5706, 5, 1575.893, 131.159, -60.899, 0, 0, 0, 0),
+        (5706, 6, 1577.09, 136.603, -60.827, 0, 0, 0, 0),
+        (5706, 7, 1578.517, 144.54, -59.649, 0, 0, 0, 0),
+        (5706, 8, 1579.409, 149.5, -59.649, 0, 0, 0, 0),
+        (5706, 9, 1579.658, 158.681, -58.398, 0, 0, 0, 0),
+        (5706, 10, 1580.007, 171.556, -53.609, 0, 0, 0, 0),
+        (5706, 11, 1580.144, 176.609, -53.678, 0, 0, 0, 0),
+        (5706, 12, 1580.328, 183.397, -55.714, 0, 0, 0, 0),
+        (5706, 13, 1577.477, 189.222, -56.872, 0, 0, 0, 0),
+        (5706, 14, 1570.401, 193.038, -57.375, 0, 0, 0, 0),
+        (5706, 15, 1561.836, 197.15, -60.777, 0, 0, 0, 0),
+        (5706, 16, 1559.072, 204.348, -60.777, 0, 0, 0, 0),
+        (5706, 17, 1567.058, 211.713, -60.504, 0, 0, 0, 0),
+        (5706, 18, 1571.669, 215.965, -58.998, 0, 0, 0, 0),
+        (5706, 19, 1579.975, 223.625, -61.91, 0, 0, 0, 0),
+        (5706, 20, 1586.624, 228.228, -62.093, 0, 0, 0, 0),
+        (5706, 21, 1604.651, 227.838, -62.099, 0, 0, 0, 0),
+        (5706, 22, 1610.567, 231.911, -62.077, 0, 0, 0, 0),
+        (5706, 23, 1612.858, 254.842, -61.904, 0, 0, 0, 0),
+        (5706, 24, 1618.593, 262.142, -59.063, 0, 0, 0, 0),
+        (5706, 25, 1625.877, 269.377, -60.695, 0, 0, 0, 0),
+        (5706, 26, 1637.158, 275.89, -60.776, 0, 0, 0, 0),
+        (5706, 27, 1642.601, 266.493, -57.986, 0, 0, 0, 0),
+        (5706, 28, 1650.719, 255.18, -56.54, 0, 0, 0, 0),
+        (5706, 29, 1660.667, 255.175, -53.587, 0, 0, 0, 0),
+        (5706, 30, 1668.029, 254.336, -54.194, 0, 0, 0, 0),
+        (5706, 31, 1678.11, 254.404, -58.46, 0, 0, 0, 0),
+        (5706, 32, 1691.617, 255.977, -59.707, 0, 0, 0, 0),
+        (5706, 33, 1705.597, 258.192, -60.957, 0, 0, 0, 0),
+        (5706, 34, 1719.178, 261.914, -62.38, 0, 0, 0, 0),
+        (5706, 35, 1732.281, 258.612, -62.096, 0, 0, 0, 0),
+        (5706, 36, 1732.213, 247.816, -56.176, 0, 0, 0, 0),
+        (5706, 37, 1732.453, 239.873, -53.141, 0, 0, 0, 0),
+        (5706, 38, 1731.955, 218.663, -62.179, 0, 0, 0, 0),
+        (5706, 39, 1728.427, 207.21, -61.741, 0, 0, 0, 0),
+        (5706, 40, 1720.917, 187.533, -62.146, 0, 0, 0, 0),
+        (5706, 41, 1719.315, 186.132, -60.762, 0, 0, 0, 0),
+        (5706, 42, 1708.082, 174.777, -60.74, 0, 0, 0, 0),
+        (5706, 43, 1701.164, 158.998, -60.788, 0, 0, 0, 0),
+        (5706, 44, 1671.441, 129.906, -60.39, 0, 0, 0, 0),
+        (5706, 45, 1668.86, 128.702, -61.483, 0, 0, 0, 0),
+        (5706, 46, 1649.718, 116.468, -62.185, 0, 0, 0, 0),
+        (5706, 47, 1634.239, 109.533, -62.19, 0, 0, 0, 0),
+        (5706, 48, 1614.48, 104.101, -62.179, 0, 0, 0, 0),
+        (5706, 49, 1603.231, 103.973, -56.174, 0, 0, 0, 0);
 
-        DELETE FROM `creature_movement_scripts` WHERE `id`=137902;
-        INSERT INTO `creature_movement_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (137902, 0, 0, 20, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Miran - Move Idle'),
-        (137902, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 498, 0, 0, 0, 0, 0, 0, 0, 0, 'Miran - Say Text'),
-        (137902, 1, 0, 62, 309, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Miran - End Scripted Map Event'),
-        (137902, 10, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Miran - Despawn');
+        insert into applied_updates values ('031120251');
+    end if;
 
-        DELETE FROM `quest_start_scripts` WHERE `id`=309;
-        INSERT INTO `quest_start_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (309, 0, 0, 61, 309, 600, 0, 0, 0, 0, 0, 0, 0, 30901, 1019, 30902, 0, 0, 0, 0, 0, 'Protecting the Shipment: Start Scripted Map Event'),
-        (309, 0, 0, 4, 147, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Protecting the Shipment: Miran - Remove Questgiver Flag'),
-        (309, 0, 0, 22, 10, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Protecting the Shipment: Miran - Set Faction Escortee'),
-        (309, 1, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Protecting the Shipment: Miran - Start Waypoints');
+    -- 27/11/2025 1
+    if (select count(*) from applied_updates where id='271120251') = 0 then
+        -- Fix Edrick Killian waypoints.
+        DELETE FROM creature_movement_template WHERE entry = 5670;
+        INSERT INTO creature_movement_template (entry, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (5670, 0, 1600.175, 376.67, -53.378, 0, 0, 0, 0),
+        (5670, 1, 1616.839, 376.539, -62.179, 0, 0, 0, 0),
+        (5670, 2, 1628.542, 372.819, -61.898, 0, 0, 0, 0),
+        (5670, 3, 1648.155, 364.815, -62.143, 0, 0, 0, 0),
+        (5670, 4, 1650.225, 363.479, -60.76, 0, 0, 0, 0),
+        (5670, 5, 1661.194, 351.219, -60.729, 0, 0, 0, 0),
+        (5670, 6, 1661.012, 343.889, -62.175, 0, 0, 0, 0),
+        (5670, 7, 1662.2, 326.55, -61.917, 0, 0, 0, 0),
+        (5670, 8, 1664.898, 323.668, -59.781, 0, 0, 0, 0),
+        (5670, 9, 1680.122, 308.153, -59.781, 0, 0, 0, 0),
+        (5670, 10, 1684.126, 304.744, -62.19, 0, 0, 0, 0),
+        (5670, 11, 1707.36, 302.583, -62.194, 0, 0, 0, 0),
+        (5670, 12, 1719.158, 301.32, -61.487, 0, 0, 0, 0),
+        (5670, 13, 1728.173, 279.497, -62.176, 0, 0, 0, 0),
+        (5670, 14, 1729.933, 270.735, -62.038, 0, 0, 0, 0),
+        (5670, 15, 1719.813, 261.793, -62.292, 0, 0, 0, 0),
+        (5670, 16, 1705.77, 258.628, -61.005, 0, 0, 0, 0),
+        (5670, 17, 1690.888, 255.85, -59.707, 0, 0, 0, 0),
+        (5670, 18, 1676.619, 254.997, -57.989, 0, 0, 0, 0),
+        (5670, 19, 1667.219, 254.613, -53.957, 0, 0, 0, 0),
+        (5670, 20, 1659.609, 254.302, -53.697, 0, 0, 0, 0),
+        (5670, 21, 1651.926, 254.491, -56.008, 0, 0, 0, 0),
+        (5670, 22, 1639.619, 271.967, -60.459, 0, 0, 0, 0),
+        (5670, 23, 1629.786, 282.667, -60.776, 0, 0, 0, 0),
+        (5670, 24, 1621.124, 288.01, -57.357, 0, 0, 0, 0),
+        (5670, 25, 1612.188, 294.286, -56.885, 0, 0, 0, 0),
+        (5670, 26, 1611.001, 304.979, -53.587, 0, 0, 0, 0),
+        (5670, 27, 1611.105, 314.987, -55.088, 0, 0, 0, 0),
+        (5670, 28, 1611.521, 321.939, -58.384, 0, 0, 0, 0),
+        (5670, 29, 1613.262, 335.994, -59.649, 0, 0, 0, 0),
+        (5670, 30, 1615.424, 349.095, -60.899, 0, 0, 0, 0),
+        (5670, 31, 1619.357, 363.108, -62.328, 0, 0, 0, 0),
+        (5670, 32, 1617.024, 376.344, -62.179, 0, 0, 0, 0),
+        (5670, 33, 1608.984, 376.711, -57.661, 0, 0, 0, 0),
+        (5670, 34, 1598.008, 376.784, -53.161, 0, 0, 0, 0),
+        (5670, 35, 1577.52, 377.329, -62.101, 0, 0, 0, 0),
+        (5670, 36, 1565.314, 373.235, -61.839, 0, 0, 0, 0),
+        (5670, 37, 1537.225, 367.311, -61.936, 0, 0, 0, 0),
+        (5670, 38, 1530.928, 363.897, -57.464, 0, 0, 0, 0),
+        (5670, 39, 1522.859, 359.51, -57.152, 0, 0, 0, 0),
+        (5670, 40, 1517.081, 356.369, -60.792, 0, 0, 0, 0),
+        (5670, 41, 1514.205, 352.347, -60.782, 0, 0, 0, 0),
+        (5670, 42, 1516.945, 346.966, -60.782, 0, 0, 0, 0),
+        (5670, 43, 1540.0, 357.956, -61.507, 0, 0, 0, 0),
+        (5670, 44, 1558.413, 371.245, -61.69, 0, 0, 0, 0),
+        (5670, 45, 1565.238, 373.386, -61.822, 0, 0, 0, 0),
+        (5670, 46, 1578.283, 376.003, -61.57, 0, 0, 0, 0),
+        (5670, 47, 1591.355, 377.014, -54.378, 0, 0, 0, 0);
 
-        DELETE FROM `generic_scripts` WHERE `id`=30901;
-        INSERT INTO `generic_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (30901, 0, 0, 7, 309, 80, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Protecting the Shipment Success: Player - Complete Quest Protecting the Shipment');
-
-        DELETE FROM `generic_scripts` WHERE `id`=30902;
-        INSERT INTO `generic_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (30902, 0, 0, 70, 309, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Protecting the Shipment Failed: Player - Fail Quest'),
-        (30902, 1, 0, 71, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Protecting the Shipment Failed: Miran - Respawn ');
-
-        -- Remove mount from Dark Iron Riders.
-        UPDATE `creature_template` SET `mount_display_id` = '0' WHERE (`entry` = '2149');
+        -- Remove Invalid script.
+        DELETE FROM `creature_ai_scripts` WHERE `id`=571701;
         
-        insert into applied_updates values ('101020241');
+        -- Remove vendor flag from Karm Ironquill since there were no Cartography items.
+        UPDATE `creature_template` SET `npc_flags` = '0' WHERE (`entry` = '372');
+
+        -- Boyle, 'Slime Merchant'
+        UPDATE `creature_template` SET `subname` = 'Slime Merchant' WHERE (`entry` = '4612');
+
+        -- Fix Samantha Shackleton placement.
+        UPDATE `spawns_creatures` SET `position_x` = '1658.143', `position_y` = '176.962', `position_z` = '-42.693', `orientation` = '5.453' WHERE (`spawn_id` = '31864');
+
+        -- Fix Mary Edras placement.
+        UPDATE `spawns_creatures` SET `position_x` = '1531.637', `position_y` = '176.063' WHERE (`spawn_id` = '38424');
+
+        insert into applied_updates values ('271120251');
     end if;
 
-    -- 22/10/2024 1
-    if (select count(*) from applied_updates where id='221020241') = 0 then
+    -- 28/11/2025 1
+    if (select count(*) from applied_updates where id='281120251') = 0 then
+        -- Quest 1038, Velinde's Effects, set Shandris Feathermoon as starter/finisher.
+        UPDATE `creature_quest_starter` SET `entry` = '3936' WHERE (`entry` = '8026') and (`quest` = '1038');
+        UPDATE `creature_quest_finisher` SET `entry` = '3936' WHERE (`entry` = '8026') and (`quest` = '1038');
 
-        -- TODO: Adjust Tharil'zun quest #1452
-        UPDATE `quest_template` SET `Details` = 'Blackrock Outrunners and Renegades are running ambushes between here and Stonewatch Keep.  The leader of the Outrunners is an orc named Tharil''zun--we want this orc and his subordinates neutralized.$B$BKill the Blackrock outrunners and bring me the head of Tharil''zun.', `Objectives` = 'Kill 12 Blackrock Outrunners, and bring the head of their leader Tharil''zun back to Marshal Marris in Redridge.', `RequestItemsText` = 'Orc pressure from Blackrock is still tense. But have you at least rid us of Tharil''zun and his Outrunners?', `ReqCreatureOrGOId1` = 485, `ReqCreatureOrGOCount1` = 12, `RewChoiceItemId1` = 0, `RewChoiceItemId2` = 0, `RewChoiceItemCount1` = 0, `RewChoiceItemCount2` = 0, `RewOrReqMoney` = 1600, `parse_timestamp` = '1970-01-01' WHERE (`entry` = 19);
+        -- Quest 1038, https://web.archive.org/web/20040711114345/http://wow.allakhazam.com/db/quest.html?wquest=1038
+        UPDATE `quest_template` SET `Details` = 'The Tome of Mel\'Thandris showed you this? I suppose there would be little harm in allowing you to examine her belongings. This key will allow you to open the chest where we stored her things in the Sentinels\' bunkhouse. She kept a journal of her duties, if there is anything to be learned, it will be from that.\n\nI should tell you, the Sentinels believe that she had her own reasons for leaving, and expect that she could return at any time. The priestess has done much in the past to earn our trust.', `Objectives` = 'Search through Velinde\'s chest for her journal, then return it along with the key to Shandris Feathermoon in Darnassus.' WHERE (`entry` = '1038');
 
-        -- TODO: Move rewards from Thrali'zun quest to Shadow Magic quest. #1451 AND Adjust Shadow Magic quests's objective #1450
-        UPDATE `quest_template` SET `Details` = 'The Blackrock orcs enlisted shadowcasters to aid their attacks in Redridge, and they have brought with them devices of dark power--midnight orbs.  These orbs have struck telling blows against Redridge''s defenders, and it''s imperative we remove the demon-tainted items from the conflict.$B$BFind and deliver to me 4 midnight orbs from slain Blackrock Shadowcasters.  I will then have them disposed of, for this world would be a better place without them!', `Objectives` = 'Bring 4 Midnight Orbs to Marshal Marris in Lakeshire.', `ReqItemCount1` = 4, `RewItemId1` = 1276, `RewItemId2` = 6093, `RewItemCount1` = 1, `RewItemCount2` = 1, `RewOrReqMoney` = 300, `parse_timestamp` = '1970-01-01' WHERE (`entry` = 115);
-        
-        -- TODO: Update Jawn Highmesa location #1394
-        DELETE FROM `spawns_creatures` WHERE (`spawn_entry1` = 4876) AND (`spawn_id` IN (21144));
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (21144, 4876, 0, 0, 0, 1, -5466.456, -2419.391, 89.3, 5.658, 300, 300, 0, 100, 0, 0, 0, 0, 0);
+        -- Nimboya orientation.
+        UPDATE `spawns_creatures` SET `orientation` = '3.51' WHERE (`spawn_id` = '630');
 
-        -- PARTIAL Kitari Farseeker Cartography TODO: Investigate on these Darnassus NPCs #1304
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (0, 4157, 0, 0, 0, 1, 10129.023, 2425.787, 1331.881, 4.22, 300, 300, 0, 1, 0, 0, 0, 0, 0);
+        -- Kobold Worker/Vermin/Laborer/Tunneler Flee.
+        -- https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Eastern%20Kingdoms/Elwynn%20Forest/20%20MARCH%2004%20%20%2011.jpg
+        -- https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Eastern%20Kingdoms/Elwynn%20Forest/20%20MARCH%2004%20%20%2006.jpg
+        -- https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Eastern%20Kingdoms/Elwynn%20Forest/27.jpg
+        -- https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Eastern%20Kingdoms/Elwynn%20Forest/20%20MARCH%2004%20%20%2013.jpg
+        -- Events list for Kobold Worker
+        DELETE FROM `creature_ai_events` WHERE `creature_id`=257;
+        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES
+        (25701, 257, 0, 4, 0, 30, 0, 0, 0, 0, 0, 25701, 0, 0, 'Kobold Worker - Random Say on Aggro'),
+        (25702, 257, 0, 2, 0, 30, 0, 15, 0, 0, 0, 25702, 0, 0, 'Kobold Worker - Flee at 15% HP');
 
-        -- Update Kitari flags #1304
-        UPDATE `creature_template` SET `npc_flags` = 10, `flags_extra` = 524298 WHERE (`entry` = 4157);
-
-        -- Ally Binder Plains #1457
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (0, 2281, 0, 0, 0, 37, -445.944, -1023.479, 430.9, 0.937, 300, 300, 0, 100, 0, 0, 0, 0, 0);
-
-        -- Horde Binder Plains #1457
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (0, 2282, 0, 0, 0, 37, -663.799, -487.706, 385.853, 5.782, 300, 300, 0, 100, 0, 0, 0, 0, 0);
-
-        -- Nerra #1456
-        DELETE FROM `spawns_creatures` WHERE (`spawn_entry1` = 3699) AND (`spawn_id` IN (400079));
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (400079, 3699, 0, 0, 0, 1, 10687.85, 1922.595, 1336.384, 4.457, 300, 300, 0, 100, 0, 0, 0, 0, 0);
-
-        -- Nadyia #1456
-        DELETE FROM `spawns_creatures` WHERE (`spawn_entry1` = 3605) AND (`spawn_id` IN (46193));
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (46193, 3605, 0, 0, 0, 1, 10662.588, 1852.964, 1323.54, 2.926, 300, 300, 0, 100, 0, 0, 0, 0, 0);
-
-        -- Alanna #1456
-        DELETE FROM `spawns_creatures` WHERE (`spawn_entry1` = 3606) AND (`spawn_id` IN (46194));
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (46194, 3606, 0, 0, 0, 1, 10279.62, 1198.137, 1456.751, 0, 300, 300, 0, 100, 0, 0, 0, 0, 0);
-
-        -- Thisleheart #1454
-        DELETE FROM `spawns_creatures` WHERE (`spawn_entry1` = 5171) AND (`spawn_id` IN (1804));
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (1804, 5171, 0, 0, 0, 0, -4749.271, -1032.367, 499.107, 3.773, 540, 540, 0, 100, 100, 0, 0, 0, 0);
-
-        -- Rhahk'zor #1430
-        UPDATE `creature_template` SET `level_min` = 20, `level_max` = 20 WHERE (`entry` = 644);
-
-        -- Sneed #1430
-        UPDATE `creature_template` SET `level_min` = 21, `level_max` = 21 WHERE (`entry` = 643);
-
-        -- Van Cleef #1430
-        UPDATE `creature_template` SET `level_min` = 22, `level_max` = 22 WHERE (`entry` = 639);
-
-        -- Defias Miner #1430
-        UPDATE `creature_template` SET `rank` = 1 WHERE (`entry` = 598);
-
-        -- Defias Strip Miner #1430
-        UPDATE `creature_template` SET `rank` = 1 WHERE (`entry` = 4416);
-
-        -- Defias Worker #1430
-        UPDATE `creature_template` SET `rank` = 1 WHERE (`entry` = 1727);
-
-        -- Adjust Shaia spawn #1163
-        DELETE FROM `spawns_creatures` WHERE (`spawn_entry1` = 4178) AND (`spawn_id` IN (400118));
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (400118, 4178, 0, 0, 0, 1, 9700.307, 2337.542, 1331.97, 0.6, 120, 120, 5, 100, 100, 0, 0, 0, 0);
-
-        -- Shaia flags #1163
-        UPDATE `creature_template` SET `npc_flags` = 131, `type_flags` = 102, `flags_extra` = 524298 WHERE (`entry` = 4178);
-
-        -- Shaia Mail vendor items based on Melea #1163
-        INSERT INTO npc_vendor (entry, item, maxcount, incrtime, itemflags, slot)
-        SELECT 4178, item, maxcount, incrtime, itemflags, slot
-        FROM npc_vendor
-        WHERE entry = 4177;
-
-        -- Lewin flags #1163
-        UPDATE `creature_template` SET `npc_flags` = 131, `type_flags` = 102, `flags_extra` = 524298 WHERE (`entry` = 4239);
-
-        -- Lewin Leather vendor items based on Cyridan #1163
-        INSERT INTO npc_vendor (entry, item, maxcount, incrtime, itemflags, slot)
-        SELECT 4239, item, maxcount, incrtime, itemflags, slot
-        FROM npc_vendor
-        WHERE entry = 4236;
-
-        -- Maginor, from screenshot
-        DELETE FROM `spawns_creatures` WHERE (`spawn_entry1` = 331) AND (`spawn_id` IN (26835));
-        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES
-        (26835, 331, 0, 0, 0, 0, -9018.157, 866.797, 148.618, 0.583, 490, 490, 0, 100, 100, 0, 0, 0, 0);
-
-        -- Myrmidon Signet #1449
-        UPDATE `item_template` SET `display_id` = 896, `item_level` = 40, `required_level` = 35, `stat_value1` = 5, `stat_value2` = 6, `stat_type3` = 0, `stat_value3` = 0 WHERE (`entry` = 2246);
-        insert into applied_updates values ('221020241');
-    end if;
-
-    -- 11/11/2024 1
-    if (select count(*) from applied_updates where id='111120241') = 0 then
-        -- Deprecated Captain Sander's Eyepatch - Remove deprecated status, change quality to white, and add proper level requirement and displayID
-        UPDATE `item_template` SET `name` = "Captain Sander's Eyepatch", `display_id` = 1166, `quality` = 1, `flags` = 0, `required_level` = 5 WHERE (`entry` = 1363);
-        -- Add Captain Sander's Eyepatch as a reward from Captain Sander's Hidden Treasure, replacing Silver Bar
-        UPDATE `quest_template` SET `RewItemId1` = 1363, `RewItemCount1` = 1 WHERE (`entry` = 140);
-
-        -- Add Aegis of Westfall as a reward to The Defias Brotherhood
-        UPDATE `quest_template` SET `RewChoiceItemId4` = 2040, `RewChoiceItemCount4` = 1, `parse_timestamp` = '1970-01-01' WHERE (`entry` = 166);
-
-        -- Add Mark of the Kirin Tor to Dalaran Summoner's loot table with a low drop chance, which is in-line with similar drop items
-        DELETE FROM `creature_loot_template` WHERE (`entry` = 2358) AND (`item` IN (5004));
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES (2358, 5004, 5, 0, 1, 1, 0);
-
-        -- Deprecated Whisperwind Headress - Remove deprecated status, change quality to green, add a proper level requirement, and give it the stats of the release headdress
-        UPDATE `item_template` SET `name` = 'Whisperwind Headdress', `quality` = 2, `flags` = 0, `required_level` = 22, `stat_type1` = 5, `stat_value1` = 3, `stat_type2` = 6, `stat_value2` = 4, `stat_type3` = 1, `stat_value3` = 15 WHERE (`entry` = 5358);
-        -- Add Whisperwind Headdress as a reward from Isha Hawk, which it seems to have been connected to (rewards have identical item level, ID of Whisperwind Headdress is immediately after the IDs of the rewards from it)
-        UPDATE `quest_template` SET `RewChoiceItemId3` = 5358, `RewChoiceItemCount3` = 1, `parse_timestamp` = '1970-01-01' WHERE (`entry` = 873);
-
-        -- Deprecated Overseer's Helm - Remove deprecated status, change quality to white
-        UPDATE `item_template` SET `name` = 'Overseer''s Helm', `quality` = 1, `flags` = 0 WHERE (`entry` = 1192);
-        -- Add Overseer's Helm to Riverpaw Overseer's loot table with a drop chance identical to the other "Overseer's" drops
-        DELETE FROM `creature_loot_template` WHERE (`entry` = 125) AND (`item` IN (1192));
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES (125, 1192, 0.5, 0, 1, 1, 0);
-
-        -- Flayed Demon Skin (old) - Remove deprecated status (should also start the quest "The Corruptor", but this quest doesn't exist in 0.5.3, needs investigation)
-        UPDATE `item_template` SET `name` = "Flayed Demon Skin", `flags` = 0 WHERE (`entry` = 6437);
-
-        -- Unholy Avenger - Remove deprecated status, replace chance-on-hit spells with equivalents that exist in 0.5.3
-        DELETE FROM `item_template` WHERE (`entry` = 3687);
-        INSERT INTO `item_template` (`entry`, `name`, `class`, `subclass`, `description`, `display_id`, `quality`, `flags`, `buy_count`, `buy_price`, `sell_price`, `inventory_type`, `allowable_class`, `allowable_race`, `item_level`, `required_level`, `required_skill`, `required_skill_rank`, `required_spell`, `required_honor_rank`, `required_city_rank`, `required_reputation_faction`, `required_reputation_rank`, `max_count`, `stackable`, `container_slots`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `delay`, `range_mod`, `ammo_type`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `dmg_min3`, `dmg_max3`, `dmg_type3`, `dmg_min4`, `dmg_max4`, `dmg_type4`, `dmg_min5`, `dmg_max5`, `dmg_type5`, `block`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmrate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmrate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmrate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmrate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmrate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `page_text`, `page_language`, `page_material`, `start_quest`, `lock_id`, `material`, `sheath`, `random_property`, `set_id`, `max_durability`, `area_bound`, `map_bound`, `duration`, `bag_family`, `disenchant_id`, `food_type`, `min_money_loot`, `max_money_loot`, `extra_flags`, `ignored`) VALUES (3687, 'Unholy Avenger', 2, 8, '', 3092, 6, 0, 1, 288592, 57718, 17, -1, -1, 40, 35, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3000, 0, 0, 97, 146, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 2, 0, 0, -1, 0, -1, 3140, 2, 0, 0, -1, 0, -1, 1096, 2, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0);
-        -- Add Unholy Avenger to Dreadlord Malganis, who seems to be the only reasonable source for this item.
-        DELETE FROM `creature_loot_template` WHERE (`entry` = 929) AND (`item` IN (3687));
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES (929, 3687, 20, 0, 1, 1, 0);
-
-        insert into applied_updates values ('111120241');
-    end if;
-    
-    -- 04/12/2024 1
-    if (select count(*) from applied_updates where id='041220241') = 0 then
-        -- NOTE: THE RESTORED DEPRECATED WEAPONS MAY HAVE INCORRECT DAMAGE VALUES, AS THE ONLY SOURCE OF THEM CAME FROM 1.12. I HAVE DECIDED TO INCLUDE THEM, BUT THEY MAY NEED RESCALING. ITEMS THAT MAY HAVE STATS ARE NOT INCLUDED, THEY ARE TO BE DISCUSSED FIRST.
-
-        -- Deprecated Light Soldier Boots : Remove deprecated tag
-        UPDATE `item_template` SET `name` = 'Light Soldier Boots', `flags` = 0 WHERE (`entry` = 1174);
-        -- Make Light Soldier Boots a reward from Princess Must Die!
-        UPDATE `quest_template` SET `RewChoiceItemId3` = 1174, `RewChoiceItemCount3` = 1 WHERE (`entry` = 88);
-
-        -- Deprecated Militia Handaxe : Change quality to common, remove deprecated tag
-        UPDATE `item_template` SET `name` = 'Militia Handaxe', `quality` = 1, `flags` = 0 WHERE (`entry` = 1157);
-        -- Make Militia Handaxe a reward from Brotherhood of Thieves
-        UPDATE `quest_template` SET `RewChoiceItemId6` = 1157, `RewChoiceItemCount6` = 1 WHERE (`entry` = 18);
-
-        -- Red Linen Bag : Change to White Linen Bag, which matches period sources, as well as displayID to unused one with low ID and similar but more matching icon (https://crawler.thealphaproject.eu/mnt/crawler/media/Website/goblinworkshop.com/web.archive.org/web/20040806111029/http:/www.goblinworkshop.com/items.html%3FCategoryID=17.html)
-        UPDATE `item_template` SET `name` = 'White Linen Bag', `display_id` = 925 WHERE (`entry` = 5762);
-        -- Pattern: Red Linen Bag : Change to Pattern: White Linen Bag, which matches period sources (https://crawler.thealphaproject.eu/mnt/crawler/media/Website/goblinworkshop.com/web.archive.org/web/20040806111029/http:/www.goblinworkshop.com/items.html%3FCategoryID=31.html)
-        UPDATE `item_template` SET `name` = 'Pattern: White Linen Bag' WHERE (`entry` = 5771);
-        -- Deprecated Red Linen Shirt : Remove deprecated status
-        UPDATE `item_template` SET `name` = 'Red Linen Shirt', `flags` = 0 WHERE (`entry` = 964);
-        -- Deprecated Red Linen Sack : Remove deprecated status
-        UPDATE `item_template` SET `name` = 'Red Linen Sack', `flags` = 0 WHERE (`entry` = 965);
-        -- Add Red Linen Shirt and Red Linen Sack as quest rewards from Red Linen Goods, with Red Linen Shirt replacing the craftable one
-        UPDATE `quest_template` SET `RewItemId1` = 964, `RewItemId3` = 965, `RewItemCount3` = 1 WHERE (`entry` = 83);
-
-        -- Deprecated Busted Elemental Bracer : Remove deprecated status
-        UPDATE `item_template` SET `name` = 'Busted Elemental Bracer', `flags` = 0 WHERE (`entry` = 5450);
-        -- Deprecated Cracked Elemental Bracer : Remove deprecated status
-        UPDATE `item_template` SET `name` = 'Cracked Elemental Bracer', `flags` = 0 WHERE (`entry` = 5449);
-        -- Deprecated Shattered Elemental Bracer : Remove deprecated status
-        UPDATE `item_template` SET `name` = 'Shattered Elemental Bracer', `flags` = 0 WHERE (`entry` = 5453);
-        -- Deprecated Split Elemental Bracer : Remove deprecated status
-        UPDATE `item_template` SET `name` = 'Split Elemental Bracer', `flags` = 0 WHERE (`entry` = 5454);
-        -- Add the Elemental Bracers as drops from Befouled Water Elementals with similar drop chances to the other non-broken ones
-        DELETE FROM `creature_loot_template` WHERE (`entry` = 3917) AND (`item` IN (5450, 5449, 5453, 5454));
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES (3917, 5450, 13.4531, 0, 1, 1, 0), (3917, 5449, 13.1707, 0, 1, 1, 0), (3917, 5453, 13.1065, 0, 1, 1, 0), (3917, 5454, 13.0103, 0, 1, 1, 0);
-
-        -- Hooded Cowl : Rename to Cowl of Serenity to match period sources (https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Eastern%20Kingdoms/Hillsbrad%20Foothills/septembre2003-48.jpg)
-        UPDATE `item_template` SET `name` = 'Cowl of Serenity' WHERE (`entry` = 3732);
-
-        -- Change the stats of Olmann Sewar to match period sources (https://crawler.thealphaproject.eu/mnt/crawler/media/Database/WDB/version_3596_items2.html)
-        UPDATE `item_template` SET `stat_value1` = 7 WHERE (`entry` = 4116);
-        -- Add Olmann Sewar as a reward from The Green Hills of Stranglethorn, replacing the Superior Healing Poitons, which matches period sources (https://web.archive.org/web/20040917223745/http://wow.allakhazam.com/db/quest.html?wquest=338)
-        UPDATE `quest_template` SET `RewItemId1` = 4116, `RewItemId3` = 0, `RewItemCount1` = 1, `RewItemCount3` = 0, `parse_timestamp` = '2004-06-22' WHERE (`entry` = 338);
-
-        -- Brewing Rod : Add level requirement and proper placeholder displayID
-        UPDATE `item_template` SET `display_id` = 5099, `required_level` = 15, `stat_type1` = 1, `stat_value1` = 20 WHERE (`entry` = 3738);
-        -- Add Brewing Rod as a reward from Souvenirs of Death
-        UPDATE `quest_template` SET `RewItemId2` = 3738, `RewItemCount2` = 1 WHERE (`entry` = 546);
-
-        -- Scorched Bands: Name changed to "Frost Wyrm Scorched Bands" to match period sources, add level requirement (https://crawler.thealphaproject.eu/mnt/crawler/media/Database/Ogaming/ogaming_item_wdb.htm) and placeholder model
-        UPDATE `item_template` SET `name` = 'Frost Wyrm Scorched Bands', `display_id` = 10401, `required_level` = 40 WHERE (`entry` = 4990);
-        -- Mage Dragon Robes : Add level requirement
-        UPDATE `item_template` SET `required_level` = 40 WHERE (`entry` = 4989);
-        -- Burning Obsidian Band : Add level requirement
-        UPDATE `item_template` SET `required_level` = 40 WHERE (`entry` = 4988);
-        -- Add Mage Dragon Robes and and Frost Wyrm Scorched Bands as rewards from Tremors of the Earth and Broken Alliances
-        UPDATE `quest_template` SET `RewChoiceItemId1` = 4988, `RewChoiceItemId2` = 4989, `RewChoiceItemId3` = 4990, `RewChoiceItemCount1` = 1, `RewChoiceItemCount2` = 1, `RewChoiceItemCount3` = 1 WHERE (`entry` = 717);
-
-        -- Master Hunter's Bow : Add level requirement, remove deprecated status
-        UPDATE `item_template` SET `flags` = 0, `required_level` = 40 WHERE (`entry` = 4110);
-        -- Master Hunter's Gun : Add level requirement, remove deprecated status
-        UPDATE `item_template` SET `flags` = 0, `required_level` = 40 WHERE (`entry` = 4111);
-        -- Add Master Hunter's Bow and Master Hunter's Gun as rewards from Big Game Hunter, add quest level accurate to period sources (https://web.archive.org/web/20041121002253/http://wow.allakhazam.com/db/quest.html?wquest=208)
-        UPDATE `quest_template` SET `QuestLevel` = 45, `RewChoiceItemId1` = 4110, `RewChoiceItemId2` = 4111, `RewChoiceItemCount1` = 1, `RewChoiceItemCount2` = 1, `parse_timestamp` = '2004-11-21' WHERE (`entry` = 208);
-
-        -- Deprecated Scarlet Captain's Pauldrons : Remove deprecated status
-        UPDATE `item_template` SET `name` = "Scarlet Captain's Pauldrons", `flags` = 0 WHERE (`entry` = 3333);
-        -- Add Scarlet Captain's Pauldrons as a drop from Captain Vachon with a drop chance similar to the Scarlet Boots
-        DELETE FROM `creature_loot_template` WHERE (`entry` = 1664) AND (`item` IN (3333));
-        INSERT INTO `creature_loot_template` (`entry`, `item`, `ChanceOrQuestChance`, `groupid`, `mincountOrRef`, `maxcount`, `condition_id`) VALUES (1664, 3333, 4, 0, 1, 1, 0);
-
-        -- Lightforge Staff : Remove deprecated tag
-        UPDATE `item_template` SET `name` = 'Lightforge Staff', `flags` = 0 WHERE (`entry` = 2811);
-        -- Lightforge Dagger : Remove deprecated tag
-        UPDATE `item_template` SET `name` = 'Lightforge Dagger', `flags` = 0 WHERE (`entry` = 2812);
-        -- Lightforge Hammer : Remove deprecated tag
-        UPDATE `item_template` SET `name` = 'Lightforge Hammer', `flags` = 0 WHERE (`entry` = 2814);
-        -- Add Lightforge Staff, Lightforge Dagger, and Lightforge Hammer as rewards from Blessed Arm
-        UPDATE `quest_template` SET `RewChoiceItemId1` = 2811, `RewChoiceItemId2` = 2812, `RewChoiceItemId3` = 2814, `RewChoiceItemCount1` = 1, `RewChoiceItemCount2` = 1, `RewChoiceItemCount3` = 1 WHERE (`entry` = 322);
-        -- Armed and Ready : Edit quest objective text to match period sources (https://web.archive.org/web/20040706011330/http://wow.allakhazam.com/db/quest.html?wquest=325)
-        UPDATE `quest_template` SET `Details` = "You're all ready, $N. Best of luck to you, and I look forward to your tale of glory!", `Objectives` = 'Now that you have your weapon, return to Sven in Duskwood.' WHERE (`entry` = 325);
-        -- Morbent Fel (quest) : Edit quest text and quest level to match period sources (https://web.archive.org/web/20040706013721/http://wow.allakhazam.com/db/quest.html?wquest=55)
-        UPDATE `quest_template` SET `QuestLevel` = 33, `Details` = 'Morbent Fel hides in his lair, the house perched atop the hill to the east overlooking the Raven Hill Cemetary. His time in this land is drawing to an end...$b$bSlay him. Slay him, and save us from his wickedness. Be the instrument of my revenge, and a hero of Duskwood!', `Objectives` = 'Kill Morbent Fel, then return to Sven at his camp.' WHERE (`entry` = 55);
-        -- Morbent Fel: Immunity to phyiscal damage to match his description in quest text, fill in for missing shield spell, and ensure that Lightforge weapons serve their purpose in the questline (they deal only holy damage).
-        UPDATE `creature_template` SET `school_immune_mask` = 1 WHERE (`entry` = 1200);
-
-        -- Oslow's Toolbox : Change displayID to that of Deprecated version (as its current displayID doesn't exist in 0.5.3)
-        UPDATE `item_template` SET `display_id` = 1244 WHERE (`entry` = 1309);
-        -- Deprecated Oslow's Wood Cutter : Remove deprecated tag, change quality to white
-        UPDATE `item_template` SET `name` = "Oslow's Wood Cutter", `quality` = 1, `flags` = 0, `required_level` = 8 WHERE (`entry` = 1311);
-        -- Deprecated Oslow's Hammer : Remove deprecated tag, change quality to white
-        UPDATE `item_template` SET `name` = "Oslow's Hammer", `quality` = 1, `flags` = 0, `required_level` = 8 WHERE (`entry` = 1312);
-        -- Deprecated Oslow's Ice Pick : Remove deprecated tag, change quality to white
-        UPDATE `item_template` SET `name` = "Oslow's Ice Pick", `quality` = 1, `flags` = 0, `required_level` = 8 WHERE (`entry` = 1313);
-        -- Make Oslow's Wood Cutter, Oslow's Hammer, and Oslow's Ice Pick rewards from The Lost Tools
-        UPDATE `quest_template` SET `RewChoiceItemId1` = 1311, `RewChoiceItemId2` = 1312, `RewChoiceItemId3` = 1313, `RewChoiceItemCount1` = 1, `RewChoiceItemCount2` = 1, `RewChoiceItemCount3` = 1 WHERE (`entry` = 125);
-
-        -- Deprecated Quilted Mantle : Remove deprecated status, add level requirement
-        UPDATE `item_template` SET `name` = 'Quilted Mantle', `flags` = 0, `required_level` = 1 WHERE (`entry` = 3436);
-        -- Scarlet Insignia Ring : Add placeholder model
-        UPDATE `item_template` SET `display_id` = 9834 WHERE (`entry` = 2875);
-        -- Add Quilted Mantle as a quest reward from Proof of Demise
-        UPDATE `quest_template` SET `RewChoiceItemId3` = 3436, `RewChoiceItemCount3` = 1 WHERE (`entry` = 374);
-
-        -- Hands of the New Moon : Remove deprecated status, add level requirement
-        UPDATE `item_template` SET `name` = 'Hands of the New Moon', `flags` = 0, `required_level` = 7 WHERE (`entry` = 5294);
-        -- Hands of the Crescent Moon : Remove deprecated status, add level requirement
-        UPDATE `item_template` SET `name` = 'Hands of the Crescent Moon', `flags` = 0, `required_level` = 8 WHERE (`entry` = 5295);
-        -- Hands of the Quarter Moon : Remove deprecated status, add level requirement
-        UPDATE `item_template` SET `name` = 'Hands of the Quarter Moon', `flags` = 0, `required_level` = 10 WHERE (`entry` = 5296);
-        -- Hands of the Gibbous Moon : Remove deprecated status, add level requirement
-        UPDATE `item_template` SET `name` = 'Hands of the Gibbous Moon', `flags` = 0, `required_level` = 12 WHERE (`entry` = 5297);
-        -- Hands of the Full Moon : Remove deprecated status, add level requirement
-        UPDATE `item_template` SET `name` = 'Hands of the Full Moon', `flags` = 0, `required_level` = 13 WHERE (`entry` = 5298);
-
-        -- Hands of the New Moon : Add as reward from Plainstrider Menace
-        UPDATE `quest_template` SET `RewItemId1` = 5294, `RewItemCount1` = 1 WHERE (`entry` = 844);
-
-        -- Hands of the Crescent Moon : Add as a reward from The Zhevra, change quest name and description to match period sources (https://crawler.thealphaproject.eu/mnt/crawler/media/Database/WarcraftStrategy/quest_details_june_2004.html)
-        UPDATE `quest_template` SET `Title` = 'Zhevra Dependence', `Details` = "There is an interdependency between the zhevra and the plainstriders. The plainstriders' constant scratching and pecking of the land tills the soil, allowing the plants that the zhevra eat to grow and flourish.$b$bWithout steady food, the zhevra have become agitated and encroach upon our field grains. Though your initial path was faulty, we must continue.$b$bSlay the zhevra runners to the north and bring me four zhevra hooves.", `RewItemId1` = 5295, `RewItemCount1` = 1, `parse_timestamp` = '2004-05-20' WHERE (`entry` = 845);
-
-        -- Hands of the Quarter Moon : Add as a reward from Prowlers of the Barrens, change quest description to match period sources (https://crawler.thealphaproject.eu/mnt/crawler/media/Database/WarcraftStrategy/quest_details_june_2004.html)
-        UPDATE `quest_template` SET `Details` = 'It would seem our previous actions return to haunt us. With the zhevra and plainstrider game diminished, the savannah prowlers have turned upon our people as they use the southern road.$b$bGo south and collect seven prowler claws and we just might reach an equilibrium again.', `Objectives` = 'Collect 7 Prowler Claws from Savannah Prowlers for Sergra Darkthorn in the Crossroads.', `RequestItemsText` = 'Hurry, young one. The lives of those around the Crossroads are in your hands. Do you have the 7 Prowler Claws I requested?', `ReqItemCount1` = 7, `RewItemId1` = 5296, `RewItemCount1` = 1, `parse_timestamp` = '2004-05-20' WHERE (`entry` = 903);
-
-        -- Hands of the Gibbous Moon : Add as a reward from The Angry Scytheclaws
-        UPDATE `quest_template` SET `RewItemId1` = 5297, `RewItemCount1` = 1, `parse_timestamp` = '2004-05-20' WHERE (`entry` = 905);
-
-        -- Hands of the Full moon : Add as a reward from Enranged Stormsnouts and add money reward to match period sources (https://crawler.thealphaproject.eu/mnt/crawler/media/Database/WarcraftStrategy/quest_details_june_2004.html)
-        UPDATE `quest_template` SET `RewItemId1` = 5298, `RewItemCount1` = 1, `RewOrReqMoney` = 1070, `parse_timestamp` = '2004-05-20' WHERE (`entry` = 907);
-
-        insert into applied_updates values ('041220241');
-    end if;
-
-    -- 02/05/2025 1
-    if (select count(*) from applied_updates where id='020520251') = 0 then
-        -- Events list for Venture Co. Taskmaster
-        DELETE FROM `creature_ai_events` WHERE `creature_id`=2977;
-        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES (297701, 2977, 0, 2, 0, 100, 0, 15, 0, 0, 0, 297701, 0, 0, 'Venture Co. Taskmaster - Flee at 15% HP');
-        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES (297702, 2977, 0, 11, 0, 100, 0, 0, 0, 0, 0, 297702, 0, 0, 'Venture Co. Taskmaster - Cast Torch Burn Upon Spawn');
-
-        DELETE FROM `creature_ai_scripts` WHERE `id`=297702;
+        DELETE FROM `creature_ai_scripts` WHERE `id`=25702;
         INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (297702, 0, 0, 15, 5680, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Venture Co. Taskmaster  - Cast Torch Burn');
+        (25702, 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Kobold Worker - Flee at 15% HP');
+
+        -- Events list for Kobold Vermin
+        DELETE FROM `creature_ai_events` WHERE `creature_id`=6;
+        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES
+        (601, 6, 0, 4, 0, 30, 0, 0, 0, 0, 0, 601, 0, 0, 'Kobold Vermin - Random Say on Aggro'),
+        (602, 6, 0, 2, 0, 30, 0, 15, 0, 0, 0, 602, 0, 0, 'Kobold Vermin- Flee at 15% HP');
+
+        DELETE FROM `creature_ai_scripts` WHERE `id`=602;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (602, 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Kobold Vermin - Flee at 15% HP');
+
+        -- Events list for Kobold Tunneler
+        DELETE FROM `creature_ai_events` WHERE `creature_id`=475;
+        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES
+        (47501, 475, 0, 4, 0, 30, 0, 0, 0, 0, 0, 47501, 0, 0, 'Kobold Tunneler - Chance Say on Aggro'),
+        (47502, 475, 0, 2, 0, 30, 0, 15, 0, 0, 0, 47502, 0, 0, 'Kobold Tunneler - Flee at 15% HP');
+
+        DELETE FROM `creature_ai_scripts` WHERE `id`=47502;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (47502, 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Kobold Tunneler - Flee at 15% HP');
+
+        -- Events list for Kobold Laborer
+        DELETE FROM `creature_ai_events` WHERE `creature_id`=80;
+        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES
+        (8001, 80, 0, 4, 0, 30, 0, 0, 0, 0, 0, 8001, 0, 0, 'Kobold Labourer - Random Say on Aggro'),
+        (8002, 80, 0, 2, 0, 30, 0, 15, 0, 0, 0, 8002, 0, 0, 'Kobold Laborer - Flee at 15% HP');
+
+        DELETE FROM `creature_ai_scripts` WHERE `id`=8002;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (8002, 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Kobold Laborer - Flee at 15% HP');
+
+        -- Missing aggro text for Kobolds.
+        DELETE FROM `creature_ai_scripts` WHERE `id`=25701;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (25701, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1868, 1864, 1863, 0, 0, 0, 0, 0, 0, 'Kobold Worker - Say Text');
+
+        DELETE FROM `creature_ai_scripts` WHERE `id`=8001;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (8001, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1868, 1864, 1863, 0, 0, 0, 0, 0, 0, 'Kobold Laborer - Say Text');
+
+        DELETE FROM `creature_ai_scripts` WHERE `id`=47501;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (47501, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1864, 1868, 1863, 0, 0, 0, 0, 0, 0, 'Kobold Tunneler - Say Text');
+
+        DELETE FROM `creature_ai_scripts` WHERE `id`=601;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (601, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1868, 1864, 1863, 0, 0, 0, 0, 0, 0, 'Kobold Vermin - Say Text');
+
+        -- Riverpaw Gnoll - Missing aggro text.
+        DELETE FROM `creature_ai_scripts` WHERE `id`=11701;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (11701, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1871, 1870, 1869, 0, 0, 0, 0, 0, 0, 'Riverpaw Gnoll - Say Text');
+
+        insert into applied_updates values ('281120251');
+    end if;
+
+    -- 01/12/2025 1
+    if (select count(*) from applied_updates where id='011220251') = 0 then
+        -- Quest 1039, The Barrens Port, set Shandris Feathermoon as starter.
+        UPDATE `creature_quest_starter` SET `entry` = '3936' WHERE (`entry` = '8026') and (`quest` = '1039');
+        -- Argent Dawn invalid faction 814 to 35 (Friendly)
+        UPDATE `creature_template` SET `faction` = '35' WHERE `faction` = '814';
+        -- Kitari Farseeker <Cartography Trainer> - Friendly faction.
+        UPDATE `creature_template` SET `faction` = '35' WHERE (`entry` = '4157');
+        -- Wharfmaster Dizzywig, orientation.
+        UPDATE `spawns_creatures` SET `orientation` = '2.931' WHERE (`spawn_id` = '14419');
+        -- Remove unused table.
+        DROP TABLE playercreateinfo_item;
+        -- Unused model for Suzetta Gallina https://github.com/The-Alpha-Project/alpha-core/issues/1312
+        UPDATE `creature_template` SET `display_id1` = '1474' WHERE (`entry` = '1431');
+        -- Laird <Fish Vendor> - Holding Fish
+        UPDATE `creature_equip_template` SET `equipentry1` = '6225' WHERE (`entry` = '4200');
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1458
+        UPDATE `quest_template` SET `Details` = 'During the first years of Thredd\'s imprisonment, he never had any visitors. I figured that he was no longer of use to the Defias Brotherhood, so they abandoned him to die.\n\nAnyways, a few months ago, that all changed. He started to get regular visits... once or twice a week. It was a strange man, quiet type. I had my suspicions, but all his papers and clearances were clean and legitimate.\n\nHis name was Maelik, here\'s his description. It won\'t do me much good now that Thredd\'s no longer a problem.', `Objectives` = 'Perhaps Baros Alexston knows something about Bazil Thredd\'s strange visitor...' WHERE (`entry` = '392');
+        UPDATE `quest_template` SET `Objectives` = 'Speak with Master Mathias Shaw in Old Town.' WHERE (`entry` = '393');
+        UPDATE `quest_template` SET `NextQuestInChain` = '394' WHERE (`entry` = '350');
+        UPDATE `quest_template` SET `PrevQuestId` = '350', `Details` = 'I have had my suspicions about the activities of Lord Lescovar, but have never seen or heard any proof to that effect. That Marzon would be contacting a member of the Defias Brotherhood...\n\nHaving killed VanCleef and Thredd, it would be hard to see Lescovar to justice, as your proof is certainly less without their testimony. That is not even considering the fact that Lescovar is a noble, and well connected! They are above the law, my friend.\n\nAny justice would have to be swift, final, and silent.', `Objectives` = 'Kill Lord Gregor Lescovar and bring his head to Master Matthias Shaw in Old Town.', `ReqItemId1` = '3516', `ReqItemCount1` = '1' WHERE (`entry` = '394');
+
+        -- Events list for Lord Gregor Lescovar - Runs every 60 minutes.
+        DELETE FROM `creature_ai_events` WHERE `creature_id`=1754;
+        INSERT INTO `creature_ai_events` (`id`, `creature_id`, `condition_id`, `event_type`, `event_inverse_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action1_script`, `action2_script`, `action3_script`, `comment`) VALUES
+        (175401, 1754, 0, 4, 0, 100, 0, 0, 0, 0, 0, 175401, 0, 0, 'Lord Gregor Lescovar - Say Text on Aggro'),
+        (175402, 1754, 0, 1, 0, 100, 0, 3600000, 3600000, 0, 0, 175402, 0, 0, 'Lord Gregor Lescovar - The Head of the Beast');
+
+        -- Waypoints Lord Gregor Lescovar
+        DELETE FROM creature_movement_template WHERE entry = 1754;
+        INSERT INTO creature_movement_template (entry, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (1754, 0, -8333.05, 394.87, 122.274, 0, 0, 0, 0),
+        (1754, 1, -8346.96, 412.712, 122.274, 0, 0, 0, 0),
+        (1754, 2, -8351.2, 414.298, 122.274, 0, 0, 0, 0),
+        (1754, 3, -8355.27, 411.527, 122.274, 0, 0, 0, 0),
+        (1754, 4, -8360.12, 413.034, 122.274, 0, 0, 0, 0),
+        (1754, 5, -8363.47, 416.025, 122.274, 0, 0, 0, 0),
+        (1754, 6, -8387.32, 446.132, 122.274, 0, 0, 0, 0),
+        (1754, 7, -8389.33, 448.678, 124.274, 0, 0, 0, 0),
+        (1754, 8, -8392.253, 452.419, 123.76, 0, 10000, 0, 39401),
+        (1754, 9, -8401.39, 464.739, 123.76, 0, 318000, 0, 39403),
+        (1754, 10, -8401.39, 464.739, 123.76, 0, 0, 0, 39404);
+
+        DELETE FROM `creature_ai_scripts` WHERE `id`=175402;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (175402, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Lord Gregor Lescovar - Start Waypoints');
+
+        -- Waypoints Marzon the Silent Blade
+        DELETE FROM creature_movement_template WHERE entry = 1755;
+        INSERT INTO creature_movement_template (entry, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (1755, 0, -8403.43, 485.926, 123.76, 0, 0, 0, 0),
+        (1755, 1, -8406.47, 482.415, 123.76, 0, 0, 0, 0),
+        (1755, 2, -8409.43, 475.775, 123.76, 0, 0, 0, 0),
+        (1755, 3, -8402.33, 466.068, 123.76, 0, 300000, 0, 39402),
+        (1755, 4, -8402.33, 466.068, 129.76, 0, 0, 0, 0);
+
+        DELETE FROM `creature_movement_scripts` WHERE `id`=39401;
+        INSERT INTO `creature_movement_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (39401, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 322, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Lord Gregor Lescovar - Text'),
+        (39401, 4, 0, 0, 0, 0, 0, 0, 10523, 0, 9, 2, 3690, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Guard 1 - Text'),
+        (39401, 4, 0, 0, 0, 0, 0, 0, 10524, 0, 9, 2, 3690, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Guard 2 - Text'),
+        (39401, 6, 0, 18, 0, 0, 0, 0, 10523, 0, 9, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Guard 1 - Despawn'),
+        (39401, 6, 0, 18, 0, 0, 0, 0, 10524, 0, 9, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Guard 2 - Despawn');
+
+        DELETE FROM `creature_movement_scripts` WHERE `id`=39402;
+        INSERT INTO `creature_movement_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (39402, 0, 0, 0, 0, 0, 0, 0, 1754, 80, 8, 2, 323, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Lord Gregor Lescovar - Text 1'),
+        (39402, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 324, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Marzon the Silent Blade - Text 1'),
+        (39402, 12, 0, 0, 0, 0, 0, 0, 1754, 80, 8, 2, 326, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Lord Gregor Lescovar - Text 2'),
+        (39402, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 325, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Marzon the Silent Blade - Text 2'),
+        (39402, 20, 0, 22, 34, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Marzon the Silent Blade - Faction'),
+        (39402, 20, 0, 22, 27, 0, 0, 0, 1754, 0, 8, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Lord Gregor Lescovar - Faction'),
+        (39402, 20, 0, 78, 2, 0, 0, 0, 10502, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Marzon the Silent Blade - Join Group');
+
+        DELETE FROM `creature_movement_scripts` WHERE `id`=39403;
+        INSERT INTO `creature_movement_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (39403, 30, 0, 10, 1755, 300000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, -8403.655, 485.781, 123.76, 4.522, 0, 'The Head of the Beast - Summon Marzon the Silent Blade'),
+        (39403, 31, 0, 60, 0, 0, 0, 0, 1755, 80, 8, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Marzon the Silent Blade - Start Waypoints');
+
+        DELETE FROM `creature_movement_scripts` WHERE `id`=39404;
+        INSERT INTO `creature_movement_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (39404, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'The Head of the Beast - Lord Gregor Lescovar - Despawn');
+
+        -- Link Lord Gregor Lescovar & Marzon the Silent Blade Aggro.
+        DELETE FROM `creature_groups` WHERE `leader_guid` = 10502;
+        INSERT INTO `creature_groups` (`leader_guid`, `member_guid`, `dist`, `angle`, `flags`) VALUES ('10502', '10502', '0', '0', '2');
         
-        UPDATE `quest_template` SET `Details` = 'I would charge you with a task, $N.$B$BI was on my boat, rowing over the submerged ruins of Zoram, when naga attacked me, surging from the water and tearing at me with their claws! I fled, carrying what supplies I could to make this meager camp.$B$BBut when I reached the shore and ran... my prized possession was lost.$B$BPlease, $N, find the site of my ambush and search for an ancient statuette.  It is the reason I have braved the dangers of the Zoram Strand.', `RewOrReqMoney` = '750' WHERE (`entry` = '1007');
+        -- Darnassus Protector - Fix wps.
+        DELETE FROM creature_movement WHERE id = 46325;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (46325, 1, 10134.6, 2556.53, 1317.02, 0, 0, 0, 0),
+        (46325, 2, 10109.3, 2541.11, 1316.98, 0, 0, 0, 0),
+        (46325, 3, 10093.2, 2519.62, 1317.59, 0, 0, 0, 0),
+        (46325, 4, 10110.8, 2487.05, 1316.99, 0, 0, 0, 0),
+        (46325, 5, 10098, 2460.93, 1317.9, 0, 0, 0, 0),
+        (46325, 6, 10123.8, 2512.95, 1317.05, 0, 0, 0, 0),
+        (46325, 7, 10136.4, 2514.4, 1317.77, 0, 0, 0, 0),
+        (46325, 8, 10156.1, 2510.84, 1317.66, 0, 0, 0, 0),
+        (46325, 9, 10152.5, 2550.9, 1317.62, 0, 0, 0, 0),
+        (46325, 10, 10139.3, 2559.74, 1317.03, 0, 0, 0, 0);
+
+        -- Missing Frostsaber for Nightsaber Riding Instructor given wdb data.
+        -- Entry : 4753 | Name : Jartsam | Subname : Nightsaber Riding Instructor  | Type: 7 | Static Flags : 102 | Beast Family : 0
+        -- Entry : 4242 | Name : Frostsaber | Subname :  | Type: 1 | Static Flags : 0 | Beast Family : 0
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`) VALUES ('46807', '4242', '0', '0', '0', '1', '10127.701', '2526.786', '1318.587', '3.740');
+
+        -- Fix Hegnar Rumbleshot location.
+        UPDATE `spawns_creatures` SET `position_x` = '-5588.170', `position_y` = '-542.347', `position_z` = '403.541', `orientation` = '1.840' WHERE (`spawn_id` = '265');
+        -- Fix Cortello's Riddle loaction.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-14976.9', `spawn_positionY` = '319.874', `spawn_positionZ` = '0.0310713' WHERE (`spawn_id` = '26043');
+        -- Fix Fleet Master Firallon location.
+        UPDATE `spawns_creatures` SET `position_x` = '-14976.6', `position_y` = '346.487', `position_z` = '19.5424', `orientation` = '4.803' WHERE (`spawn_id` = '846');
+        -- Fix Crab Z
+        UPDATE `spawns_creatures` SET `position_z` = '-12.83' WHERE (`spawn_id` = '902');
+        -- Kursen Commando Z
+        UPDATE `spawns_creatures` SET `position_z` = '34.581' WHERE (`spawn_id` = '1465');
+        -- Kursen Subchief placement.
+        UPDATE `spawns_creatures` SET `position_x` = '-11370.9', `position_y` = '-682.661', `position_z` = '17.65', `orientation` = '1.025' WHERE (`spawn_id` = '1476');
+        -- Scale Belly placement.
+        UPDATE `spawns_creatures` SET `position_x` = '-13029.5', `position_y` = ' -735.739', `position_z` = '55.64' WHERE (`spawn_id` = '1577');
+        -- Toldren Deppiron placement.
+        UPDATE `spawns_creatures` SET `position_z` = '519.289' WHERE (`spawn_id` = '1772');
+        -- Lepper Gnome placement.
+        UPDATE `spawns_creatures` SET `position_z` = '390.279' WHERE (`spawn_id` = '2461');
+        -- Frostmane placement.
+        UPDATE `spawns_creatures` SET `position_x` = '-5544.6', `position_y` = '590.261', `position_z` = '394.750' WHERE (`spawn_id` = '2926');
+        -- Frostmane Z.
+        UPDATE `spawns_creatures` SET `position_z` = '384.604' WHERE (`spawn_id` = '2929');
+        -- Frostmane placement.
+        UPDATE `spawns_creatures` SET `position_x` = '-5522', `position_y` = '617.439', `position_z` = '393.498' WHERE (`spawn_id` = '2939');
+        -- Rabbit Z.
+        UPDATE `spawns_creatures` SET `position_z` = '410.3' WHERE (`spawn_id` = '3611');
+        -- Rockjaw Bonesnapper.
+        UPDATE `spawns_creatures` SET `position_z` = '403.7' WHERE (`spawn_id` = '5104');
+        -- Rabid Crag Coyote.
+        UPDATE `spawns_creatures` SET `position_z` = '309.699' WHERE (`spawn_id` = '6895');
+        -- Ridge Huntress.
+        UPDATE `spawns_creatures` SET `position_x` = '-6635.67', `position_y` = '-3547.28', `position_z` = '256.897' WHERE (`spawn_id` = '6926');
+        -- Rock Elemental.
+        UPDATE `spawns_creatures` SET `position_z` = '310.600' WHERE (`spawn_id` = '7710');
+        -- Rock Elemental.
+        UPDATE `spawns_creatures` SET `position_z` = '296.200' WHERE (`spawn_id` = '7794');
+        -- Mountaineer Haggis.
+        UPDATE `spawns_creatures` SET `position_z` = '348.354' WHERE (`spawn_id` = '8241');
+        -- Mountaineer Haggil.
+        UPDATE `spawns_creatures` SET `position_z` = '348.600' WHERE (`spawn_id` = '8243');
+        -- Nillen Andemar
+        UPDATE `spawns_creatures` SET `position_z` = '348.400' WHERE (`spawn_id` = '8247');
+        -- Chest.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-6027.23', `spawn_positionY` = '-2792.21', `spawn_positionZ` = '386.6' WHERE (`spawn_id` = '12998');
+        -- Stonesplinter Seer - Ignore
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '8336');
+        -- Stonesplinter Skullthumper - Ignore
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '8307');
+        -- Stonesplinter Seer - Ignore
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '8943');
+        -- Stonesplinter Skullthumper - Ignore
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '8944');
+        -- Stonesplinter Skullthumper - Ignore
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '8942');
+        -- Stonesplinter Skullthumper - Ignore
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '9051');
+        -- Stonesplinter Scout - Ignore
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '9141');
+        -- Stonesplinter Skullthumper - Ignore
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '9164');
+        -- Stonesplinter Seer.
+        UPDATE `spawns_creatures` SET `position_x` = '-6028.65', `position_y` = '-2787.15', `position_z` = '388.010', `orientation` = '4.85' WHERE (`spawn_id` = '9057');
+        -- Stonesplinter Seer.
+        UPDATE `spawns_creatures` SET `position_z` = '402' WHERE (`spawn_id` = '9118');
+        -- Stonesplinter Seer.
+        UPDATE `spawns_creatures` SET `position_x` = '-5956.1', `position_y` = '-2892.61', `position_z` = '373.920' WHERE (`spawn_id` = '9120');
+        -- Stonesplinter Trogg.
+        UPDATE `spawns_creatures` SET `position_z` = '373.920' WHERE (`spawn_id` = '9123');
+        -- Stoneslpinter Scout.
+        UPDATE `spawns_creatures` SET `position_x` = '-5944.95', `position_y` = '-2893.86', `position_z` = '371.52' WHERE (`spawn_id` = '9132');
+        -- Stonesplinter Trogg.
+        UPDATE `spawns_creatures` SET `position_z` = '374' WHERE (`spawn_id` = '9143');
+        -- Stonesplinter Trogg.
+        UPDATE `spawns_creatures` SET `position_z` = '368' WHERE (`spawn_id` = '9171');
+        -- Stonesplinter Scout.
+        UPDATE `spawns_creatures` SET `position_z` = '367.779' WHERE (`spawn_id` = '9174');
+        -- Stonesplinter Scout.
+        UPDATE `spawns_creatures` SET `position_z` = '368.077' WHERE (`spawn_id` = '9175');
+        -- Stonesplinter Trogg.
+        UPDATE `spawns_creatures` SET `position_z` = '369' WHERE (`spawn_id` = '9176');
+        -- Stonesplinter Seer.
+        UPDATE `spawns_creatures` SET `position_x` = '-5999.429', `position_y` = '-2974.491', `position_z` = '407.936', `orientation` = '3.276' WHERE (`spawn_id` = '9248');
+        -- Stonesplinter Scout.
+        UPDATE `spawns_creatures` SET `position_x` = '-5830.76', `position_y` = '-2964.22', `position_z` = '355.529', `orientation` = '2.655' WHERE (`spawn_id` = '9272');
+        -- Stonesplinter Scout.
+        UPDATE `spawns_creatures` SET `position_x` = '-5791.19', `position_y` = '-2874.691', `position_z` = '372.574' WHERE (`spawn_id` = '9273');
+        -- Stonesplinter Trogg.
+        UPDATE `spawns_creatures` SET `position_z` = '366.300' WHERE (`spawn_id` = '9282');
+        -- Elder Razormaw
+        UPDATE `spawns_creatures` SET `position_x` = '-2987.808', `position_y` = '-3243.703', `position_z` = '73.611', `orientation` = '6.084' WHERE (`spawn_id` = '9617');
+        -- Maidens Virtue Crewman
+        UPDATE `spawns_creatures` SET `position_x` = '-3766.751', `position_y` = '-686.713', `position_z` = '10.317', `orientation` = '5.58' WHERE (`spawn_id` = '9828');
+        -- Reduce Maidens Virtue Crewman wandering, they are all walking towards walls or boat cliff..
+        UPDATE `spawns_creatures` SET `wander_distance` = '2' WHERE (`spawn_id` = '9467');
+        UPDATE `spawns_creatures` SET `wander_distance` = '2' WHERE (`spawn_id` = '9529');
+        UPDATE `spawns_creatures` SET `wander_distance` = '2' WHERE (`spawn_id` = '9531');
+        UPDATE `spawns_creatures` SET `wander_distance` = '2' WHERE (`spawn_id` = '9534');
+        UPDATE `spawns_creatures` SET `wander_distance` = '2' WHERE (`spawn_id` = '9538');
+        UPDATE `spawns_creatures` SET `wander_distance` = '2' WHERE (`spawn_id` = '9572');
+        -- Redridge Rudger.
+        UPDATE `spawns_creatures` SET `position_x` = '-8920.453', `position_y` = '-1984.615', `position_z` = '133.280' WHERE (`spawn_id` = '10116');
+        -- Hammerfall Guardian.
+        UPDATE `spawns_creatures` SET `position_x` = '-871.106', `position_y` = '-3505.56', `position_z` = '73.364', `orientation` = '4.187' WHERE (`spawn_id` = '11238');
+        -- Dabyrie Laborer.
+        UPDATE `spawns_creatures` SET `position_z` = '42.051' WHERE (`spawn_id` = '11352');
+        -- Redridge Basher.
+        UPDATE `spawns_creatures` SET `position_x` = '-8931.591', `position_y` = '-2001.674', `position_z` = '134.528' WHERE (`spawn_id` = '11677');
+        -- Witherbark.
+        UPDATE `spawns_creatures` SET `position_z` = '42.572' WHERE (`spawn_id` = '11705');
+        -- Drywishker Digger.
+        UPDATE `spawns_creatures` SET `position_x` = '-989.711', `position_y` = '-3842.9', `position_z` = '144.527', `orientation` = '2.503' WHERE (`spawn_id` = '11945');
+        -- Drull.
+        UPDATE `spawns_creatures` SET `position_z` = '51.142' WHERE (`spawn_id` = '15597');
+        -- Food Crate.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '63.097' WHERE (`spawn_id` = '43642');
+        -- Syndicate Rogue.
+        UPDATE `spawns_creatures` SET `position_z` = '54.663' WHERE (`spawn_id` = '16026');
+        -- Syndicate Thief.
+        UPDATE `spawns_creatures` SET `position_z` = '152.978' WHERE (`spawn_id` = '17381');
+        -- Campfire.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '151.900' WHERE (`spawn_id` = '30093');
+        -- Syndicate Documents.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '152.620' WHERE (`spawn_id` = '31397');
+        -- Syndicate Thief.
+        UPDATE `spawns_creatures` SET `position_z` = '153.889' WHERE (`spawn_id` = '17570');
+        -- Nazen Mac'Nadir
+        UPDATE `spawns_creatures` SET `position_z` = '95.491' WHERE (`spawn_id` = '26836');
+        -- Campfire.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '89.174' WHERE (`spawn_id` = '45295');
+        -- Food Crate.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '89.174' WHERE (`spawn_id` = '45483');
+        -- Diseased Grizzly.
+        UPDATE `spawns_creatures` SET `position_x` = '1886.817', `position_y` = '-1929.956', `position_z` = '62.966', `orientation` = '5.380' WHERE (`spawn_id` = '47226');
+        -- Mist Lurker.
+        UPDATE `spawns_creatures` SET `position_z` = '60.545' WHERE (`spawn_id` = '48036');
+        -- Skeletal Executioner.
+        UPDATE `spawns_creatures` SET `position_x` = '1364.261', `position_y` = '-1416.66', `position_z` = '72' WHERE (`spawn_id` = '48601');
+        -- Skeletal Acolyte.
+        UPDATE `spawns_creatures` SET `position_x` = '1560.694', `position_y` = '-1420.220', `position_z` = '70.605', `orientation` = '6.10' WHERE (`spawn_id` = '51736');
+        -- Souless Ghoul.
+        UPDATE `spawns_creatures` SET `position_x` = '1574.467', `position_y` = '-1653.277', `position_z` = '72.097', `orientation` = '5.715' WHERE (`spawn_id` = '51738');
+        -- Murloc.
+        UPDATE `spawns_creatures` SET `position_z` = '58.650' WHERE (`spawn_id` = '79619');
+        -- Acolyte Dellis.
+        UPDATE `spawns_creatures` SET `position_z` = '101.871' WHERE (`spawn_id` = '90459');
+        -- Silvermane Wolf.
+        UPDATE `spawns_creatures` SET `position_z` = '119.512' WHERE (`spawn_id` = '92970');
+        -- Silvermane Stalker.
+        UPDATE `spawns_creatures` SET `position_z` = '121.938' WHERE (`spawn_id` = '92985');
+        -- Villebranch Axe Thrower.
+        UPDATE `spawns_creatures` SET `position_z` = '141.803' WHERE (`spawn_id` = '93006');
+        -- Villebranch Wolf Pup.
+        UPDATE `spawns_creatures` SET `position_z` = '126.577' WHERE (`spawn_id` = '93021');
+        -- Green Sludge.
+        UPDATE `spawns_creatures` SET `position_x` = '331.625', `position_y` = '-3782.91', `position_z` = '100.885' WHERE (`spawn_id` = '93064');
+        -- Primitive Owlbeast.
+        UPDATE `spawns_creatures` SET `position_z` = '138.327' WHERE (`spawn_id` = '93148');
+        -- Campfire.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '120.087' WHERE (`spawn_id` = '46055');
+        -- Silvermane Wolf.
+        UPDATE `spawns_creatures` SET `position_z` = '122.236' WHERE (`spawn_id` = '93239');
+        -- Silvermane Wolf.
+        UPDATE `spawns_creatures` SET `position_z` = '122.938' WHERE (`spawn_id` = '93364');
+        -- Silvermane Wolf.
+        UPDATE `spawns_creatures` SET `position_z` = '123.684' WHERE (`spawn_id` = '93494');
+        -- Villebranch Axe Thrower.
+        UPDATE `spawns_creatures` SET `position_z` = '127.424' WHERE (`spawn_id` = '93496');
+        -- Villebranch Scalper.
+        UPDATE `spawns_creatures` SET `position_z` = '121.377' WHERE (`spawn_id` = '93544');
+        -- Villebranch Soothsayer.
+        UPDATE `spawns_creatures` SET `position_z` = '120.509' WHERE (`spawn_id` = '93660');
+        -- Silvermane Stalker.
+        UPDATE `spawns_creatures` SET `position_z` = '121.401' WHERE (`spawn_id` = '93680');
+        UPDATE `spawns_creatures` SET `position_z` = '123.097' WHERE (`spawn_id` = '93707');
+        -- Villebranch Guard.
+        UPDATE `spawns_creatures` SET `position_z` = '235.649' WHERE (`spawn_id` = '93708');
+        -- Rabbit.
+        UPDATE `spawns_creatures` SET `position_z` = '478.485' WHERE (`spawn_id` = '190185');
+        UPDATE `spawns_creatures` SET `position_z` = '395.337' WHERE (`spawn_id` = '190187');
+        UPDATE `spawns_creatures` SET `position_z` = '407' WHERE (`spawn_id` = '190188');
+        -- Bear.
+        UPDATE `spawns_creatures` SET `position_z` = '399.106' WHERE (`spawn_id` = '190244');
+        UPDATE `spawns_creatures` SET `position_z` = '395.104' WHERE (`spawn_id` = '190245');
+        UPDATE `spawns_creatures` SET `position_z` = '395.063' WHERE (`spawn_id` = '190246');
+        -- Orgrimmar Grunt.
+        UPDATE `spawns_creatures` SET `position_x` = '1925.720', `position_y` = '-4377.779', `position_z` = '21.193', `orientation` = '3.160' WHERE (`spawn_id` = '6564');
+        -- Hyena.
+        UPDATE `spawns_creatures` SET `position_z` = '95.959' WHERE (`spawn_id` = '13433');
+        UPDATE `spawns_creatures` SET `position_z` = '100.528' WHERE (`spawn_id` = '13459');
+        UPDATE `spawns_creatures` SET `position_z` = '93.372' WHERE (`spawn_id` = '13467');
+        -- Southsea Cutthroat.
+        UPDATE `spawns_creatures` SET `position_z` = '93.693' WHERE (`spawn_id` = '13832');
+        UPDATE `spawns_creatures` SET `position_z` = '96.957' WHERE (`spawn_id` = '13856');
+        -- Praire Dog.
+        UPDATE `spawns_creatures` SET `position_z` = '93.950' WHERE (`spawn_id` = '13978');
+        -- Kolkar.
+        UPDATE `spawns_creatures` SET `position_z` = '94.659' WHERE (`spawn_id` = '14001');
+        -- Slime.
+        UPDATE `spawns_creatures` SET `position_z` = '94.012' WHERE (`spawn_id` = '14127');
+        -- Mud Thresh.
+        UPDATE `spawns_creatures` SET `position_x` = '-1215.639', `position_y` = '-3003.882', `position_z` = '87.152' WHERE (`spawn_id` = '14958');
+        UPDATE `spawns_creatures` SET `position_x` = '-1271.202', `position_y` = '-3038.331', `position_z` = '86.71' WHERE (`spawn_id` = '14967');
+        -- Darkfang Spider.
+        UPDATE `spawns_creatures` SET `position_x` = '-4110.380', `position_y` = '-3839.736', `position_z` = '56.603' WHERE (`spawn_id` = '18637');
+        -- Kolkar.
+        UPDATE `spawns_creatures` SET `position_z` = '95.321' WHERE (`spawn_id` = '20474');
+        UPDATE `spawns_creatures` SET `position_z` = '93.326' WHERE (`spawn_id` = '20483');
+        -- Venture Co Overseer.
+        UPDATE `spawns_creatures` SET `position_x` = '1263.020', `position_y` = '-3605.672', `position_z` = '114.233', `orientation` = '5.94' WHERE (`spawn_id` = '20834');
+        -- Toad.
+        UPDATE `spawns_creatures` SET `position_z` = '-271.313' WHERE (`spawn_id` = '24215');
+        UPDATE `spawns_creatures` SET `position_z` = '-270.313' WHERE (`spawn_id` = '24216');
+        UPDATE `spawns_creatures` SET `position_z` = '-269.313' WHERE (`spawn_id` = '24216');
+        UPDATE `spawns_creatures` SET `position_z` = '-271.169' WHERE (`spawn_id` = '24222');
+        UPDATE `spawns_creatures` SET `position_z` = '-273.540' WHERE (`spawn_id` = '24223');
+        UPDATE `spawns_creatures` SET `position_z` = '-272.833' WHERE (`spawn_id` = '24228');
+        UPDATE `spawns_creatures` SET `position_z` = '-268.500' WHERE (`spawn_id` = '24232');
+        UPDATE `spawns_creatures` SET `position_z` = '-272.254' WHERE (`spawn_id` = '24234');
+        UPDATE `spawns_creatures` SET `position_z` = '-272.107' WHERE (`spawn_id` = '24236');
+        UPDATE `spawns_creatures` SET `position_z` = '-271.091' WHERE (`spawn_id` = '24238');
+        UPDATE `spawns_creatures` SET `position_z` = '-271.228' WHERE (`spawn_id` = '24239');
+        UPDATE `spawns_creatures` SET `position_z` = '-270.953' WHERE (`spawn_id` = '24243');
+        UPDATE `spawns_creatures` SET `position_z` = '-271.320' WHERE (`spawn_id` = '24244');
+        UPDATE `spawns_creatures` SET `position_z` = '-272.129' WHERE (`spawn_id` = '24250');
+        -- Cenarion Caretaker.
+        UPDATE `spawns_creatures` SET `position_x` = '2406.894', `position_y` = '1801.729', `position_z` = '354.771', `orientation` = '3.52' WHERE (`spawn_id` = '32206');
+        -- Chylina.
+        UPDATE `spawns_creatures` SET `position_x` = '2653.058', `position_y` = '1463.526', `position_z` = '228.697' WHERE (`spawn_id` = '32313');
+        -- Illyanie.
+        UPDATE `spawns_creatures` SET `position_x` = '2671.126', `position_y` = '1459.249', `position_z` = '229.598', `orientation` = '3.938' WHERE (`spawn_id` = '29249');
+        -- Thistlefur Shaman.
+        UPDATE `spawns_creatures` SET `position_z` = '102.074' WHERE (`spawn_id` = '32486');
+        -- Deer.
+        UPDATE `spawns_creatures` SET `position_z` = '140.300' WHERE (`spawn_id` = '32673');
+        -- Burning Legionaire.
+        UPDATE `spawns_creatures` SET `position_x` = '2227.682', `position_y` = '192.042', `position_z` = '133.389' WHERE (`spawn_id` = '33262');
+        -- Moss Eater.
+        UPDATE `spawns_creatures` SET `position_z` = '198.256' WHERE (`spawn_id` = '33330');
+        -- Raincaller.
+        UPDATE `spawns_creatures` SET `position_z` = '99.250' WHERE (`spawn_id` = '33469');
+        -- Laughing Sister.
+        UPDATE `spawns_creatures` SET `position_z` = '131.240' WHERE (`spawn_id` = '34196');
+        -- Bear.
+        UPDATE `spawns_creatures` SET `position_x` = '2221.124', `position_y` = '-1834.689', `position_z` = '86.554' WHERE (`spawn_id` = '34360');
+        -- Wildhorn Satlker.
+        UPDATE `spawns_creatures` SET `position_x` = '2747.392', `position_y` = '0.238', `position_z` = '105.818' WHERE (`spawn_id` = '34801');
+        UPDATE `spawns_creatures` SET `position_z` = '94.4' WHERE (`spawn_id` = '34808');
+        UPDATE `spawns_creatures` SET `position_z` = '120.797' WHERE (`spawn_id` = '34812');
+        UPDATE `spawns_creatures` SET `position_z` = '130.436' WHERE (`spawn_id` = '34839');
+        -- Wildhorn Venomspitter.
+        UPDATE `spawns_creatures` SET `position_z` = '184.640' WHERE (`spawn_id` = '34893');
+        -- Ghostpaw Runner.
+        UPDATE `spawns_creatures` SET `position_z` = '96.707' WHERE (`spawn_id` = '34983');
+        -- Darkstrand Fanatic.
+        UPDATE `spawns_creatures` SET `position_z` = '38.086' WHERE (`spawn_id` = '36983');
+        -- Squirrel.
+        UPDATE `spawns_creatures` SET `position_z` = '466.500' WHERE (`spawn_id` = '42670');
+        UPDATE `spawns_creatures` SET `position_z` = '460.432' WHERE (`spawn_id` = '42532');
+        UPDATE `spawns_creatures` SET `position_z` = '462.1' WHERE (`spawn_id` = '42517');
+        UPDATE `spawns_creatures` SET `position_z` = '470.214' WHERE (`spawn_id` = '42343');
+        UPDATE `spawns_creatures` SET `position_z` = '476.1' WHERE (`spawn_id` = '42433');
+        UPDATE `spawns_creatures` SET `position_x` = '7617.558', `position_y` = '-2999.218', `position_z` = '462.870' WHERE (`spawn_id` = '42456');
+        -- Deer.
+        UPDATE `spawns_creatures` SET `position_x` = '7425.207', `position_y` = '-2465.648', `position_z` = '463.889' WHERE (`spawn_id` = '42581');
+        UPDATE `spawns_creatures` SET `position_z` = '464.2' WHERE (`spawn_id` = '42543');
+        UPDATE `spawns_creatures` SET `position_z` = '467.668' WHERE (`spawn_id` = '42399');
+        UPDATE `spawns_creatures` SET `position_z` = '467.686' WHERE (`spawn_id` = '42405');
+        UPDATE `spawns_creatures` SET `position_z` = '462' WHERE (`spawn_id` = '42428');
+        UPDATE `spawns_creatures` SET `position_x` = '7658.691', `position_y` = '-2980.364', `position_z` = '466.444' WHERE (`spawn_id` = '42495');
+        -- Rabbit.
+        UPDATE `spawns_creatures` SET `position_z` = '467.5' WHERE (`spawn_id` = '42470');
+        UPDATE `spawns_creatures` SET `position_z` = '465.187' WHERE (`spawn_id` = '42473');
+        -- Sea Elemental.
+        UPDATE `spawns_creatures` SET `position_z` = '-0.526' WHERE (`spawn_id` = '50107');
+        -- Woodpaw Trapper.
+        UPDATE `spawns_creatures` SET `position_z` = '52.40' WHERE (`spawn_id` = '50425');
+        -- Sprite Darter.
+        UPDATE `spawns_creatures` SET `position_z` = '64' WHERE (`spawn_id` = '50788');
+        -- Yeti.
+        UPDATE `spawns_creatures` SET `position_z` = '143.5' WHERE (`spawn_id` = '51038');
+        -- Frayfeather.
+        UPDATE `spawns_creatures` SET `position_z` = '82' WHERE (`spawn_id` = '51189');
+        UPDATE `spawns_creatures` SET `position_z` = '104' WHERE (`spawn_id` = '51215');
+        -- Screecher.
+        UPDATE `spawns_creatures` SET `position_z` = '96.266' WHERE (`spawn_id` = '51219');
+        -- Barrel.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4962.120', `spawn_positionY` = '-920.009' WHERE (`spawn_id` = '938');
+        -- Dwarven Fire.
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '1059');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '1060');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '1081');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '1083');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '1144');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '1145');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12078');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12046');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12063');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12070');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12071');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12080');
+        -- Chair
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '2524');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '4079');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '3762');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '3441');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '10867');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '10865');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '10866');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12688');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '17966');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '42895');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '42894');
+        -- Leveler.
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '32378');
+        -- Chests.
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '42897');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '42914');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '42915');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '42916');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '42917');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '42918');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '42919');
+        -- IF Signs.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4751.300', `spawn_positionY` = '-1161.560', `spawn_positionZ` = '497' WHERE (`spawn_id` = '5090');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4751.370', `spawn_positionY` = '-1160.840', `spawn_positionZ` = '497.000' WHERE (`spawn_id` = '5095');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4751.940', `spawn_positionY` = '-1161.370', `spawn_positionZ` = '497' WHERE (`spawn_id` = '5239');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4800.480', `spawn_positionY` = '-1041.220', `spawn_positionZ` = '487.300' WHERE (`spawn_id` = '6887');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4800.770', `spawn_positionY` = '-1040.600', `spawn_positionZ` = '487.300' WHERE (`spawn_id` = '6882');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4801.460', `spawn_positionY` = '-1040.930', `spawn_positionZ` = '487.300' WHERE (`spawn_id` = '6889');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4860.020', `spawn_positionY` = '-1089.370', `spawn_positionZ` = '487.300' WHERE (`spawn_id` = '6825');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4860.480', `spawn_positionY` = '-1090.010', `spawn_positionZ` = '487.300' WHERE (`spawn_id` = '6819');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-4859.870', `spawn_positionY` = '-1090.590', `spawn_positionZ` = '487.300' WHERE (`spawn_id` = '6828');
+        -- Wood Box.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-14295.380', `spawn_positionY` = '529.874', `spawn_positionZ` = '8.928' WHERE (`spawn_id` = '11014');
+        -- Chest.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-11372.392', `spawn_positionY` = '-683.598', `spawn_positionZ` = '17.080' WHERE (`spawn_id` = '11090');
+        -- Silver Vein.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-11488.242', `spawn_positionY` = '-721.752', `spawn_positionZ` = '34.315' WHERE (`spawn_id` = '11983');
+        -- Mythril Vein.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-11214.771', `spawn_positionY` = '-882.049', `spawn_positionZ` = '79.400' WHERE (`spawn_id` = '11990');
+        -- Barrel.
+        UPDATE `spawns_gameobjects` SET `spawn_positionY` = '-3390.197', `spawn_positionZ` = '271.787' WHERE (`spawn_id` = '12767');
+        -- Blasted Lands invalid gos. (Flying chairs, camp fires, etc)
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12827');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12810');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12809');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12802');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12786');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12777');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12772');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12688');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12875');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12876');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12830');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12869');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12870');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12866');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12867');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12831');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12869');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12868');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12843');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12874');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12865');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12844');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12855');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12861');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12858');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12851');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12841');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12776');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12777');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12779');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12786');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12788');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12798');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12799');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12802');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12809');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12810');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12827');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12830');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '12831');
+        -- Alterac Granite.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-248.662', `spawn_positionY` = '-350.557', `spawn_positionZ` = '67.356' WHERE (`spawn_id` = '31335');
         
-        UPDATE `creature_template` SET `level_min` = '15', `level_max` = '15' WHERE (`entry` = '3681');
+        -- IF Guard wps.
+        DELETE FROM creature_movement WHERE id = 1760;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (1760, 0, -4671.36, -908.789, 519.855, 0, 0, 0, 0),
+        (1760, 1, -4676.429, -914.916, 519.882, 0, 0, 0, 0),
+        (1760, 2, -4678.071, -916.901, 521.272, 0, 0, 0, 0),
+        (1760, 3, -4711.074, -954.825, 521.272, 0, 0, 0, 0),
+        (1760, 4, -4716.902, -951.049, 521.186, 0, 0, 0, 0),
+        (1760, 5, -4726.616, -944.15, 512.939, 0, 0, 0, 0),
+        (1760, 6, -4729.123, -939.268, 512.939, 0, 0, 0, 0),
+        (1760, 7, -4706.806, -901.078, 512.939, 0, 0, 0, 0),
+        (1760, 8, -4703.058, -903.82, 512.94, 0, 0, 0, 0),
+        (1760, 9, -4688.033, -913.839, 501.659, 0, 0, 0, 0),
+        (1760, 10, -4626.902, -988.39, 501.659, 0, 0, 0, 0),
+        (1760, 11, -4618.999, -1005.044, 512.94, 0, 0, 0, 0),
+        (1760, 12, -4618.37, -1009.836, 512.939, 0, 0, 0, 0),
+        (1760, 13, -4658.048, -1024.187, 512.939, 0, 0, 0, 0),
+        (1760, 14, -4663.137, -1020.555, 512.939, 0, 0, 0, 0),
+        (1760, 15, -4668.05, -1009.673, 521.272, 0, 0, 0, 0),
+        (1760, 16, -4668.954, -1002.675, 521.272, 0, 0, 0, 0),
+        (1760, 17, -4627.092, -978.93, 521.272, 0, 0, 0, 0),
+        (1760, 18, -4624.962, -977.476, 519.883, 0, 0, 0, 0),
+        (1760, 19, -4621.117, -970.261, 519.879, 0, 0, 0, 0),
+        (1760, 20, -4668.112, -914.681, 519.87, 0, 0, 0, 0);
 
-        UPDATE `spawns_creatures` SET `position_x` = '10686.3', `position_y` = '1917.5', `position_z` = '1336.62', `orientation` = '0.998' WHERE (`spawn_id` = '46193');
+        -- Booty Bay Bruiser wps.
+        DELETE FROM creature_movement WHERE id = 598;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (598, 0, -14392.1, 420.434, 7.54, 0, 0, 0, 0),
+        (598, 1, -14380.348, 426.231, 7.37, 0, 0, 0, 0),
+        (598, 2, -14357.271, 435.996, 7.37, 0, 0, 0, 0),
+        (598, 3, -14341.761, 445.697, 7.499, 0, 0, 0, 0),
+        (598, 4, -14331.933, 458.173, 7.877, 0, 0, 0, 0),
+        (598, 5, -14321.324, 478.657, 8.568, 0, 0, 0, 0),
+        (598, 6, -14304.954, 514.336, 8.768, 0, 0, 0, 0),
+        (598, 7, -14303.029, 524.504, 8.82, 0, 0, 0, 0),
+        (598, 8, -14297.663, 530.791, 8.846, 0, 0, 0, 0),
+        (598, 9, -14302.79, 523.889, 8.816, 0, 0, 0, 0),
+        (598, 10, -14312.129, 499.823, 8.693, 0, 0, 0, 0),
+        (598, 11, -14331.256, 460.135, 7.942, 0, 0, 0, 0),
+        (598, 12, -14345.993, 443.564, 7.467, 0, 0, 0, 0),
+        (598, 13, -14356.036, 436.429, 7.371, 0, 0, 0, 0),
+        (598, 14, -14390.647, 423.148, 7.429, 0, 0, 0, 0),
+        (598, 15, -14401.684, 422.577, 8.224, 0, 0, 0, 0),
+        (598, 16, -14423.522, 430.238, 8.972, 0, 0, 0, 0),
+        (598, 17, -14434.101, 447.216, 3.71, 0, 0, 0, 0),
+        (598, 18, -14447.857, 439.249, 3.933, 0, 0, 0, 0),
+        (598, 19, -14431.171, 454.303, 3.694, 0, 0, 0, 0),
+        (598, 20, -14432.794, 446.862, 3.711, 0, 0, 0, 0),
+        (598, 21, -14424.431, 431.198, 8.681, 0, 0, 0, 0),
+        (598, 22, -14404.245, 419.882, 8.335, 0, 0, 0, 0),
+        (598, 23, -14391.788, 400.846, 6.432, 0, 0, 0, 0),
+        (598, 24, -14355.317, 415.074, 6.63, 0, 0, 0, 0),
+        (598, 25, -14361.736, 433.171, 7.365, 0, 0, 0, 0),
+        (598, 26, -14397.358, 421.517, 7.809, 0, 0, 0, 0);
 
-        insert into applied_updates values ('020520251');
+        insert into applied_updates values ('011220251');
     end if;
 
-    -- 25/05/2025 1
-    if (select count(*) from applied_updates where id='250520251') = 0 then
-        UPDATE `trainer_template` SET reqlevel = 21 WHERE playerspell = 4772; -- Bruise Rank 2
-        UPDATE `trainer_template` SET reqlevel = 28 WHERE playerspell = 4773; -- Bruise Rank 3
-        UPDATE `trainer_template` SET reqlevel = 36 WHERE playerspell = 4774; -- Bruise Rank 4
-        UPDATE `trainer_template` SET reqlevel = 22 WHERE playerspell = 6577; -- Intimidating Growl
-        UPDATE `trainer_template` SET reqlevel = 22 WHERE playerspell = 6666; -- Survival Instinct
-        INSERT INTO applied_updates VALUES ('250520251');
+    -- 11/12/2025 1
+    if (select count(*) from applied_updates where id='111220251') = 0 then
+
+        -- Fix some virtual monster items.
+
+        -- Defias Smuggler
+        -- Blue Dragonspawn
+        -- Mazen Mac'Nadir - (Texture Set)
+        -- Shaethis Darkoak
+        -- Dalaran Watcher
+        -- Dalaran Shield Guard
+        -- Muckrake
+        -- Novice Thaivand
+        -- Forsaken Courier
+        -- Shadowforge Warrior
+        -- Gabrielle Chase
+        -- Olthran Craghelm
+        -- Myizz Luckycatch
+        -- Horde Guard
+
+        -- Monster - Throwing Knife.
+        UPDATE `item_template` SET `display_id` = '4678', `ignored` = '0' WHERE (`entry` = '6886');
+        -- Monster - Orb.
+        UPDATE `item_template` SET `display_id` = '5566', `ignored` = '0' WHERE (`entry` = '6618');
+        -- Monster - Spear, Sharp Thin.
+        UPDATE `item_template` SET `display_id` = '7978', `ignored` = '0' WHERE (`entry` = '6680');
+        -- Monster - Tankards.
+        UPDATE `item_template` SET `display_id` = '6586', `ignored` = '0' WHERE (`entry` = '13861');
+        UPDATE `item_template` SET `display_id` = '6586', `ignored` = '0' WHERE (`entry` = '13862');
+        UPDATE `item_template` SET `display_id` = '6588', `ignored` = '0' WHERE (`entry` = '13859');
+        UPDATE `item_template` SET `display_id` = '6587', `ignored` = '0' WHERE (`entry` = '13855');
+        UPDATE `item_template` SET `display_id` = '4861', `ignored` = '0' WHERE (`entry` = '13854');
+        -- Myizz Luckycatch - Holds fish.
+        UPDATE `creature_equip_template` SET `equipentry1` = '6225' WHERE (`entry` = '2834');
+        -- Monster - Shield, Kite Metal Gold. Olthran Craghelm 
+        UPDATE `item_template` SET `display_id` = '1705', `ignored` = '0' WHERE (`entry` = '11041');
+        -- Hammerfall Grunts.
+        UPDATE `creature_equip_template` SET `equipentry1` = '5289' WHERE (`entry` = '2619');
+        -- Monster - Staff, Basic Red.
+        UPDATE `item_template` SET `ignored` = '0' WHERE (`entry` = '12937');
+        -- Monster - Staff, 3 Piece Taped Staff Green.
+        UPDATE `item_template` SET `display_id` = '1201', `ignored` = '0' WHERE (`entry` = '12328');
+        -- Horde Guard.
+        UPDATE `creature_equip_template` SET `equipentry1` = '1905' WHERE (`entry` = '3501');
+
+
+        -- Close 1587
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-5891.505', `spawn_positionY` = '-2854.249', `spawn_positionZ` = '372.107' WHERE (`spawn_id` = '112667');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '371.836' WHERE (`spawn_id` = '12819');
+
+        -- Missing riding wolves at Crossroads. https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Kalimdor/Barrens/images_6626.jpg
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400472', '5197', '0', '0', '0', '1', '-433.731', '-2644.658', '96.539', '0.187', '270', '270', '0', '100', '0', '0', '0', '0', '0');
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400473', '5196', '0', '0', '0', '1', '-432.375', '-2650.784', '96.511', '0.139', '270', '270', '0', '100', '0', '0', '0', '0', '0');
+
+        -- Barrel of Milk.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '-6.370' WHERE (`spawn_id` = '43007');
+        
+        -- Monster - Gun.
+        UPDATE `creature_equip_template` SET `equipentry3` = '2552' WHERE `equipentry3` = '12523' or `equipentry3` = '14642';
+        
+        -- Zizzek, placement.
+        UPDATE `spawns_creatures` SET `position_x` = '-1020.966', `position_y` = '-3661.982', `position_z` = '22.367', `orientation` = '5.666' WHERE (`spawn_id` = '20948');
+        
+        -- Dun Garok Mountaneers. https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Eastern%20Kingdoms/Hillsbrad%20Foothills/WoWScrnShot_052004_204918.jpg
+        UPDATE `creature_equip_template` SET `equipentry1` = '2695' WHERE (`entry` = '2344');
+        
+        -- Kazon - Monster - Mace2H, Kazon's Maul
+        UPDATE `item_template` SET `ignored` = '0' WHERE (`entry` = '10685');
+        -- Kazon, faction.
+        UPDATE `creature_template` SET `faction` = '40' WHERE (`entry` = '584');
+
+        -- Campfire Z.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '155.916' WHERE (`spawn_id` = '34846');
+
+        -- Monster - Mace, Tauren Spiked.
+        UPDATE `item_template` SET `ignored` = '0' WHERE (`entry` = '9659');
+
+        -- Monster - Dagger, Tanto Blade
+        -- Monster - Sword, Horde Jagged Green
+        UPDATE `item_template` SET `ignored` = '0' WHERE (`entry` = '10618');
+        UPDATE `item_template` SET `ignored` = '0' WHERE (`entry` = '10878');
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1590
+        UPDATE `quest_template` SET `Objectives` = 'Return to Shandris Feathermoon in Darnassus.' WHERE (`entry` = '1044');
+        UPDATE `creature_quest_finisher` SET `entry` = '3936' WHERE (`entry` = '8026') and (`quest` = '1044');
+
+        -- Empty vendor template.
+        INSERT INTO `npc_vendor_template` (`entry`, `item`, `maxcount`, `incrtime`, `itemflags`, `condition_id`, `slot`) VALUES ('4000000', '0', '0', '0', '0', '0', '0');
+        
+        -- Boat Vendor and Pirate Supplies did open vendor frame, just empty. (This probably applies to Cartography vendors and others)
+        UPDATE `creature_template` SET `npc_flags` = '1', `vendor_id` = '4000000' WHERE (`entry` = '2662');
+        UPDATE `creature_template` SET `npc_flags` = '1', `vendor_id` = '4000000' WHERE (`entry` = '2663');
+
+        -- Yance Kelsey <Cook>, use default model.
+        UPDATE `creature_template` SET `display_id1` = '1140' WHERE (`entry` = '2664');
+
+        -- Haren Kanmae <Superior Bower>, use default model.
+        UPDATE `creature_template` SET `display_id1` = '1140' WHERE (`entry` = '2839');
+
+        -- Black Swashbuckler's Shirt -> Swashbuckler's Shirt from spell 3873.
+        UPDATE `item_template` SET `name` = 'Swashbuckler\'s Shirt', `display_id` = '7847' WHERE (`entry` = '4336');
+        
+        -- Ratchet burried go's.
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE `spawn_id` IN ('13050', 13058, 13151, 13035, 13076, 13063);
+
+        -- Book - Mount Hyjal and Illidan's Gift - Placement.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-1003.186', `spawn_positionY` = '-3652.592', `spawn_positionZ` = '25.560' WHERE (`spawn_id` = '13461');
+
+        -- Brewmaster Drohn - Faction.
+        UPDATE `creature_template` SET `faction` = '121' WHERE (`entry` = '3292');
+
+        -- Food Crate.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-1014.084', `spawn_positionY` = '-3659.752', `spawn_positionZ` = '21.976' WHERE (`spawn_id` = '46847');
+        
+        -- Theramore Marine.
+        UPDATE `spawns_creatures` SET `position_x` = '-2058.161', `position_y` = '-3675.024', `position_z` = '23.843', `orientation` = '2.853' WHERE (`spawn_id` = '13906');
+
+        -- Theramore Preserver.
+        UPDATE `spawns_creatures` SET `position_x` = '-2059.504', `position_y` = '-3671.873', `position_z` = '23.830', `orientation` = '3.045' WHERE (`spawn_id` = '13939');
+
+        -- Palomino.
+        UPDATE `spawns_creatures` SET `position_x` = '-2088.872', `position_y` = '-3684.154', `position_z` = '34.631', `orientation` = '1.341' WHERE (`spawn_id` = '13182');
+
+        -- Barrel of Milk.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-2074.703', `spawn_positionY` = '-3665.133', `spawn_positionZ` = '33.137' WHERE (`spawn_id` = '46915');
+
+        -- Tin Vein.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-2117.118', `spawn_positionY` = '-3654.103', `spawn_positionZ` = '45.404' WHERE (`spawn_id` = '34617');
+
+        -- Campfire.
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE `spawn_id` = '13479';
+
+        -- Theramore Marine, placement, wps.
+        UPDATE `spawns_creatures` SET `position_x` = '-2060.183', `position_y` = '-3682.365', `position_z` = '50.602', `orientation` = '2.871' WHERE (`spawn_id` = '13867');
+
+        DELETE FROM creature_movement WHERE id = 13867;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (13867, 0, -2060.183, -3682.365, 50.602, 0, 0, 0, 0),
+        (13867, 1, -2099.041, -3670.462, 50.236, 0, 0, 0, 0),
+        (13867, 2, -2098.516, -3666.592, 49.916, 0, 0, 0, 0),
+        (13867, 3, -2095.103, -3656.417, 45.472, 0, 0, 0, 0),
+        (13867, 4, -2086.33, -3630.918, 41.872, 0, 0, 0, 0),
+        (13867, 5, -2087.715, -3625.833, 41.873, 0, 0, 0, 0),
+        (13867, 6, -2082.895, -3626.759, 41.873, 0, 0, 0, 0),
+        (13867, 7, -2077.09, -3633.4, 41.346, 0, 0, 0, 0),
+        (13867, 8, -2053.668, -3640.878, 37.119, 0, 0, 0, 0),
+        (13867, 9, -2049.473, -3638.781, 37.093, 0, 0, 0, 0),
+        (13867, 10, -2042.792, -3640.042, 37.085, 0, 0, 0, 0),
+        (13867, 11, -2042.234, -3642.57, 37.085, 0, 0, 0, 0),
+        (13867, 12, -2043.829, -3646.621, 37.087, 0, 0, 0, 0),
+        (13867, 13, -2049.074, -3650.867, 37.113, 0, 0, 0, 0),
+        (13867, 14, -2056.613, -3675.836, 37.116, 0, 0, 0, 0),
+        (13867, 15, -2060.093, -3686.559, 37.124, 0, 0, 0, 0),
+        (13867, 16, -2058.655, -3691.364, 34.208, 0, 0, 0, 0),
+        (13867, 17, -2052.444, -3692.934, 30.325, 0, 0, 0, 0),
+        (13867, 18, -2049.412, -3686.353, 26.57, 0, 0, 0, 0),
+        (13867, 19, -2056.609, -3681.23, 23.765, 0, 0, 0, 0),
+        (13867, 20, -2067.878, -3669.678, 25.819, 0, 0, 0, 0),
+        (13867, 21, -2063.224, -3648.426, 25.142, 0, 0, 0, 0),
+        (13867, 22, -2072.886, -3642.437, 27.649, 0, 0, 0, 0),
+        (13867, 23, -2082.779, -3644.606, 30.558, 0, 0, 0, 0),
+        (13867, 24, -2088.738, -3657.479, 33.455, 0, 0, 0, 0),
+        (13867, 25, -2080.013, -3670.799, 33.826, 0, 0, 0, 0),
+        (13867, 26, -2078.601, -3664.799, 33.449, 0, 0, 0, 0),
+        (13867, 27, -2084.94, -3660.143, 33.56, 0, 0, 0, 0),
+        (13867, 28, -2082.185, -3648.152, 31.131, 0, 0, 0, 0),
+        (13867, 29, -2071.48, -3642.746, 27.279, 0, 0, 0, 0),
+        (13867, 30, -2063.861, -3646.44, 25.386, 0, 0, 0, 0),
+        (13867, 31, -2066.813, -3673.672, 25.459, 0, 0, 0, 0),
+        (13867, 32, -2054.032, -3682.396, 23.914, 0, 0, 0, 0),
+        (13867, 33, -2050.184, -3685.967, 26.123, 0, 0, 0, 0),
+        (13867, 34, -2050.265, -3690.838, 28.903, 0, 0, 0, 0),
+        (13867, 35, -2054.181, -3693.444, 31.414, 0, 0, 0, 0),
+        (13867, 36, -2057.698, -3692.621, 33.134, 0, 0, 0, 0),
+        (13867, 37, -2059.927, -3688.18, 36.03, 0, 0, 0, 0),
+        (13867, 38, -2059.082, -3685.584, 37.116, 0, 0, 0, 0),
+        (13867, 39, -2052.125, -3683.075, 37.56, 0, 0, 0, 0),
+        (13867, 40, -2049.944, -3686.467, 39.855, 0, 0, 0, 0),
+        (13867, 41, -2051.048, -3690.65, 42.294, 0, 0, 0, 0),
+        (13867, 42, -2054.592, -3693.056, 45.098, 0, 0, 0, 0),
+        (13867, 43, -2058.164, -3691.819, 47.478, 0, 0, 0, 0),
+        (13867, 44, -2059.42, -3688.809, 49.28, 0, 0, 0, 0),
+        (13867, 45, -2058.688, -3683.031, 50.603, 0, 0, 0, 0);
+
+        -- Barrel of Milk.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '91.667' WHERE (`spawn_id` = '46921');
+
+        -- Fuel Control Valve, better rotation.
+        UPDATE `spawns_gameobjects` SET `spawn_rotation0` = '0.3', `spawn_rotation1` = '0.1' WHERE (`spawn_id` = '15731');
+    
+        -- Heated Forge.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '371.867', `spawn_positionY` = '-4709.689', `spawn_positionZ` = '15.470' WHERE (`spawn_id` = '12079');
+
+        -- Bubbling Cauldron fire dmg.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '331.229', `spawn_positionY` = '-4707.58', `spawn_positionZ` = '13.714' WHERE (`spawn_id` = '1672');
+
+        -- Monster - Axe, Horde Badass 01 -> Monster - Axe, Metal Basic.
+        UPDATE creature_equip_template SET 
+        equipentry1 = REPLACE(equipentry1, '10611', '1905'),
+        equipentry2 = REPLACE(equipentry2, '10611', '1905'),
+        equipentry3 = REPLACE(equipentry3, '10611', '1905');
+
+        -- Monster - Axe, Horde Badass 02 -> Monster - Axe, Metal Basic.
+        UPDATE creature_equip_template SET 
+        equipentry1 = REPLACE(equipentry1, '10612', '1905'),
+        equipentry2 = REPLACE(equipentry2, '10612', '1905'),
+        equipentry3 = REPLACE(equipentry3, '10612', '1905');
+
+        -- Monster - Shield, Horde A02 Silver -> Monster - Shield, Small Wooden.
+        -- https://archive.thealphaproject.eu/media/Alpha-Project-Archive/Images/Azeroth/Kalimdor/Durotar/worldofwarcraft__041604_009-806500.jpg
+        UPDATE creature_equip_template SET 
+        equipentry1 = REPLACE(equipentry1, '12452', '1957'),
+        equipentry2 = REPLACE(equipentry2, '12452', '1957'),
+        equipentry3 = REPLACE(equipentry3, '12452', '1957');
+
+        -- Monster - Dagger, Dark Pronged -> Monster - Dagger, Ornate Spikey Base.
+        UPDATE creature_equip_template SET 
+        equipentry1 = REPLACE(equipentry1, '12298', '5283'),
+        equipentry2 = REPLACE(equipentry2, '12298', '5283'),
+        equipentry3 = REPLACE(equipentry3, '12298', '5283');
+
+        -- Barrel of Milk.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '15.309' WHERE (`spawn_id` = '44017');
+
+        -- Water Barrel.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '319.268', `spawn_positionY` = '-4698.650', `spawn_positionZ` = '15.792' WHERE (`spawn_id` = '44047');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '295.741', `spawn_positionY` = '-4785.289', `spawn_positionZ` = '10.610' WHERE (`spawn_id` = '44046');
+               
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1591
+        UPDATE `spawns_creatures` SET `position_x` = '10892.097', `position_y` = '924.519', `position_z` = '1318.714', `orientation` = '0.738' WHERE (`spawn_id` = '47350');
+
+        -- Chest.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '10917.351', `spawn_positionY` = '958.497', `spawn_positionZ` = '1321.215' WHERE (`spawn_id` = '60010');
+
+        insert into applied_updates values ('111220251');
     end if;
 
-    -- 29/05/2025 1
-    if (select count(*) from applied_updates where id='290520251') = 0 then
-        UPDATE `spawns_creatures` SET `ignored` = '0', `position_x` = '-3828.561', `position_y` = '-1519.325', `position_z` = '92.818', `orientation` = '4.599' WHERE (`spawn_id` = '14367');
-        UPDATE `creature_template` SET `display_id1` = '1344' WHERE (`entry` = '3435');
-        INSERT INTO applied_updates VALUES ('290520251');
+    -- 15/12/2025 1
+    if (select count(*) from applied_updates where id='151220251') = 0 then
+        -- Set empty vendor inventory for Cartography Supplier NPCs.
+        UPDATE `creature_template` SET `npc_flags` = '1', `vendor_id` = '4000000' WHERE (`entry` = '372');
+        UPDATE `creature_template` SET `npc_flags` = '1', `vendor_id` = '4000000' WHERE (`entry` = '4224');
+        UPDATE `creature_template` SET `npc_flags` = '1', `vendor_id` = '4000000' WHERE (`entry` = '5135');
+
+        insert into applied_updates values ('151220251');
     end if;
 
-    -- 30/05/2025 1
-    if (select count(*) from applied_updates where id='300520251') = 0 then
-        -- https://github.com/The-Alpha-Project/alpha-core/issues/1502
-        UPDATE `item_template` SET `display_id` = 9388 WHERE (`entry` = 2854);
-        -- Runed Copper Breastplate
-        UPDATE `item_template` SET `display_id` = 9387 WHERE (`entry` = 2864);
+    -- 16/12/2025 1
+    if (select count(*) from applied_updates where id='161220251') = 0 then
+        -- Grizzle Halfmane - Cast Spell Cleave
+        DELETE FROM `creature_ai_scripts` WHERE `id`=34701;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (34701, 0, 0, 15, 7371, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Grizzle Halfmane - Cast Spell Cleave');
 
-        INSERT INTO applied_updates VALUES ('300520251');
+        -- Fenros - Cast Spell Frost Armor
+        DELETE FROM `creature_ai_scripts` WHERE `id`=50704;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (50704, 0, 0, 15, 7301, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Fenros - Cast Spell Frost Armor');
+
+        -- King Bangalash - Cast Spell Summon Panthers
+        DELETE FROM `creature_ai_scripts` WHERE `id`=73101;
+
+        -- Lost One Riftseeker - Cast Spell Summon Imp
+        DELETE FROM `creature_ai_scripts` WHERE `id`=76202;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (76202, 0, 0, 15, 688, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Lost One Riftseeker - Cast Spell Summon Imp');
+
+        -- Kurzen Commando - Cast Spell Smoke Bomb
+        DELETE FROM `creature_ai_scripts` WHERE `id`=93803;
+
+        -- Archbishop Benedictus - Cast Spell Power Word: Shield - Holy Word: Shield
+        DELETE FROM `creature_ai_scripts` WHERE `id`=128403;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (128403, 0, 0, 15, 600, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Archbishop Benedictus - Cast Spell Holy Word: Shield'),
+        (128403, 0, 0, 44, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Archbishop Benedictus - Increment Phase');
+
+        -- Archbishop Benedictus - Cast Spell Holy Smite
+        DELETE FROM `creature_ai_scripts` WHERE `id`=128404;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (128404, 0, 0, 15, 6060, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Archbishop Benedictus - Cast Spell Holy Smite');
+
+        -- Archbishop Benedictus - Cast Spell Frost Nova
+        DELETE FROM `creature_ai_scripts` WHERE `id`=128405;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (128405, 0, 0, 15, 6131, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Archbishop Benedictus - Cast Spell Frost Nova');
+
+        -- Archbishop Benedictus - Cast Spell Holy Word: Shield
+        DELETE FROM `creature_ai_scripts` WHERE `id`=128412;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (128412, 0, 0, 15, 600, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Archbishop Benedictus - Cast Spell Holy Word: Shield');
+
+        -- Bloodsail Warlock - Summon Succubus.
+        DELETE FROM `creature_ai_scripts` WHERE `id`=156406;
+
+        -- Bloodsail Warlock - Cast Spell Summon Imp.
+        DELETE FROM `creature_ai_scripts` WHERE `id`=156403;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (156403, 0, 0, 15, 688, 3, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Bloodsail Warlock - Cast Spell Summon Imp');
+
+        -- Bloodsail Warlock - Summon Imp
+        DELETE FROM `creature_ai_scripts` WHERE `id`=156405;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (156405, 0, 0, 15, 688, 3, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Bloodsail Warlock - Summon Imp');
+
+        -- Defias Evoker - Cast Spell Frost Armor
+        DELETE FROM `creature_ai_scripts` WHERE `id`=172904;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (172904, 0, 0, 15, 7300, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Defias Evoker - Cast Spell Frost Armor');
+
+        -- Flesh Golem - Cast Spell Uppercut
+        DELETE FROM `creature_ai_scripts` WHERE `id`=180502;
+
+        -- Devouring Ooze - Cast Spell Summon Oozeling
+        DELETE FROM `creature_ai_scripts` WHERE `id`=180802;
+
+        -- Darkmaster Gandling - Cast Shadow Portal
+        DELETE FROM `creature_ai_scripts` WHERE `id`=185304;
+
+        -- Scarlet Smith - Cast Spell Strike
+        DELETE FROM `creature_ai_scripts` WHERE `id`=188501;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (188501, 0, 0, 15, 1608, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Scarlet Smith - Cast Spell Strike');
+
+        -- Scarlet Smith - Cast Spell Knockdown
+        DELETE FROM `creature_ai_scripts` WHERE `id`=188502;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (188502, 0, 0, 15, 6961, 1, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Scarlet Smith - Cast Spell Knockdown');
+
+        -- Farmer Solliden - Cast Spell Strike
+        DELETE FROM `creature_ai_scripts` WHERE `id`=193601;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (193601, 0, 0, 15, 1608, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Farmer Solliden - Cast Spell Strike');
+
+        -- Feral Nightsaber - Cast Spell Rend
+        DELETE FROM `creature_ai_scripts` WHERE `id`=203401;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (203401, 0, 0, 15, 6547, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Feral Nightsaber - Cast Spell Rend');
+
+        -- Reef Crawler - Cast Spell Rend
+        DELETE FROM `creature_ai_scripts` WHERE `id`=223501;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (223501, 0, 0, 15, 6547, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Reef Crawler - Cast Spell Rend');
+
+        -- Witherbark Shadowcaster - Cast Spell Summon Imp
+        DELETE FROM `creature_ai_scripts` WHERE `id`=255302;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (255302, 0, 0, 15, 688, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Witherbark Shadowcaster - Cast Spell Summon Imp');
+
+        -- Invalid.
+        DELETE FROM `creature_ai_scripts` WHERE `id`=1659201;
+
+        -- Stromgarde Vindicator - Cast Crazed Hunger
+        DELETE FROM `creature_ai_scripts` WHERE `id`=258501;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (258501, 0, 0, 15, 3151, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Stromgarde Vindicator - Cast Crazed Hunger');
+
+        -- Human Skull - Cast Summon Human Skull aand Event.
+        DELETE FROM `creature_ai_scripts` WHERE `id`=1220201;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (1220201, 0, 0, 39, 0, 0, 0, 0, 11885, 40, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Human Skull - Start Event Script');
+
+        -- Vilebranch Soul Eater - Cast Spell Soul Drain
+        DELETE FROM `creature_ai_scripts` WHERE `id`=264701;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (264701, 0, 0, 15, 7295, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Vilebranch Soul Eater - Cast Spell Soul Drain');
+
+        -- Vilebranch Aman zasi Guard - Cast Spell Shield Bash
+        DELETE FROM `creature_ai_scripts` WHERE `id`=264801;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (264801, 0, 0, 15, 1672, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Vilebranch Aman zasi Guard - Cast Spell Shield Bash');
+
+        -- Witherbark Broodguard - Cast Spell Summon Witherbark Bloodlings
+        DELETE FROM `creature_ai_scripts` WHERE `id`=268601;
+
+        -- Dustbelcher Wyrmhunter - Cast Spell Throw Rock
+        DELETE FROM `creature_ai_scripts` WHERE `id`=271601;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (271601, 0, 0, 15, 4165, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Dustbelcher Wyrmhunter - Cast Spell Throw Rock');
+
+        -- Vicious Owlbeast - Cast Spell Fatal Bite
+        DELETE FROM `creature_ai_scripts` WHERE `id`=292701;
+
+        -- Bristleback Interloper - Cast Spell Rend
+        DELETE FROM `creature_ai_scripts` WHERE `id`=323201;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (323201, 0, 0, 15, 772, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Bristleback Interloper - Cast Spell Rend');
+
+        -- Twilight Fire Guard - Cast Spell Fire Shield
+        DELETE FROM `creature_ai_scripts` WHERE `id`=586101;
+
+        -- Deviate Slayer - Cast Spell Fatal Bite
+        DELETE FROM `creature_ai_scripts` WHERE `id`=363301;
+
+        -- Mad Magglish - Cast Spell Smoke Bomb
+        DELETE FROM `creature_ai_scripts` WHERE `id`=365502;
+
+        -- Lord Cobrahn - Cast Spell Cobrahn Serpent Form
+        DELETE FROM `creature_ai_scripts` WHERE `id`=366903;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (366903, 0, 0, 39, 1, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 'Lord Cobrahn - Enable Attack and Combat Movement'),
+        (366903, 0, 0, 55, 36691, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 'Lord Cobrahn - Set Spells Template'),
+        (366903, 0, 0, 44, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Lord Cobrahn - Set Phase to 1');
+
+        -- Boahn - Cast Serpent Form
+        DELETE FROM `creature_ai_scripts` WHERE `id`=367202;
+
+        -- Biletoad - Cast Spell Poison
+        DELETE FROM `creature_ai_scripts` WHERE `id`=383501;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (383501, 0, 0, 15, 744, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Biletoad - Cast Spell Poison');
+
+        -- Thistlefur Avenger - Cast Spell Crazed Hunger
+        DELETE FROM `creature_ai_scripts` WHERE `id`=392502;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (392502, 0, 0, 15, 3151, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Thistlefur Avenger - Cast Spell Crazed Hunger'),
+        (392502, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1151, 0, 0, 0, 0, 0, 0, 0, 0, 'Thistlefur Avenger - Say Text');
+
+        -- Mirkfallon Keeper - Cast Spell Mirkfallon Fungus
+        DELETE FROM `creature_ai_scripts` WHERE `id`=405601;
+
+        -- Silithid Invader - Cast Spell Silithid Pox
+        DELETE FROM `creature_ai_scripts` WHERE `id`=413102;
+
+        -- Firemane Ash Tail - Cast Spell Fire Blast
+        DELETE FROM `creature_ai_scripts` WHERE `id`=433102;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (433102, 0, 0, 15, 2138, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Firemane Ash Tail - Cast Spell Fire Blast');
+
+        -- Firemane Ash Tail - Cast Spell Fire Shield
+        DELETE FROM `creature_ai_scripts` WHERE `id`=433103;
+
+        -- Brimgore - Cast Spell Flame Strike
+        DELETE FROM `creature_ai_scripts` WHERE `id`=433901;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (433901, 0, 0, 15, 6725, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Brimgore - Cast Spell Flame Strike');
+
+        -- Darkmist Widow - Cast Spell CustomSpell
+        DELETE FROM `creature_ai_scripts` WHERE `id`=438002;
+
+        -- Acidic Swamp Ooze - Cast Spell Poison
+        DELETE FROM `creature_ai_scripts` WHERE `id`=439301;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (439301, 0, 0, 15, 744, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Acidic Swamp Ooze - Cast Spell Poison');
+
+        -- Charlga Razorflank - Cast Spell Restore Mana
+        DELETE FROM `creature_ai_scripts` WHERE `id`=442101;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (442101, 0, 0, 15, 438, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Charlga Razorflank - Cast Spell Restore Mana');
+
+        -- Rotting Agam ar - Cast Spell Cursed Blood
+        DELETE FROM `creature_ai_scripts` WHERE `id`=451201;
+
+        -- Razorfen Geomancer - Cast Spell Summon Earth Rumbler
+        DELETE FROM `creature_ai_scripts` WHERE `id`=452002;
+
+        -- Razorfen Dustweaver - Cast Spell Summon Wind Howler
+        DELETE FROM `creature_ai_scripts` WHERE `id`=452201;
+
+        -- Razorfen Groundshaker - Cast Spell Earth Shock
+        DELETE FROM `creature_ai_scripts` WHERE `id`=452301;
+
+        -- Razorfen Earthbreaker - Cast Spell Earth Shock
+        DELETE FROM `creature_ai_scripts` WHERE `id`=452501;
+
+        -- Razorfen Beast Trainer - Cast Spell Summon Tamed Boar
+        DELETE FROM `creature_ai_scripts` WHERE `id`=453101;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (453101, 0, 0, 15, 7905, 7, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Razorfen Beast Trainer - Cast Spell Summon Tamed Boar');
+
+        -- Razorfen Beastmaster - Cast Spell Summon Tamed Hyena
+        DELETE FROM `creature_ai_scripts` WHERE `id`=453202;
+
+        -- Greater Kraul Bat - Cast Spell Sonic Burst
+        DELETE FROM `creature_ai_scripts` WHERE `id`=453901;
+
+        -- Blood of Agamaggan - Cast Spell Curse of Blood
+        DELETE FROM `creature_ai_scripts` WHERE `id`=454101;
+
+        -- Gelkis Earthcaller - Cast Spell Summon Gelkis Rumbler
+        DELETE FROM `creature_ai_scripts` WHERE `id`=465101;
+
+        -- Maraudine Stormer - Cast Spell Chain Lightning
+        DELETE FROM `creature_ai_scripts` WHERE `id`=465803;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (465803, 0, 0, 15, 421, 1, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Maraudine Stormer - Cast Spell Chain Lightning');
+
+        -- Burning Blade Reaver - Cast Spell Swipe
+        DELETE FROM `creature_ai_scripts` WHERE `id`=466401;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (466401, 0, 0, 15, 780, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Burning Blade Reaver - Cast Spell Swipe');
+
+        -- Hukku's Imp - Cast Fireball
+        DELETE FROM `creature_ai_scripts` WHERE `id`=865801;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (865801, 0, 0, 15, 854, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Hukku''s Imp - Cast Fireball');
+
+        -- Burning Blade Invoker - Cast Spell Flamestrike
+        DELETE FROM `creature_ai_scripts` WHERE `id`=470501;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (470501, 0, 0, 15, 2120, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Burning Blade Invoker - Cast Spell Flamestrike');
+
+        -- Twilight Aquamancer - Cast Spell Summon Water Elemental
+        DELETE FROM `creature_ai_scripts` WHERE `id`=481102;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (481102, 0, 0, 15, 765, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Twilight Aquamancer - Cast Spell Summon Water Elemental');
+
+        -- Twilight Loreseeker - Cast Spell Strength of Stone
+        DELETE FROM `creature_ai_scripts` WHERE `id`=481202;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (481202, 0, 0, 15, 6864, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Twilight Loreseeker - Cast Spell Strength of Stone');
+
+        -- Earthcaller Halmgar - Cast Spell Summon Earth Rumbler
+        DELETE FROM `creature_ai_scripts` WHERE `id`=484202;
+
+        -- Stone Keeper - Cast Spell Stoned
+        DELETE FROM `creature_ai_scripts` WHERE `id`=485701;
+
+        -- Stone Keeper - Cast Spell Stoned
+        DELETE FROM `creature_ai_scripts` WHERE `id`=485703;
+
+        -- Stone Keeper - Cast Spell Self Destruct
+        DELETE FROM `creature_ai_scripts` WHERE `id`=485704;
+
+        -- Saturated Ooze - Cast Spell Summon Oozeling
+        DELETE FROM `creature_ai_scripts` WHERE `id`=522802;
+
+        -- Atal ai Corpse Eater - Cast Spell Atal ai Corpse Eat
+        DELETE FROM `creature_ai_scripts` WHERE `id`=527001;
+
+        -- Atal ai Deathwalker - Cast Spell Summon Atal ai Deathwalker s Spirit
+        DELETE FROM `creature_ai_scripts` WHERE `id`=527103;
+
+        -- Atal ai High Priest - Cast Spell Shadow Shield
+        DELETE FROM `creature_ai_scripts` WHERE `id`=527301;
+
+        -- Vale Screecher - Cast Spell Sonic Burst
+        DELETE FROM `creature_ai_scripts` WHERE `id`=530701;
+
+        -- Rogue Vale Screecher - Cast Spell Sonic Burst
+        DELETE FROM `creature_ai_scripts` WHERE `id`=530801;
+
+        -- Jademir Boughguard - Cast Spell Cleave
+        DELETE FROM `creature_ai_scripts` WHERE `id`=532001;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (532001, 0, 0, 15, 7371, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Jademir Boughguard - Cast Spell Cleave');
+
+        -- Hatecrest Serpent Guard - Cast Spell Frost Shot
+        DELETE FROM `creature_ai_scripts` WHERE `id`=533301;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (533301, 0, 0, 15, 6985, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Hatecrest Serpent Guard - Cast Spell Frost Shot');
+
+        -- Northspring Harpy - Cast Spell Flow of the Northspring
+        DELETE FROM `creature_ai_scripts` WHERE `id`=536201;
+
+        -- Northspring Roguefeather - Cast Spell Flow of the Northspring
+        DELETE FROM `creature_ai_scripts` WHERE `id`=536303;
+
+        -- Northspring Slayer - Cast Spell Flow of the Northspring
+        DELETE FROM `creature_ai_scripts` WHERE `id`=536402;
+
+        -- Hazzali Stinger - Cast Spell Summon Hazzali Parasites
+        DELETE FROM `creature_ai_scripts` WHERE `id`=545002;
+
+        -- Hazzali Swarmer - Cast Spell Summon Hazzali Parasites
+        DELETE FROM `creature_ai_scripts` WHERE `id`=545102;
+
+        -- Hazzali Worker - Cast Spell Summon Hazzali Parasites
+        DELETE FROM `creature_ai_scripts` WHERE `id`=545202;
+
+        -- Hazzali Tunneler - Cast Spell Summon Hazzali Parasites
+        DELETE FROM `creature_ai_scripts` WHERE `id`=545302;
+
+        -- Hazzali Sandreaver - Cast Spell Summon Hazzali Parasites
+        DELETE FROM `creature_ai_scripts` WHERE `id`=545402;
+
+        -- Timbermaw Ancestor - Cast Healing Wave
+        DELETE FROM `creature_ai_scripts` WHERE `id`=1572001;
+
+        -- Khan Dez hepah - Cast Spell Strike
+        DELETE FROM `creature_ai_scripts` WHERE `id`=560002;
+        INSERT INTO `creature_ai_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (560002, 0, 0, 15, 1608, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Khan Dez hepah - Cast Spell Strike');
+
+        -- Sandfury Witch Doctor - Totem
+        DELETE FROM `creature_ai_scripts` WHERE `id`=565002;
+
+        -- Random mobs - Cast Green Channeling
+        DELETE FROM `creature_ai_scripts` WHERE `id`=571201;
+        DELETE FROM `creature_ai_scripts` WHERE `id`=571301;
+        DELETE FROM `creature_ai_scripts` WHERE `id`=571601;
+
+        insert into applied_updates values ('161220251');
     end if;
 
-    -- 31/05/2025 1
-    if (select count(*) from applied_updates where id='310520251') = 0 then
-        UPDATE `quest_template` SET `Details` = 'As my understanding of Arugal\'s magic grows so does my disdain for the hapless fool.  I am close to completing my research on his so called remedy.$b$bMy knowledge will be complete when I learn what enchantment is causing the strange behavior going on in Pyrewood Village.  By day, the peasants appear to be Human.  But when the sun goes down the townsfolk turn into Moonrage Worgen.$b$bI need to draw energy from the enchanted shackles Arugal cast on them.  Bring to me twelve enchanted Pyrewood Shackles, $N.', `Objectives` = 'Bring 12 Pyrewood Shackles to Dalar Dawnweaver at the Sepulcher.' WHERE (`entry` = '99');
-        -- Partial fixes for #1504, missing Sign post at: .port -48 -262 1 1 (Sunrock to the east, the Venture Co camp to the southeast and Windshar Craig to the northwest)
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '603.36', `spawn_positionY` = '325.836', `spawn_orientation` = '1.67552', `spawn_rotation0` = '0.034697', `spawn_rotation1` = '0.045045', `spawn_rotation2` = '0.741777', `spawn_rotation3` = '0.668232' WHERE (`spawn_id` = '47456');
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '68.8' WHERE (`spawn_id` = '47450');
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '68.8' WHERE (`spawn_id` = '47447');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '47614');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '47615');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '47616');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '44776');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '44777');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '44807');
-        UPDATE `spawns_gameobjects` SET `spawn_orientation` = '2.36492', `spawn_rotation0` = '0.063403', `spawn_rotation1` = '0.166318', `spawn_rotation2` = '0.910467', `spawn_rotation3` = '0.373321' WHERE (`spawn_id` = '47449');
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '68.548', `spawn_positionY` = '-139.245', `spawn_positionZ` = '9.54' WHERE (`spawn_id` = '47449');
+    -- 16/12/2025 2
+    if (select count(*) from applied_updates where id='161220252') = 0 then
+        -- '[PH] Cat Figurine' (According to screenshots).
+        UPDATE `item_template` SET `name` = '[PH] Cat Figurine' WHERE (`entry` = '5329');
 
-        -- https://github.com/The-Alpha-Project/alpha-core/issues/1506
-        UPDATE `broadcast_text` SET `male_text` = '%s inspects the thresher hides...' WHERE (`entry` = '1085');
-        UPDATE `broadcast_text` SET `male_text` = '$N.  These hides tell me much, but I fear many more questions are now raised...' WHERE (`entry` = '1089');
+        -- Ghost Saber Display ID.
+        UPDATE `creature_template` SET `display_id1` = '748' WHERE (`entry` = '3619');
 
-        -- https://github.com/The-Alpha-Project/alpha-core/issues/1508
-        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '50.0159' WHERE (`spawn_id` = '38944');
-        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '51.1986' WHERE (`spawn_id` = '43639');
-        UPDATE `spawns_gameobjects` SET `spawn_positionY` = '-4652.405', `spawn_positionZ` = '16.318' WHERE (`spawn_id` = '44108');
-        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '91.6668' WHERE (`spawn_id` = '40266');
-        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '99.5902' WHERE (`spawn_id` = '40274');
-        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '97.924' WHERE (`spawn_id` = '40206');
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '44.682', `spawn_positionY` = '-1724', `spawn_positionZ` = '105.110' WHERE (`spawn_id` = '40242');
-        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_entry` = '123334');
+        -- Fix flying Figurine.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '38.105' WHERE (`spawn_id` = '399301');
 
-        INSERT INTO applied_updates VALUES ('310520251');
-    end if;
+        -- Cat Figurine Goobers, ignore.
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399311');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399312');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399313');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399314');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399315');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399316');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399317');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399318');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399319');
+        UPDATE `spawns_gameobjects` SET `ignored` = '1' WHERE (`spawn_id` = '399320');
 
-    -- 01/06/2025 1
-    if (select count(*) from applied_updates where id='010620251') = 0 then
-        -- https://github.com/The-Alpha-Project/alpha-core/issues/1512
-        DELETE FROM `quest_start_scripts` WHERE `id`=1149;
-        INSERT INTO `quest_start_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-(1149, 1, 0, 15, 6716, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Dorn Plainstalker - Cast Test of Faith (Effect and Root)'),
-(1149, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1589, 0, 0, 0, 0, 0, 0, 0, 0, 'Dorn Plainstalker - Say Text 1'),
-(1149, 2, 0, 15, 6714, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Dorn Plainstalker - Cast Test of Faith (Teleport)');
-        UPDATE `areatrigger_teleport` SET `id` = '251' WHERE (`id` = '943');
-
-        INSERT INTO applied_updates VALUES ('010620251');
-    end if;
-
-    -- 08/06/2025 1
-    if (select count(*) from applied_updates where id='080620251') = 0 then
-        -- Set faction.
-        UPDATE `gameobject_template` SET `faction` = '35', `flags` = '4' WHERE (`entry` = '4072');
-
-        -- Make valves interactive only with quest.
-        UPDATE `gameobject_template` SET `flags` = '4' WHERE (`entry` = '61935');
-        UPDATE `gameobject_template` SET `flags` = '4' WHERE (`entry` = '61936');
-
-        -- Fix positions.
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '778.975', `spawn_positionY` = '-2820.637', `spawn_positionZ` = '91.840' WHERE (`spawn_id` = '13167');
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '788.938', `spawn_positionY` = '-2830.07', `spawn_positionZ` = '91.66', `spawn_orientation` = '2.4085', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0' WHERE (`spawn_id` = '13339');
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '807.016', `spawn_positionY` = '-2811.32', `spawn_positionZ` = '91.74', `spawn_orientation` = '3.1415', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0', `spawn_rotation2` = '1.0', `spawn_rotation3` = '0.0' WHERE (`spawn_id` = '15080');
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '786.796', `spawn_positionY` = '-2825.89', `spawn_positionZ` = '91.668', `spawn_orientation` = '1.47', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0', `spawn_rotation2` = '0.0', `spawn_rotation3` = '0.0' WHERE (`spawn_id` = '15722');
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '781.301', `spawn_positionY` = '-2836.60', `spawn_positionZ` = '93.0', `spawn_orientation` = '4.12', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0', `spawn_rotation2` = '0.0', `spawn_rotation3` = '0.0' WHERE (`spawn_id` = '15730');
-        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '791.449', `spawn_positionY` = '-2835.38', `spawn_positionZ` = '92.6', `spawn_orientation` = '5.30', `spawn_rotation0` = '0.0', `spawn_rotation1` = '0.0', `spawn_rotation2` = '0.0', `spawn_rotation3` = '0.0' WHERE (`spawn_id` = '15731');
-
-        -- Fix script spawns location after using main valve.
-        DELETE FROM `gameobject_scripts` WHERE `id`=15722;
+        -- Cat Figurine chests scripts.
+        -- Ghost Saber has a 13% chance to spawn, and Glowing Cat Figurine has a 55.22% drop chance from him.
+        DELETE FROM `gameobject_scripts` WHERE `id`=399301;
         INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
-        (15722, 0, 0, 10, 3284, 180000, 1, 15, 0, 0, 0, 1, 8, 407201, -1, 2, 792.967, -2820.797, 91.6667, 3.985, 900, 'Main Control Valve - Summon Creature'),
-        (15722, 0, 0, 10, 3285, 180000, 1, 15, 0, 0, 0, 1, 8, 407201, -1, 2, 794.057, -2822.358, 91.6667, 3.643, 900, 'Main Control Valve - Summon Creature');
+        (399301, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `gameobject_scripts` WHERE `id`=399302;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (399302, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `gameobject_scripts` WHERE `id`=399303;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (399303, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `gameobject_scripts` WHERE `id`=399304;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (399304, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `gameobject_scripts` WHERE `id`=399305;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (399305, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `gameobject_scripts` WHERE `id`=399306;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (399306, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `gameobject_scripts` WHERE `id`=399307;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (399307, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `gameobject_scripts` WHERE `id`=399308;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (399308, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `gameobject_scripts` WHERE `id`=399309;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (399309, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `gameobject_scripts` WHERE `id`=399310;
+        INSERT INTO `gameobject_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (399310, 0, 0, 39, 1335901, 1335902, 0, 0, 0, 0, 0, 0, 13, 87, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `generic_scripts` WHERE `id`=1335901;
+        INSERT INTO `generic_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (1335901, 0, 0, 15, 5968, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Summon Ghost Saber');
+
+        DELETE FROM `generic_scripts` WHERE `id`=1335902;
+        INSERT INTO `generic_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (1335902, 0, 0, 5, 0, 5968, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Cat Figurine - Interrupt Cast - Dummy');
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1606
+        UPDATE `creature_template` SET `level_min` = '19', `level_max` = '20', `ai_name` = '', `mechanic_immune_mask` = '0', `display_id1` = '1532', `name` = 'Deviate Thundersnout', `rank` = '1', `spell_list_id` = '5055', `scale` = '0.4', `faction` = '16' WHERE (`entry` = '5055');
+
+        -- New creature spell lists.
+        REPLACE INTO `creature_spells` (`entry`, `name`, `spellId_1`, `probability_1`, `castTarget_1`, `targetParam1_1`, `targetParam2_1`, `castFlags_1`, `delayInitialMin_1`, `delayInitialMax_1`, `delayRepeatMin_1`, `delayRepeatMax_1`, `scriptId_1`, `spellId_2`, `probability_2`, `castTarget_2`, `targetParam1_2`, `targetParam2_2`, `castFlags_2`, `delayInitialMin_2`, `delayInitialMax_2`, `delayRepeatMin_2`, `delayRepeatMax_2`, `scriptId_2`, `spellId_3`, `probability_3`, `castTarget_3`, `targetParam1_3`, `targetParam2_3`, `castFlags_3`, `delayInitialMin_3`, `delayInitialMax_3`, `delayRepeatMin_3`, `delayRepeatMax_3`, `scriptId_3`, `spellId_4`, `probability_4`, `castTarget_4`, `targetParam1_4`, `targetParam2_4`, `castFlags_4`, `delayInitialMin_4`, `delayInitialMax_4`, `delayRepeatMin_4`, `delayRepeatMax_4`, `scriptId_4`, `spellId_5`, `probability_5`, `castTarget_5`, `targetParam1_5`, `targetParam2_5`, `castFlags_5`, `delayInitialMin_5`, `delayInitialMax_5`, `delayRepeatMin_5`, `delayRepeatMax_5`, `scriptId_5`, `spellId_6`, `probability_6`, `castTarget_6`, `targetParam1_6`, `targetParam2_6`, `castFlags_6`, `delayInitialMin_6`, `delayInitialMax_6`, `delayRepeatMin_6`, `delayRepeatMax_6`, `scriptId_6`, `spellId_7`, `probability_7`, `castTarget_7`, `targetParam1_7`, `targetParam2_7`, `castFlags_7`, `delayInitialMin_7`, `delayInitialMax_7`, `delayRepeatMin_7`, `delayRepeatMax_7`, `scriptId_7`, `spellId_8`, `probability_8`, `castTarget_8`, `targetParam1_8`, `targetParam2_8`, `castFlags_8`, `delayInitialMin_8`, `delayInitialMax_8`, `delayRepeatMin_8`, `delayRepeatMax_8`, `scriptId_8`) VALUES (5055, 'Deviate Lasher', 6255, 80, 1, 0, 0, 0, 4, 8, 16, 24, 0, 7342, 100, 1, 0, 0, 0, 2, 6, 14, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        -- Ghamoo-Ra - Rare Elite.
+        UPDATE `creature_template` SET `rank` = '2' WHERE (`entry` = '4887');
+
+        -- Invalid faction 350 -> 16 (Monster).
+        UPDATE `creature_template` SET `faction` = '16' WHERE `faction` = 350;
+
+        -- Pools.
+        INSERT INTO `pool_template` (`pool_entry`, `max_limit`, `description`, `flags`, `instance`) VALUES ('10002', '1', 'Spawn Elite Blackfathom : Ghamoo-Ra', '0', '0');
+        INSERT INTO `pool_creature` (`guid`, `pool_entry`, `chance`, `description`, `flags`) VALUES ('25732', '10002', '15', 'Blackfathom Ghamoo-Ra', '0');
+        -- Aku'mai Fisher.
+        UPDATE `spawns_creatures` SET `spawn_entry1` = '4824', `position_x` = '-442.424', `position_y` = '211.822', `position_z` = '-52.6367' WHERE (`spawn_id` = '26109');
+        INSERT INTO `pool_creature` (`guid`, `pool_entry`, `chance`, `description`) VALUES ('26109', '10002', '0', 'Blackfathom Akumai Fisher');
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1598
+        -- Disable second spawn.
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '400410');
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1599
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400470', '1000', '0', '0', '0', '0', '-10933.7', '-378.684', '39.7037', '5.45', '300', '300', '0', '100', '0', '0', '0', '0', '0');
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400471', '1001', '0', '0', '0', '0', '-10926.5', '-380.11', '39.2032', '0.778', '300', '300', '0', '100', '0', '0', '0', '0', '0');
         
-        -- Valves display ids.
-        UPDATE `gameobject_template` SET `displayId` = '353' WHERE (`entry` = '61935');
-        UPDATE `gameobject_template` SET `displayId` = '353' WHERE (`entry` = '61936');
+        -- Gringer, reduce detection range.
+        UPDATE `creature_template` SET `detection_range` = '6' WHERE (`entry` = '2858');
 
-        -- Delete end quest (902) script, spells and gameobject do not exist.
-        DELETE FROM quest_end_scripts where id = 902;
-
-        INSERT INTO applied_updates VALUES ('080620251');
+        insert into applied_updates values ('161220252');
     end if;
+
+    -- 17/12/2025 1
+    if (select count(*) from applied_updates where id='171220251') = 0 then
+     
+        -- Fix all Gnomish Toolboxes.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-237.214', `spawn_positionY` = '-5304.138', `spawn_positionZ` = '-15.693' WHERE (`spawn_id` = '12418');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '30.931', `spawn_positionY` = '-5375.034', `spawn_positionZ` = '-10.957' WHERE (`spawn_id` = '65910');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-81.718', `spawn_positionY` = '-5384.413', `spawn_positionZ` = '-18.662' WHERE (`spawn_id` = '12404');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '-9.162' WHERE (`spawn_id` = '12407');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '-25.715' WHERE (`spawn_id` = '12408');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '-17.715' WHERE (`spawn_id` = '12409');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '-20.008' WHERE (`spawn_id` = '12410');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '35.010', `spawn_positionY` = '-5369.168', `spawn_positionZ` = '-11.707' WHERE (`spawn_id` = '12411');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '-15.987' WHERE (`spawn_id` = '12412');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-327.694', `spawn_positionY` = '-5257.269', `spawn_positionZ` = '-19.711' WHERE (`spawn_id` = '12413');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-299.008', `spawn_positionY` = '-5267.061', `spawn_positionZ` = '-10.097' WHERE (`spawn_id` = '12414');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-328.153', `spawn_positionY` = '-5264.120', `spawn_positionZ` = '-20.204' WHERE (`spawn_id` = '12415');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-175.524', `spawn_positionY` = '-5324.803', `spawn_positionZ` = '-24.218' WHERE (`spawn_id` = '12416');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-215.653', `spawn_positionY` = '-5310.200', `spawn_positionZ` = '-20.280' WHERE (`spawn_id` = '12417');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '193.828', `spawn_positionY` = '-5241.215', `spawn_positionZ` = '-19.067' WHERE (`spawn_id` = '12420');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '-9.317' WHERE (`spawn_id` = '12421');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-75.232', `spawn_positionY` = '-5360.025', `spawn_positionZ` = '-23.855' WHERE (`spawn_id` = '12619');
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '-22.278' WHERE (`spawn_id` = '12620');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '35.777', `spawn_positionY` = '-5369.779', `spawn_positionZ` = '-11.586' WHERE (`spawn_id` = '65910');
+
+        -- Fix bart Tidewater wps. (Falling from Menethil Harbor)
+        DELETE FROM creature_movement WHERE id = 9475;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (9475, 1, -3767.47, -778.853, 8.91371, 0, 9000, 0, 0),
+        (9475, 2, -3766.09, -775.896, 8.82388, 0, 0, 0, 0),
+        (9475, 3, -3767.08, -765.029, 8.01714, 0, 0, 0, 0),
+        (9475, 4, -3765.77, -753.063, 7.872, 0, 0, 0, 0),
+        (9475, 5, -3753.29, -746.688, 7.9276, 0, 0, 0, 0),
+        (9475, 6, -3743.2, -746.79, 8.49915, 0, 38000, 0, 0),
+        (9475, 7, -3763.94, -751.883, 7.873, 0, 0, 0, 0),
+        (9475, 8, -3767.2, -749.197, 7.99052, 0, 0, 0, 0),
+        (9475, 9, -3769.32, -745.156, 8.00674, 0, 0, 0, 0),
+        (9475, 10, -3760.97, -735.759, 8.03362, 0, 0, 0, 0),
+        (9475, 11, -3745.048, -708.705, 7.947, 0, 0, 0, 0),
+        (9475, 12, -3767.1, -737.135, 8.04506, 0, 0, 0, 0),
+        (9475, 13, -3782.87, -746.452, 8.03465, 0, 0, 0, 0),
+        (9475, 14, -3796, -747.649, 7.947, 0, 50000, 0, 0),
+        (9475, 15, -3767.074, -749.518, 7.871, 0, 0, 0, 0),
+        (9475, 16, -3779.46, -761.803, 7.65703, 0, 0, 0, 0),
+        (9475, 17, -3771.77, -768.995, 8.02206, 0, 0, 0, 0);
+   
+        -- Frostmane placement.
+        UPDATE `spawns_creatures` SET `position_x` = '-6524.385', `position_y` = '702.039', `position_z` = '391.195', `orientation` = '4.655' WHERE (`spawn_id` = '932');
+
+        -- Missing item.
+        INSERT INTO `item_template` VALUES (6833,4,0,'White Tuxedo Shirt','',13115,1,0,1,2000,500,4,-1,-1,25,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,-1,0,0,0,0,-1,0,-1,0,0,0,0,-1,0,-1,0,0,0,0,-1,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,1);
+
+        -- Copper Vein.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-5608.865', `spawn_positionY` = '-259.373', `spawn_positionZ` = '373.528' WHERE (`spawn_id` = '29576');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-554.417', `spawn_positionY` = '-232.681', `spawn_positionZ` = '364.0' WHERE (`spawn_id` = '29354');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-5530.527', `spawn_positionY` = '-254.104', `spawn_positionZ` = '374.899' WHERE (`spawn_id` = '10223');
+
+        -- Chest.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '-5537.956', `spawn_positionY` = '-144.758', `spawn_positionZ` = '367.029' WHERE (`spawn_id` = '60123');
+
+        -- Food Crate.
+        UPDATE `spawns_gameobjects` SET `spawn_positionZ` = '410.911' WHERE (`spawn_id` = '24617');
+
+        -- Item: Heavy Mithril Shoulder
+        -- Entry: 7918
+
+        -- ARMOR
+        -- Current date:     2005-06-02 07:50:09
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 285
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2005-06-02 07:50:09
+        -- New date:         2004-07-08 15:42:36
+        -- Days diff: 328
+
+        -- FIRE_RES
+        -- Current date:     2004-08-20 10:26:38
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: Unknown
+
+        -- SHADOW_RES
+        -- Current date:     2004-08-20 10:26:38
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: Unknown
+
+        -- ARMOR from 225 to 85
+        UPDATE `item_template` SET `armor` = '85' WHERE (`entry` = '7918');
+        -- REQUIRED_LEVEL from 40 to 36
+        UPDATE `item_template` SET `required_level` = '36' WHERE (`entry` = '7918');
+        -- FIRE_RES from 0 to 3
+        UPDATE `item_template` SET `fire_res` = '3' WHERE (`entry` = '7918');
+        -- SHADOW_RES from 0 to 3
+        UPDATE `item_template` SET `shadow_res` = '3' WHERE (`entry` = '7918');
+
+
+        -- Item: Supercharger Battle Axe
+        -- Entry: 9486
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-12 15:16:32
+        -- New date:         2004-07-12 15:16:32
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-03 05:47:23
+        -- New date:         2004-07-12 15:16:32
+        -- Days diff: 82
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-03 05:47:23
+        -- New date:         2004-07-12 15:16:32
+        -- Days diff: 82
+
+        -- SPELLID_1
+        -- Current date:     2004-08-25 16:54:18
+        -- New date:         2004-08-25 16:54:18
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 19295 to 18404
+        UPDATE `item_template` SET `display_id` = '18404' WHERE (`entry` = '9486');
+        -- DMG_MIN1 from 51 to 40
+        UPDATE `item_template` SET `dmg_min1` = '40' WHERE (`entry` = '9486');
+        -- DMG_MAX1 from 78 to 61
+        UPDATE `item_template` SET `dmg_max1` = '61' WHERE (`entry` = '9486');
+        -- SPELLID_1 from 13527 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '9486');
+
+
+        -- Item: Goblin Jumper Cables
+        -- Entry: 7148
+
+        -- DISPLAY_ID
+        -- Current date:     2005-04-19 23:11:29
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 242
+
+        -- SUBCLASS
+        -- Current date:     2004-08-20 11:14:42
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:14:42
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:14:42
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 31201 to 12929
+        UPDATE `item_template` SET `display_id` = '12929' WHERE (`entry` = '7148');
+        -- SUBCLASS from 3 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '7148');
+        -- INVENTORY_TYPE from 12 to 0
+        UPDATE `item_template` SET `inventory_type` = '0' WHERE (`entry` = '7148');
+        -- INVENTORY_TYPE from 12 to 0
+        UPDATE `item_template` SET `inventory_type` = '0' WHERE (`entry` = '7148');
+
+
+        -- Item: Skullflame Shield
+        -- Entry: 1168
+
+        -- BLOCK
+        -- Current date:     2005-12-27 09:34:12
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: 493
+
+        -- BLOCK from 40 to 59
+        UPDATE `item_template` SET `block` = '59' WHERE (`entry` = '1168');
+
+
+        -- Item: Shadowforge Bushmaster
+        -- Entry: 9422
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-03 17:04:47
+        -- New date:         2004-09-03 17:04:47
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-23 12:58:41
+        -- New date:         2004-09-03 17:04:47
+        -- Days diff: 19
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-23 12:58:41
+        -- New date:         2004-09-03 17:04:47
+        -- Days diff: 19
+
+        -- SHADOW_RES
+        -- Current date:     2004-09-03 17:04:47
+        -- New date:         2004-09-03 17:04:47
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20663 to 18323
+        UPDATE `item_template` SET `display_id` = '18323' WHERE (`entry` = '9422');
+        -- DMG_MIN1 from 46 to 56
+        UPDATE `item_template` SET `dmg_min1` = '56' WHERE (`entry` = '9422');
+        -- DMG_MAX1 from 86 to 105
+        UPDATE `item_template` SET `dmg_max1` = '105' WHERE (`entry` = '9422');
+        -- SHADOW_RES from 7 to 0
+        UPDATE `item_template` SET `shadow_res` = '0' WHERE (`entry` = '9422');
+
+
+        -- Item: Star Ruby
+        -- Entry: 7910
+
+        -- SELL_PRICE
+        -- Current date:     2004-08-20 11:50:38
+        -- New date:         2004-08-20 11:50:38
+        -- Days diff: Unknown
+
+        -- SELL_PRICE from 5000 to 3000
+        UPDATE `item_template` SET `sell_price` = '3000' WHERE (`entry` = '7910');
+
+
+        -- Item: Old Whistle of the Obsidian Raptor
+        -- Entry: 8590
+
+        -- NAME
+        -- Current date:     2004-10-14 17:33:41
+        -- New date:         2004-10-14 17:33:41
+        -- Days diff: Unknown
+
+        -- CLASS
+        -- Current date:     2004-09-13 07:17:54
+        -- New date:         2004-09-13 07:17:54
+        -- Days diff: Unknown
+
+        -- NAME from Old Whistle of the Obsidian Raptor to Whistle of the Obsidian Raptor
+        UPDATE `item_template` SET `name` = 'Whistle of the Obsidian Raptor' WHERE (`entry` = '8590');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8590');
+
+
+        -- Item: Barbaric Iron Helm
+        -- Entry: 7915
+
+        -- ARMOR
+        -- Current date:     2004-12-21 20:44:43
+        -- New date:         2004-09-04 02:08:23
+        -- Days diff: 108
+
+        -- SPELLID_1
+        -- Current date:     2005-05-16 21:40:16
+        -- New date:         2004-09-04 02:08:23
+        -- Days diff: 254
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-12 08:22:28
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: 11
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-12 08:22:28
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: 11
+
+        -- ARMOR from 173 to 48
+        UPDATE `item_template` SET `armor` = '48' WHERE (`entry` = '7915');
+        -- SPELLID_1 from 0 to 7518
+        UPDATE `item_template` SET `spellid_1` = '7518' WHERE (`entry` = '7915');
+        -- STAT_TYPE1 from 3 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '7915');
+        -- STAT_VALUE1 from 9 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '7915');
+
+
+        -- Item: Freezing Band
+        -- Entry: 942
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-10-12 13:13:32
+        -- New date:         2004-10-12 13:13:32
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-12 13:13:32
+        -- New date:         2004-10-12 13:13:32
+        -- Days diff: Unknown
+
+        -- FROST_RES
+        -- Current date:     2004-10-01 02:27:15
+        -- New date:         2004-08-20 11:51:08
+        -- Days diff: 41
+
+        -- STAT_VALUE1
+        -- Current date:     2005-09-20 18:47:38
+        -- New date:         2004-08-20 11:51:08
+        -- Days diff: 396
+
+        -- REQUIRED_LEVEL from 47 to 45
+        UPDATE `item_template` SET `required_level` = '45' WHERE (`entry` = '942');
+        -- ITEM_LEVEL from 47 to 45
+        UPDATE `item_template` SET `item_level` = '45' WHERE (`entry` = '942');
+        -- FROST_RES from 10 to 0
+        UPDATE `item_template` SET `frost_res` = '0' WHERE (`entry` = '942');
+        -- STAT_VALUE1 from 0 to 25
+        UPDATE `item_template` SET `stat_value1` = '25' WHERE (`entry` = '942');
+
+
+        -- Item: Shadow Hunter Knife
+        -- Entry: 5040
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-10 01:10:02
+        -- New date:         2004-07-01 04:24:19
+        -- Days diff: 100
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-10 01:10:02
+        -- New date:         2004-07-01 04:24:19
+        -- Days diff: 100
+
+        -- DMG_MIN1 from 18 to 16
+        UPDATE `item_template` SET `dmg_min1` = '16' WHERE (`entry` = '5040');
+        -- DMG_MAX1 from 35 to 30
+        UPDATE `item_template` SET `dmg_max1` = '30' WHERE (`entry` = '5040');
+
+
+        -- Item: Plans: Barbaric Iron Boots
+        -- Entry: 7981
+
+        -- SUBCLASS
+        -- Current date:     2005-03-23 00:10:52
+        -- New date:         2005-03-23 00:10:52
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 4 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '7981');
+
+
+        -- Item: Dwarven Charge
+        -- Entry: 9626
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-15 11:07:12
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 08:28:06
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 77
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 08:28:06
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 77
+
+        -- DISPLAY_ID from 19302 to 18567
+        UPDATE `item_template` SET `display_id` = '18567' WHERE (`entry` = '9626');
+        -- DMG_MIN1 from 72 to 75
+        UPDATE `item_template` SET `dmg_min1` = '75' WHERE (`entry` = '9626');
+        -- DMG_MAX1 from 109 to 113
+        UPDATE `item_template` SET `dmg_max1` = '113' WHERE (`entry` = '9626');
+
+
+        -- Item: Bow of Searing Arrows
+        -- Entry: 2825
+
+        -- DMG_MIN1
+        -- Current date:     2005-07-29 17:57:25
+        -- New date:         2004-08-20 11:50:47
+        -- Days diff: 343
+
+        -- DMG_MAX1
+        -- Current date:     2005-07-29 17:57:25
+        -- New date:         2004-08-20 11:50:47
+        -- Days diff: 343
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 11:50:47
+        -- New date:         2004-08-20 11:50:47
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 47 to 68
+        UPDATE `item_template` SET `dmg_min1` = '68' WHERE (`entry` = '2825');
+        -- DMG_MAX1 from 88 to 127
+        UPDATE `item_template` SET `dmg_max1` = '127' WHERE (`entry` = '2825');
+        -- SPELLID_1 from 0 to 7722
+        UPDATE `item_template` SET `spellid_1` = '7722' WHERE (`entry` = '2825');
+
+
+        -- Item: Abjurer's Sash
+        -- Entry: 9945
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:07:59
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- ARMOR from 35 to 44
+        UPDATE `item_template` SET `armor` = '44' WHERE (`entry` = '9945');
+
+
+        -- Item: Shadowcat Hide
+        -- Entry: 7428
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 22:04:59
+        -- New date:         2004-11-08 22:04:59
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 26371 to 14984
+        UPDATE `item_template` SET `display_id` = '14984' WHERE (`entry` = '7428');
+
+
+        -- Item: Chromite Shield
+        -- Entry: 8135
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:02
+        -- New date:         2004-11-08 03:30:02
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:02
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 79
+
+        -- BLOCK
+        -- Current date:     2004-11-08 03:30:02
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 79
+
+        -- DISPLAY_ID from 27339 to 18791
+        UPDATE `item_template` SET `display_id` = '18791' WHERE (`entry` = '8135');
+        -- ARMOR from 1436 to 200
+        UPDATE `item_template` SET `armor` = '200' WHERE (`entry` = '8135');
+        -- BLOCK from 21 to 52
+        UPDATE `item_template` SET `block` = '52' WHERE (`entry` = '8135');
+
+
+        -- Item: Broken Tears
+        -- Entry: 6083
+
+        -- STACKABLE
+        -- Current date:     2004-09-28 19:42:37
+        -- New date:         2004-09-28 19:42:37
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '6083');
+
+
+        -- Item: The Ziggler
+        -- Entry: 8006
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-30 22:09:13
+        -- New date:         2004-09-22 21:27:14
+        -- Days diff: 8
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-30 22:09:13
+        -- New date:         2004-09-22 21:27:14
+        -- Days diff: 8
+
+        -- DMG_MIN1 from 31 to 28
+        UPDATE `item_template` SET `dmg_min1` = '28' WHERE (`entry` = '8006');
+        -- DMG_MAX1 from 59 to 54
+        UPDATE `item_template` SET `dmg_max1` = '54' WHERE (`entry` = '8006');
+
+
+        -- Item: Serpentskin Helm
+        -- Entry: 8261
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-08-20 11:50:32
+        -- Days diff: 79
+
+        -- STAT_TYPE1
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-09-30 20:57:22
+        -- Days diff: 38
+
+        -- STAT_VALUE1
+        -- Current date:     2004-09-30 20:57:22
+        -- New date:         2004-08-20 11:50:32
+        -- Days diff: 41
+
+        -- ARMOR from 115 to 44
+        UPDATE `item_template` SET `armor` = '44' WHERE (`entry` = '8261');
+        -- STAT_TYPE1 from 5 to 6
+        UPDATE `item_template` SET `stat_type1` = '6' WHERE (`entry` = '8261');
+        -- STAT_VALUE1 from 16 to 9
+        UPDATE `item_template` SET `stat_value1` = '9' WHERE (`entry` = '8261');
+
+
+        -- Item: Prison Shank
+        -- Entry: 2941
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-09 03:13:01
+        -- New date:         2004-09-24 14:12:48
+        -- Days diff: 14
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-09 03:13:01
+        -- New date:         2004-09-24 14:12:48
+        -- Days diff: 14
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-09 03:13:01
+        -- New date:         2004-10-09 03:13:01
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-09 03:13:01
+        -- New date:         2004-10-09 03:13:01
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 21 to 17
+        UPDATE `item_template` SET `dmg_min1` = '17' WHERE (`entry` = '2941');
+        -- DMG_MAX1 from 39 to 32
+        UPDATE `item_template` SET `dmg_max1` = '32' WHERE (`entry` = '2941');
+        -- STAT_TYPE2 from 7 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '2941');
+        -- STAT_VALUE2 from 2 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '2941');
+
+
+        -- Item: Royal Amice
+        -- Entry: 9912
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-11-08 15:00:23
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-09-30 20:57:23
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 28409 to 15014
+        UPDATE `item_template` SET `display_id` = '15014' WHERE (`entry` = '9912');
+        -- ARMOR from 44 to 78
+        UPDATE `item_template` SET `armor` = '78' WHERE (`entry` = '9912');
+
+
+        -- Item: Wrathtail Head
+        -- Entry: 5490
+
+        -- STACKABLE
+        -- Current date:     2004-07-19 15:54:39
+        -- New date:         2004-07-19 15:54:39
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '5490');
+
+
+        -- Item: Farmer's Shovel
+        -- Entry: 3334
+
+        -- DMG_MIN1
+        -- Current date:     2004-11-07 09:04:52
+        -- New date:         2004-09-05 21:02:47
+        -- Days diff: 62
+
+        -- DMG_MAX1
+        -- Current date:     2004-11-07 09:04:52
+        -- New date:         2004-09-05 21:02:47
+        -- Days diff: 62
+
+        -- DMG_MIN1 from 11 to 13
+        UPDATE `item_template` SET `dmg_min1` = '13' WHERE (`entry` = '3334');
+        -- DMG_MAX1 from 17 to 20
+        UPDATE `item_template` SET `dmg_max1` = '20' WHERE (`entry` = '3334');
+
+
+        -- Item: Soran'ruk Fragment
+        -- Entry: 6914
+
+        -- STACKABLE
+        -- Current date:     2004-10-14 14:30:00
+        -- New date:         2004-10-14 14:30:00
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '6914');
+
+
+        -- Item: Parrot Cage (Senegal)
+        -- Entry: 8495
+
+        -- CLASS
+        -- Current date:     2004-09-05 02:43:43
+        -- New date:         2004-09-05 02:43:43
+        -- Days diff: Unknown
+
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8495');
+
+
+        -- Item: Recipe: Hot Lion Chops
+        -- Entry: 3735
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 20:59:20
+        -- New date:         2005-03-22 20:59:20
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 5 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '3735');
+
+
+        -- Item: Midnight Orb
+        -- Entry: 1261
+
+        -- CLASS
+        -- Current date:     2004-06-23 13:32:14
+        -- New date:         2004-06-23 13:32:14
+        -- Days diff: Unknown
+
+        -- SELL_PRICE
+        -- Current date:     2004-06-23 13:32:14
+        -- New date:         2004-06-23 13:32:14
+        -- Days diff: Unknown
+
+        -- BUY_PRICE
+        -- Current date:     2004-06-23 13:32:14
+        -- New date:         2004-06-23 13:32:14
+        -- Days diff: Unknown
+
+        -- SPELLID_1
+        -- Current date:     2004-06-23 13:32:14
+        -- New date:         2004-06-23 13:32:14
+        -- Days diff: Unknown
+
+        -- STACKABLE
+        -- Current date:     2004-06-23 13:32:14
+        -- New date:         2004-06-23 13:32:14
+        -- Days diff: Unknown
+
+        -- CLASS from 12 to 0
+        UPDATE `item_template` SET `class` = '0' WHERE (`entry` = '1261');
+        -- SELL_PRICE from 0 to 270
+        UPDATE `item_template` SET `sell_price` = '270' WHERE (`entry` = '1261');
+        -- BUY_PRICE from 0 to 67
+        UPDATE `item_template` SET `buy_price` = '67' WHERE (`entry` = '1261');
+        -- SPELLID_1 from 0 to 706
+        UPDATE `item_template` SET `spellid_1` = '706' WHERE (`entry` = '1261');
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '1261');
+
+
+        -- Item: Champion's Greaves
+        -- Entry: 7542
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:15
+        -- New date:         2004-07-12 15:16:34
+        -- Days diff: 118
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-12 15:16:34
+        -- New date:         2004-07-12 15:16:34
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-07-12 15:16:34
+        -- New date:         2004-07-12 15:16:34
+        -- Days diff: Unknown
+
+        -- ARMOR from 174 to 64
+        UPDATE `item_template` SET `armor` = '64' WHERE (`entry` = '7542');
+        -- REQUIRED_LEVEL from 41 to 40
+        UPDATE `item_template` SET `required_level` = '40' WHERE (`entry` = '7542');
+        -- ITEM_LEVEL from 41 to 40
+        UPDATE `item_template` SET `item_level` = '40' WHERE (`entry` = '7542');
+
+
+        -- Item: Silithid Talon
+        -- Entry: 5854
+
+        -- NAME
+        -- Current date:     2004-09-04 02:08:24
+        -- New date:         2004-09-04 02:08:24
+        -- Days diff: Unknown
+
+        -- NAME from Silithid Talon to Sillithid Talon
+        UPDATE `item_template` SET `name` = 'Sillithid Talon' WHERE (`entry` = '5854');
+
+
+        -- Item: Field Plate Girdle
+        -- Entry: 9288
+
+        -- NAME
+        -- Current date:     2005-12-23 20:27:48
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 533
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-11-08 04:19:36
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- NAME from Field Plate Girdle to Gothic Plate Girdle
+        UPDATE `item_template` SET `name` = 'Gothic Plate Girdle' WHERE (`entry` = '9288');
+        -- DISPLAY_ID from 27359 to 11628
+        UPDATE `item_template` SET `display_id` = '11628' WHERE (`entry` = '9288');
+        -- ARMOR from 169 to 55
+        UPDATE `item_template` SET `armor` = '55' WHERE (`entry` = '9288');
+
+
+        -- Item: Embossed Plate Bracers
+        -- Entry: 9972
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:00:22
+        -- New date:         2004-11-08 15:00:22
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:22
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 27350 to 19677
+        UPDATE `item_template` SET `display_id` = '19677' WHERE (`entry` = '9972');
+        -- ARMOR from 148 to 194
+        UPDATE `item_template` SET `armor` = '194' WHERE (`entry` = '9972');
+
+
+        -- Item: Big Black Mace
+        -- Entry: 7945
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 19:39:30
+        -- New date:         2004-07-09 08:52:19
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 19:39:30
+        -- New date:         2004-07-09 08:52:19
+        -- Days diff: 84
+
+        -- DMG_MIN1 from 46 to 44
+        UPDATE `item_template` SET `dmg_min1` = '44' WHERE (`entry` = '7945');
+        -- DMG_MAX1 from 86 to 83
+        UPDATE `item_template` SET `dmg_max1` = '83' WHERE (`entry` = '7945');
+
+
+        -- Item: Phantom Blade
+        -- Entry: 7961
+
+        -- DISPLAY_ID
+        -- Current date:     2004-10-12 08:22:30
+        -- New date:         2004-08-20 11:50:37
+        -- Days diff: 52
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:08
+        -- New date:         2004-08-20 11:50:37
+        -- Days diff: 41
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:08
+        -- New date:         2004-08-20 11:50:37
+        -- Days diff: 41
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 11:50:37
+        -- New date:         2004-08-20 11:50:37
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 25053 to 13078
+        UPDATE `item_template` SET `display_id` = '13078' WHERE (`entry` = '7961');
+        -- DMG_MIN1 from 59 to 52
+        UPDATE `item_template` SET `dmg_min1` = '52' WHERE (`entry` = '7961');
+        -- DMG_MAX1 from 111 to 97
+        UPDATE `item_template` SET `dmg_max1` = '97' WHERE (`entry` = '7961');
+        -- SPELLID_1 from 9806 to 9808
+        UPDATE `item_template` SET `spellid_1` = '9808' WHERE (`entry` = '7961');
+
+
+        -- Item: Tough Scorpid Breastplate
+        -- Entry: 8203
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:03
+        -- New date:         2004-08-20 11:50:33
+        -- Days diff: 79
+
+        -- NATURE_RES
+        -- Current date:     2004-08-20 11:50:33
+        -- New date:         2004-08-20 11:50:33
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 11:50:33
+        -- Days diff: 41
+
+        -- ARMOR from 245 to 91
+        UPDATE `item_template` SET `armor` = '91' WHERE (`entry` = '8203');
+        -- NATURE_RES from 0 to 3
+        UPDATE `item_template` SET `nature_res` = '3' WHERE (`entry` = '8203');
+        -- STAT_VALUE1 from 15 to 7
+        UPDATE `item_template` SET `stat_value1` = '7' WHERE (`entry` = '8203');
+
+
+        -- Item: Jangdor's Handcrafted Boots
+        -- Entry: 9633
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-11-08 03:29:57
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-08-24 15:56:48
+        -- Days diff: 75
+
+        -- DISPLAY_ID from 28281 to 16983
+        UPDATE `item_template` SET `display_id` = '16983' WHERE (`entry` = '9633');
+        -- ARMOR from 84 to 43
+        UPDATE `item_template` SET `armor` = '43' WHERE (`entry` = '9633');
+
+
+        -- Item: Shiny War Axe
+        -- Entry: 1824
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-05-25 13:47:18
+        -- Days diff: 128
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-05-25 13:47:18
+        -- Days diff: 128
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-24 03:43:52
+        -- New date:         2004-05-25 13:47:18
+        -- Days diff: 29
+
+        -- DMG_MIN1 from 17 to 22
+        UPDATE `item_template` SET `dmg_min1` = '22' WHERE (`entry` = '1824');
+        -- DMG_MAX1 from 26 to 30
+        UPDATE `item_template` SET `dmg_max1` = '30' WHERE (`entry` = '1824');
+        -- REQUIRED_LEVEL from 18 to 13
+        UPDATE `item_template` SET `required_level` = '13' WHERE (`entry` = '1824');
+
+
+        -- Item: Pattern: Barbaric Leggings
+        -- Entry: 5973
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:11:22
+        -- New date:         2005-03-22 21:11:22
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '5973');
+
+
+        -- Item: Blinding Powder
+        -- Entry: 5530
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2005-05-16 21:39:52
+        -- New date:         2005-05-16 21:39:52
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2005-05-16 21:39:52
+        -- New date:         2005-05-16 21:39:52
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 34 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '5530');
+        -- ITEM_LEVEL from 34 to 0
+        UPDATE `item_template` SET `item_level` = '0' WHERE (`entry` = '5530');
+
+
+        -- Item: Engineer's Guild Headpiece
+        -- Entry: 9534
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:58
+        -- New date:         2004-08-20 11:50:18
+        -- Days diff: 79
+
+        -- ARMOR from 113 to 40
+        UPDATE `item_template` SET `armor` = '40' WHERE (`entry` = '9534');
+
+
+        -- Item: Tarnished Bastard Sword
+        -- Entry: 2754
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-14 16:29:18
+        -- New date:         2004-09-29 01:17:34
+        -- Days diff: 15
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-29 01:17:34
+        -- New date:         2004-09-29 01:17:34
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 4 to 6
+        UPDATE `item_template` SET `dmg_min1` = '6' WHERE (`entry` = '2754');
+        -- DMG_MAX1 from 6 to 10
+        UPDATE `item_template` SET `dmg_max1` = '10' WHERE (`entry` = '2754');
+
+
+        -- Item: Traveler's Jerkin
+        -- Entry: 8296
+
+        -- ARMOR
+        -- Current date:     2004-11-08 19:19:59
+        -- New date:         2004-10-01 18:41:20
+        -- Days diff: 38
+
+        -- STAT_TYPE1
+        -- Current date:     2004-11-08 19:19:59
+        -- New date:         2004-10-01 18:41:20
+        -- Days diff: 38
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-12 19:13:13
+        -- New date:         2004-10-01 18:41:20
+        -- Days diff: 11
+
+        -- ARMOR from 156 to 229
+        UPDATE `item_template` SET `armor` = '229' WHERE (`entry` = '8296');
+        -- STAT_TYPE1 from 5 to 6
+        UPDATE `item_template` SET `stat_type1` = '6' WHERE (`entry` = '8296');
+        -- STAT_VALUE1 from 21 to 14
+        UPDATE `item_template` SET `stat_value1` = '14' WHERE (`entry` = '8296');
+
+
+        -- Item: Lupine Axe
+        -- Entry: 1220
+
+        -- DMG_MIN1
+        -- Current date:     2004-05-28 12:19:45
+        -- New date:         2004-05-28 12:19:45
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-05-28 12:19:45
+        -- New date:         2004-05-28 12:19:45
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-05-28 12:19:45
+        -- New date:         2004-05-28 12:19:45
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 21 to 30
+        UPDATE `item_template` SET `dmg_min1` = '30' WHERE (`entry` = '1220');
+        -- DMG_MAX1 from 32 to 42
+        UPDATE `item_template` SET `dmg_max1` = '42' WHERE (`entry` = '1220');
+        -- REQUIRED_LEVEL from 15 to 10
+        UPDATE `item_template` SET `required_level` = '10' WHERE (`entry` = '1220');
+
+
+        -- Item: Dragonscale Breastplate
+        -- Entry: 8367
+
+        -- ARMOR
+        -- Current date:     2005-07-19 00:45:22
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 332
+
+        -- FIRE_RES
+        -- Current date:     2005-07-19 00:45:22
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 332
+
+        -- NATURE_RES
+        -- Current date:     2004-08-20 10:24:00
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: Unknown
+
+        -- FROST_RES
+        -- Current date:     2005-07-19 00:45:22
+        -- New date:         2004-10-01 02:27:08
+        -- Days diff: 290
+
+        -- SHADOW_RES
+        -- Current date:     2005-07-19 00:45:22
+        -- New date:         2004-10-01 02:27:08
+        -- Days diff: 290
+
+        -- ARMOR from 306 to 105
+        UPDATE `item_template` SET `armor` = '105' WHERE (`entry` = '8367');
+        -- FIRE_RES from 13 to 0
+        UPDATE `item_template` SET `fire_res` = '0' WHERE (`entry` = '8367');
+        -- NATURE_RES from 0 to 3
+        UPDATE `item_template` SET `nature_res` = '3' WHERE (`entry` = '8367');
+        -- FROST_RES from 13 to 0
+        UPDATE `item_template` SET `frost_res` = '0' WHERE (`entry` = '8367');
+        -- SHADOW_RES from 12 to 0
+        UPDATE `item_template` SET `shadow_res` = '0' WHERE (`entry` = '8367');
+
+
+        -- Item: Big Bad Pauldrons
+        -- Entry: 9476
+
+        -- ARMOR
+        -- Current date:     2005-12-22 18:59:15
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 489
+
+        -- ARMOR from 396 to 113
+        UPDATE `item_template` SET `armor` = '113' WHERE (`entry` = '9476');
+
+
+        -- Item: Heavy Mithril Axe
+        -- Entry: 7941
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 01:09:07
+        -- New date:         2004-07-14 17:44:21
+        -- Days diff: 78
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 01:09:07
+        -- New date:         2004-07-14 17:44:21
+        -- Days diff: 78
+
+        -- DMG_MIN1 from 45 to 43
+        UPDATE `item_template` SET `dmg_min1` = '43' WHERE (`entry` = '7941');
+        -- DMG_MAX1 from 85 to 81
+        UPDATE `item_template` SET `dmg_max1` = '81' WHERE (`entry` = '7941');
+
+
+        -- Item: Triprunner Dungarees
+        -- Entry: 9624
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-11-08 03:29:57
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-07-12 06:12:49
+        -- New date:         2004-08-20 10:23:59
+        -- Days diff: 325
+
+        -- STAT_TYPE3
+        -- Current date:     2004-09-30 19:57:26
+        -- New date:         2004-09-30 19:57:26
+        -- Days diff: Unknown
+
+        -- STAT_VALUE3
+        -- Current date:     2004-09-30 19:57:26
+        -- New date:         2004-09-30 19:57:26
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 28195 to 4439
+        UPDATE `item_template` SET `display_id` = '4439' WHERE (`entry` = '9624');
+        -- ARMOR from 101 to 47
+        UPDATE `item_template` SET `armor` = '47' WHERE (`entry` = '9624');
+        -- STAT_TYPE3 from 4 to 0
+        UPDATE `item_template` SET `stat_type3` = '0' WHERE (`entry` = '9624');
+        -- STAT_VALUE3 from 3 to 0
+        UPDATE `item_template` SET `stat_value3` = '0' WHERE (`entry` = '9624');
+
+
+        -- Item: Platemail Boots
+        -- Entry: 8089
+
+        -- NAME
+        -- Current date:     2004-08-23 10:43:33
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: 76
+
+        -- STAT_TYPE1
+        -- Current date:     2004-08-23 10:43:33
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-08-23 10:43:33
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-08-23 10:43:33
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-08-23 10:43:33
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: Unknown
+
+        -- NAME from Platemail Boots to Field Plate Boots
+        UPDATE `item_template` SET `name` = 'Field Plate Boots' WHERE (`entry` = '8089');
+        -- ARMOR from 314 to 83
+        UPDATE `item_template` SET `armor` = '83' WHERE (`entry` = '8089');
+        -- STAT_TYPE1 from 0 to 7
+        UPDATE `item_template` SET `stat_type1` = '7' WHERE (`entry` = '8089');
+        -- STAT_VALUE1 from 0 to 3
+        UPDATE `item_template` SET `stat_value1` = '3' WHERE (`entry` = '8089');
+        -- STAT_TYPE2 from 0 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '8089');
+        -- STAT_VALUE2 from 0 to 3
+        UPDATE `item_template` SET `stat_value2` = '3' WHERE (`entry` = '8089');
+
+
+        -- Item: Krom Stoutarm's Treasure
+        -- Entry: 8027
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-20 23:23:38
+        -- New date:         2004-07-20 23:23:38
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 18718 to 18101
+        UPDATE `item_template` SET `display_id` = '18101' WHERE (`entry` = '8027');
+
+
+        -- Item: Chromite Bracers
+        -- Entry: 8137
+
+        -- NAME
+        -- Current date:     2005-11-01 20:41:58
+        -- New date:         2004-07-09 08:52:20
+        -- Days diff: 480
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:03
+        -- New date:         2004-07-09 08:52:20
+        -- Days diff: 121
+
+        -- ARMOR
+        -- Current date:     2004-09-30 20:57:23
+        -- New date:         2004-07-09 08:52:20
+        -- Days diff: 83
+
+        -- NAME from Chromite Bracers to Valorous Bracers
+        UPDATE `item_template` SET `name` = 'Valorous Bracers' WHERE (`entry` = '8137');
+        -- DISPLAY_ID from 27329 to 11625
+        UPDATE `item_template` SET `display_id` = '11625' WHERE (`entry` = '8137');
+        -- ARMOR from 167 to 66
+        UPDATE `item_template` SET `armor` = '66' WHERE (`entry` = '8137');
+
+
+        -- Item: Digmaster 5000
+        -- Entry: 9465
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-17 02:51:25
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 100
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-17 02:51:25
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 100
+
+        -- SPELLID_1
+        -- Current date:     2004-10-17 02:51:25
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 57
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-17 02:51:25
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 57
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-17 02:51:25
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 57
+
+        -- DMG_MIN1 from 38 to 43
+        UPDATE `item_template` SET `dmg_min1` = '43' WHERE (`entry` = '9465');
+        -- DMG_MAX1 from 71 to 53
+        UPDATE `item_template` SET `dmg_max1` = '53' WHERE (`entry` = '9465');
+        -- SPELLID_1 from 0 to 7597
+        UPDATE `item_template` SET `spellid_1` = '7597' WHERE (`entry` = '9465');
+        -- STAT_TYPE1 from 3 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '9465');
+        -- STAT_VALUE1 from 4 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '9465');
+
+
+        -- Item: Toxic Revenger
+        -- Entry: 9453
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 10:24:00
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 41
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 41
+
+        -- DISPLAY_ID from 20595 to 18369
+        UPDATE `item_template` SET `display_id` = '18369' WHERE (`entry` = '9453');
+        -- DMG_MIN1 from 27 to 19
+        UPDATE `item_template` SET `dmg_min1` = '19' WHERE (`entry` = '9453');
+        -- DMG_MAX1 from 51 to 36
+        UPDATE `item_template` SET `dmg_max1` = '36' WHERE (`entry` = '9453');
+
+
+        -- Item: Emil's Brand
+        -- Entry: 5813
+
+        -- DMG_MAX1
+        -- Current date:     2004-06-17 17:32:05
+        -- New date:         2004-06-17 17:32:05
+        -- Days diff: Unknown
+
+        -- DMG_MAX1 from 75 to 77
+        UPDATE `item_template` SET `dmg_max1` = '77' WHERE (`entry` = '5813');
+
+
+        -- Item: Nightblade
+        -- Entry: 1982
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 11:51:01
+        -- New date:         2004-08-20 11:51:01
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-10-12 15:51:29
+        -- New date:         2004-06-23 13:35:40
+        -- Days diff: 111
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-12 15:51:29
+        -- New date:         2004-06-23 13:35:40
+        -- Days diff: 111
+
+        -- STAT_TYPE1
+        -- Current date:     2004-08-20 11:51:01
+        -- New date:         2004-08-20 11:51:01
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-08-20 11:51:01
+        -- New date:         2004-08-20 11:51:01
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 13440 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '1982');
+        -- REQUIRED_LEVEL from 39 to 30
+        UPDATE `item_template` SET `required_level` = '30' WHERE (`entry` = '1982');
+        -- ITEM_LEVEL from 39 to 30
+        UPDATE `item_template` SET `item_level` = '30' WHERE (`entry` = '1982');
+        -- STAT_TYPE1 from 0 to 6
+        UPDATE `item_template` SET `stat_type1` = '6' WHERE (`entry` = '1982');
+        -- STAT_VALUE1 from 0 to 18
+        UPDATE `item_template` SET `stat_value1` = '18' WHERE (`entry` = '1982');
+
+
+        -- Item: Reins of the Striped Nightsaber
+        -- Entry: 8629
+
+        -- NAME
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-05 21:02:41
+        -- Days diff: 23
+        -- Overrides WDB:                   3925
+
+        -- CLASS
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-05 21:02:41
+        -- Days diff: 23
+        -- Overrides WDB:                   3925
+
+        -- NAME from Reins of the Striped Nightsaber to Reins of the Striped Panther
+        UPDATE `item_template` SET `name` = 'Reins of the Striped Panther' WHERE (`entry` = '8629');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8629');
+
+
+        -- Item: Gray Ram
+        -- Entry: 5864
+
+        -- NAME
+        -- Current date:     2004-10-09 03:13:01
+        -- New date:         2004-08-05 21:03:41
+        -- Days diff: 64
+
+        -- CLASS
+        -- Current date:     2004-09-07 22:09:09
+        -- New date:         2004-09-07 22:09:09
+        -- Days diff: Unknown
+
+        -- NAME from Gray Ram to Gray Ram Harness
+        UPDATE `item_template` SET `name` = 'Gray Ram Harness' WHERE (`entry` = '5864');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '5864');
+
+
+        -- Item: Champion's Armor
+        -- Entry: 7538
+
+        -- DISPLAY_ID
+        -- Current date:     2005-07-07 14:01:21
+        -- New date:         2004-11-08 03:30:15
+        -- Days diff: 241
+
+        -- ARMOR
+        -- Current date:     2005-07-07 14:01:21
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: 363
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2005-07-07 14:01:21
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: 363
+
+        -- ITEM_LEVEL
+        -- Current date:     2005-07-07 14:01:21
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: 363
+
+        -- DISPLAY_ID from 26087 to 11624
+        UPDATE `item_template` SET `display_id` = '11624' WHERE (`entry` = '7538');
+        -- ARMOR from 263 to 96
+        UPDATE `item_template` SET `armor` = '96' WHERE (`entry` = '7538');
+        -- REQUIRED_LEVEL from 43 to 42
+        UPDATE `item_template` SET `required_level` = '42' WHERE (`entry` = '7538');
+        -- ITEM_LEVEL from 43 to 42
+        UPDATE `item_template` SET `item_level` = '42' WHERE (`entry` = '7538');
+
+
+        -- Item: Chromite Girdle
+        -- Entry: 8140
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:07
+        -- New date:         2004-11-08 03:30:07
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 41
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 41
+
+        -- STAT_VALUE1
+        -- Current date:     2004-09-22 21:27:14
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 33
+
+        -- DISPLAY_ID from 27332 to 19718
+        UPDATE `item_template` SET `display_id` = '19718' WHERE (`entry` = '8140');
+        -- ARMOR from 215 to 50
+        UPDATE `item_template` SET `armor` = '50' WHERE (`entry` = '8140');
+        -- STAT_TYPE1 from 4 to 3
+        UPDATE `item_template` SET `stat_type1` = '3' WHERE (`entry` = '8140');
+        -- STAT_VALUE1 from 9 to 2
+        UPDATE `item_template` SET `stat_value1` = '2' WHERE (`entry` = '8140');
+
+
+        -- Item: Arcane Staff
+        -- Entry: 9514
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:14:42
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2005-05-09 18:26:32
+        -- New date:         2005-05-09 18:26:32
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2005-05-09 18:26:32
+        -- New date:         2005-05-09 18:26:32
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20424 to 18437
+        UPDATE `item_template` SET `display_id` = '18437' WHERE (`entry` = '9514');
+        -- STAT_TYPE2 from 5 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '9514');
+        -- STAT_VALUE2 from 1 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '9514');
+
+
+        -- Item: Heavy Mithril Pants
+        -- Entry: 7921
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:12
+        -- New date:         2004-08-20 11:14:44
+        -- Days diff: 79
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-08 15:42:36
+        -- New date:         2004-07-08 15:42:36
+        -- Days diff: Unknown
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-08-20 11:14:44
+        -- Days diff: 41
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-08-20 11:14:44
+        -- Days diff: 41
+
+        -- ARMOR from 417 to 95
+        UPDATE `item_template` SET `armor` = '95' WHERE (`entry` = '7921');
+        -- REQUIRED_LEVEL from 40 to 37
+        UPDATE `item_template` SET `required_level` = '37' WHERE (`entry` = '7921');
+        -- STAT_TYPE1 from 7 to 4
+        UPDATE `item_template` SET `stat_type1` = '4' WHERE (`entry` = '7921');
+        -- STAT_VALUE1 from 11 to 7
+        UPDATE `item_template` SET `stat_value1` = '7' WHERE (`entry` = '7921');
+
+
+        -- Item: Warmonger's Greaves
+        -- Entry: 9962
+
+        -- DISPLAY_ID
+        -- Current date:     2005-04-20 16:46:39
+        -- New date:         2005-04-20 16:46:39
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-04-20 16:46:39
+        -- New date:         2004-10-01 02:33:43
+        -- Days diff: 201
+
+        -- DISPLAY_ID from 26188 to 11629
+        UPDATE `item_template` SET `display_id` = '11629' WHERE (`entry` = '9962');
+        -- ARMOR from 181 to 210
+        UPDATE `item_template` SET `armor` = '210' WHERE (`entry` = '9962');
+
+
+        -- Item: Twill Cover
+        -- Entry: 8754
+
+        -- ARMOR
+        -- Current date:     2004-11-12 20:49:01
+        -- New date:         2004-10-14 15:24:43
+        -- Days diff: 29
+
+        -- ARMOR from 53 to 66
+        UPDATE `item_template` SET `armor` = '66' WHERE (`entry` = '8754');
+
+
+        -- Item: Turtle Scale
+        -- Entry: 8167
+
+        -- DISPLAY_ID
+        -- Current date:     2004-10-12 19:13:14
+        -- New date:         2004-10-12 19:13:14
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 21363 to 2874
+        UPDATE `item_template` SET `display_id` = '2874' WHERE (`entry` = '8167');
+
+
+        -- Item: Recipe: Soothing Turtle Bisque
+        -- Entry: 3737
+
+        -- SUBCLASS
+        -- Current date:     2005-05-21 01:40:15
+        -- New date:         2005-05-21 01:40:15
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 5 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '3737');
+
+
+        -- Item: Fortified Boots
+        -- Entry: 9810
+
+        -- ARMOR
+        -- Current date:     2005-03-20 00:02:17
+        -- New date:         2004-10-01 01:09:06
+        -- Days diff: 169
+
+        -- ARMOR from 126 to 122
+        UPDATE `item_template` SET `armor` = '122' WHERE (`entry` = '9810');
+
+
+        -- Item: Reins of the Striped Frostsaber
+        -- Entry: 8631
+
+        -- NAME
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-05 21:02:41
+        -- Days diff: 23
+        -- Overrides WDB:                   3925
+
+        -- CLASS
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-05 21:02:41
+        -- Days diff: 23
+        -- Overrides WDB:                   3925
+
+        -- NAME from Reins of the Striped Frostsaber to Reins of the Ivory Tiger
+        UPDATE `item_template` SET `name` = 'Reins of the Ivory Tiger' WHERE (`entry` = '8631');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8631');
+
+
+        -- Item: Crooked Staff
+        -- Entry: 1388
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-22 06:49:08
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 98
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-22 06:49:08
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 98
+
+        -- DMG_MIN1 from 4 to 7
+        UPDATE `item_template` SET `dmg_min1` = '7' WHERE (`entry` = '1388');
+        -- DMG_MAX1 from 7 to 11
+        UPDATE `item_template` SET `dmg_max1` = '11' WHERE (`entry` = '1388');
+
+
+        -- Item: Reins of the Spotted Frostsaber
+        -- Entry: 8632
+
+        -- NAME
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-05 21:02:41
+        -- Days diff: 23
+        -- Overrides WDB:                   3925
+
+        -- CLASS
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-05 21:02:41
+        -- Days diff: 23
+        -- Overrides WDB:                   3925
+
+        -- NAME from Reins of the Spotted Frostsaber to Reins of the Snow Tiger
+        UPDATE `item_template` SET `name` = 'Reins of the Snow Tiger' WHERE (`entry` = '8632');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8632');
+
+
+        -- Item: Crushing Maul
+        -- Entry: 4022
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-04 11:26:11
+        -- New date:         2004-07-17 18:13:55
+        -- Days diff: 78
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-04 11:26:11
+        -- New date:         2004-07-17 18:13:55
+        -- Days diff: 78
+
+        -- DMG_MIN1 from 61 to 70
+        UPDATE `item_template` SET `dmg_min1` = '70' WHERE (`entry` = '4022');
+        -- DMG_MAX1 from 92 to 105
+        UPDATE `item_template` SET `dmg_max1` = '105' WHERE (`entry` = '4022');
+
+
+        -- Item: Ghoul Fang
+        -- Entry: 1129
+
+        -- STACKABLE
+        -- Current date:     2004-06-23 13:32:15
+        -- New date:         2004-06-23 13:32:15
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '1129');
+
+
+        -- Item: Diabolic Skiver
+        -- Entry: 9475
+
+        -- DISPLAY_ID
+        -- Current date:     2005-09-11 12:01:18
+        -- New date:         2004-08-20 11:50:19
+        -- Days diff: 387
+
+        -- DMG_MIN1
+        -- Current date:     2005-09-11 12:01:18
+        -- New date:         2004-07-08 16:56:41
+        -- Days diff: 429
+
+        -- DMG_MAX1
+        -- Current date:     2005-09-11 12:01:18
+        -- New date:         2004-07-08 16:56:41
+        -- Days diff: 429
+
+        -- SPELLID_1
+        -- Current date:     2005-09-11 12:01:18
+        -- New date:         2004-08-20 11:50:19
+        -- Days diff: 387
+
+        -- DISPLAY_ID from 22209 to 18388
+        UPDATE `item_template` SET `display_id` = '18388' WHERE (`entry` = '9475');
+        -- DMG_MIN1 from 99 to 98
+        UPDATE `item_template` SET `dmg_min1` = '98' WHERE (`entry` = '9475');
+        -- DMG_MAX1 from 149 to 148
+        UPDATE `item_template` SET `dmg_max1` = '148' WHERE (`entry` = '9475');
+        -- SPELLID_1 from 18206 to 705
+        UPDATE `item_template` SET `spellid_1` = '705' WHERE (`entry` = '9475');
+
+
+        -- Item: Champion's Gauntlets
+        -- Entry: 7541
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-08-21 10:31:18
+        -- Days diff: 78
+
+        -- ARMOR from 158 to 53
+        UPDATE `item_template` SET `armor` = '53' WHERE (`entry` = '7541');
+
+
+        -- Item: Formula: Enchant Bracer - Minor Strength
+        -- Entry: 6347
+
+        -- SUBCLASS
+        -- Current date:     2005-08-24 04:43:10
+        -- New date:         2005-08-24 04:43:10
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 8 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '6347');
+
+
+        -- Item: Stiches' Femur
+        -- Entry: 3360
+
+        -- ARMOR
+        -- Current date:     2004-05-28 12:19:46
+        -- New date:         2004-05-28 12:19:46
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-05-28 12:19:46
+        -- New date:         2004-05-28 12:19:46
+        -- Days diff: Unknown
+
+        -- ARMOR from 10 to 6
+        UPDATE `item_template` SET `armor` = '6' WHERE (`entry` = '3360');
+        -- REQUIRED_LEVEL from 25 to 20
+        UPDATE `item_template` SET `required_level` = '20' WHERE (`entry` = '3360');
+
+
+        -- Item: Battered Viking Shield
+        -- Entry: 9403
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-19 15:54:41
+        -- New date:         2004-07-19 15:54:41
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-13 06:41:46
+        -- New date:         2004-09-05 21:02:41
+        -- Days diff: 68
+
+        -- BLOCK
+        -- Current date:     2004-10-03 16:36:17
+        -- New date:         2004-07-19 15:54:41
+        -- Days diff: 76
+
+        -- DISPLAY_ID from 18824 to 18278
+        UPDATE `item_template` SET `display_id` = '18278' WHERE (`entry` = '9403');
+        -- ARMOR from 907 to 131
+        UPDATE `item_template` SET `armor` = '131' WHERE (`entry` = '9403');
+        -- BLOCK from 15 to 42
+        UPDATE `item_template` SET `block` = '42' WHERE (`entry` = '9403');
+
+
+        -- Item: Thermaplugg's Central Core
+        -- Entry: 9458
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:58
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 79
+
+        -- BLOCK
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: 84
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 11:14:42
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: Unknown
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-10-01 02:27:06
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-10-01 02:27:06
+        -- Days diff: Unknown
+
+        -- ARMOR from 795 to 169
+        UPDATE `item_template` SET `armor` = '169' WHERE (`entry` = '9458');
+        -- BLOCK from 18 to 41
+        UPDATE `item_template` SET `block` = '41' WHERE (`entry` = '9458');
+        -- SPELLID_1 from 13959 to 7619
+        UPDATE `item_template` SET `spellid_1` = '7619' WHERE (`entry` = '9458');
+        -- STAT_TYPE1 from 6 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '9458');
+        -- STAT_VALUE1 from 3 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '9458');
+
+
+        -- Item: Heavy Ogre War Axe
+        -- Entry: 2227
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-04 11:26:12
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: 87
+
+        -- DMG_MAX1 from 84 to 76
+        UPDATE `item_template` SET `dmg_max1` = '76' WHERE (`entry` = '2227');
+
+
+        -- Item: Prairie Alpha Tooth
+        -- Entry: 4803
+
+        -- STACKABLE
+        -- Current date:     2004-07-20 23:23:38
+        -- New date:         2004-07-20 23:23:38
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4803');
+
+
+        -- Item: Civinad Robes
+        -- Entry: 9623
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-08 16:09:19
+        -- New date:         2004-07-08 16:09:19
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-08-20 10:23:59
+        -- Days diff: 79
+
+        -- DISPLAY_ID from 18883 to 16695
+        UPDATE `item_template` SET `display_id` = '16695' WHERE (`entry` = '9623');
+        -- ARMOR from 54 to 27
+        UPDATE `item_template` SET `armor` = '27' WHERE (`entry` = '9623');
+
+
+        -- Item: Field Plate Helmet
+        -- Entry: 9290
+
+        -- NAME
+        -- Current date:     2004-12-23 21:06:59
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 168
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:29:59
+        -- New date:         2004-11-08 03:29:59
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:59
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- NAME from Field Plate Helmet to Gothic Plate Helm
+        UPDATE `item_template` SET `name` = 'Gothic Plate Helm' WHERE (`entry` = '9290');
+        -- DISPLAY_ID from 25839 to 15503
+        UPDATE `item_template` SET `display_id` = '15503' WHERE (`entry` = '9290');
+        -- ARMOR from 276 to 79
+        UPDATE `item_template` SET `armor` = '79' WHERE (`entry` = '9290');
+
+
+        -- Item: Recipe: Elixir of Dream Vision
+        -- Entry: 9297
+
+        -- SUBCLASS
+        -- Current date:     2005-05-17 14:13:02
+        -- New date:         2005-05-17 14:13:02
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 6 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '9297');
+
+
+        -- Item: Strength of the Treant
+        -- Entry: 9683
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:14
+        -- New date:         2004-08-20 11:50:14
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:33:51
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 77
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:33:51
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 77
+
+        -- DISPLAY_ID from 20289 to 18630
+        UPDATE `item_template` SET `display_id` = '18630' WHERE (`entry` = '9683');
+        -- DMG_MIN1 from 115 to 123
+        UPDATE `item_template` SET `dmg_min1` = '123' WHERE (`entry` = '9683');
+        -- DMG_MAX1 from 173 to 186
+        UPDATE `item_template` SET `dmg_max1` = '186' WHERE (`entry` = '9683');
+
+
+        -- Item: Royal Gown
+        -- Entry: 9913
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-11-08 07:05:05
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-10-01 08:28:06
+        -- Days diff: 37
+
+        -- DISPLAY_ID from 28417 to 15005
+        UPDATE `item_template` SET `display_id` = '15005' WHERE (`entry` = '9913');
+        -- ARMOR from 63 to 101
+        UPDATE `item_template` SET `armor` = '101' WHERE (`entry` = '9913');
+
+
+        -- Item: Ley Staff
+        -- Entry: 9513
+
+        -- STAT_TYPE2
+        -- Current date:     2004-11-08 02:46:31
+        -- New date:         2004-11-08 02:46:31
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-11-08 02:46:31
+        -- New date:         2004-11-08 02:46:31
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2 from 5 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '9513');
+        -- STAT_VALUE2 from 1 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '9513');
+
+
+        -- Item: Whistle of the Violet Raptor
+        -- Entry: 8592
+
+        -- CLASS
+        -- Current date:     2004-09-13 07:17:54
+        -- New date:         2004-09-13 07:17:54
+        -- Days diff: Unknown
+
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8592');
+
+
+        -- Item: Arcane Gloves
+        -- Entry: 8287
+
+        -- NAME
+        -- Current date:     2004-11-08 03:30:03
+        -- New date:         2004-11-08 03:30:03
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:03
+        -- New date:         2004-09-30 19:57:26
+        -- Days diff: 38
+
+        -- STAT_TYPE2
+        -- Current date:     2004-09-30 19:57:26
+        -- New date:         2004-09-30 19:57:26
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-09-30 19:57:26
+        -- New date:         2004-09-30 19:57:26
+        -- Days diff: Unknown
+
+        -- NAME from Arcane Gloves to Zephyr Gloves
+        UPDATE `item_template` SET `name` = 'Zephyr Gloves' WHERE (`entry` = '8287');
+        -- ARMOR from 46 to 67
+        UPDATE `item_template` SET `armor` = '67' WHERE (`entry` = '8287');
+        -- STAT_TYPE2 from 5 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '8287');
+        -- STAT_VALUE2 from 12 to 6
+        UPDATE `item_template` SET `stat_value2` = '6' WHERE (`entry` = '8287');
+
+
+        -- Item: Grime-Encrusted Object
+        -- Entry: 9308
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-17 11:43:07
+        -- New date:         2004-07-17 11:43:07
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 18716 to 9518
+        UPDATE `item_template` SET `display_id` = '9518' WHERE (`entry` = '9308');
+
+
+        -- Item: Royal Diplomatic Scepter
+        -- Entry: 9457
+
+        -- NAME
+        -- Current date:     2004-11-10 13:41:07
+        -- New date:         2004-11-10 13:41:07
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-08 17:13:14
+        -- New date:         2004-08-21 10:31:18
+        -- Days diff: 48
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-08 17:13:14
+        -- New date:         2004-08-21 10:31:18
+        -- Days diff: 48
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-21 10:31:18
+        -- New date:         2004-08-21 10:31:18
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-21 10:31:18
+        -- New date:         2004-08-21 10:31:18
+        -- Days diff: Unknown
+
+        -- NAME from Royal Diplomatic Scepter to Royal Diplomatic Sceptre
+        UPDATE `item_template` SET `name` = 'Royal Diplomatic Sceptre' WHERE (`entry` = '9457');
+        -- DMG_MIN1 from 37 to 26
+        UPDATE `item_template` SET `dmg_min1` = '26' WHERE (`entry` = '9457');
+        -- DMG_MAX1 from 69 to 49
+        UPDATE `item_template` SET `dmg_max1` = '49' WHERE (`entry` = '9457');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '9457');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '9457');
+
+
+        -- Item: Ebonclaw Reaver
+        -- Entry: 1994
+
+        -- NAME
+        -- Current date:     2004-08-20 11:14:41
+        -- New date:         2004-08-20 11:14:41
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-11-08 19:19:58
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 123
+
+        -- DMG_MAX1
+        -- Current date:     2004-11-08 19:19:58
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 123
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-11-08 19:19:58
+        -- New date:         2004-11-08 19:19:58
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-11-08 19:19:58
+        -- New date:         2004-11-08 19:19:58
+        -- Days diff: Unknown
+
+        -- NAME from Ebonclaw Reaver to Blackclaw
+        UPDATE `item_template` SET `name` = 'Blackclaw' WHERE (`entry` = '1994');
+        -- DMG_MIN1 from 34 to 45
+        UPDATE `item_template` SET `dmg_min1` = '45' WHERE (`entry` = '1994');
+        -- DMG_MAX1 from 64 to 85
+        UPDATE `item_template` SET `dmg_max1` = '85' WHERE (`entry` = '1994');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '1994');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '1994');
+
+
+        -- Item: Black Metal War Axe
+        -- Entry: 2015
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 20:31:47
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 78
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 20:31:47
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 78
+
+        -- DMG_MIN1 from 44 to 40
+        UPDATE `item_template` SET `dmg_min1` = '40' WHERE (`entry` = '2015');
+        -- DMG_MAX1 from 66 to 61
+        UPDATE `item_template` SET `dmg_max1` = '61' WHERE (`entry` = '2015');
+
+
+        -- Item: Fortified Shield
+        -- Entry: 9816
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 02:53:44
+        -- New date:         2004-11-08 02:53:44
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 02:53:44
+        -- New date:         2004-10-01 14:50:05
+        -- Days diff: 37
+
+        -- BLOCK
+        -- Current date:     2004-09-23 00:18:29
+        -- New date:         2004-09-23 00:18:29
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 26121 to 18821
+        UPDATE `item_template` SET `display_id` = '18821' WHERE (`entry` = '9816');
+        -- ARMOR from 495 to 365
+        UPDATE `item_template` SET `armor` = '365' WHERE (`entry` = '9816');
+        -- BLOCK from 9 to 6
+        UPDATE `item_template` SET `block` = '6' WHERE (`entry` = '9816');
+
+
+        -- Item: Bulky Bludgeon
+        -- Entry: 1825
+
+        -- NAME
+        -- Current date:     2004-07-15 16:01:58
+        -- New date:         2004-04-26 10:16:24
+        -- Days diff: 80
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 08:28:05
+        -- New date:         2004-04-26 10:16:24
+        -- Days diff: 157
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 08:28:05
+        -- New date:         2004-04-26 10:16:24
+        -- Days diff: 157
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-21 11:55:34
+        -- New date:         2004-04-26 10:16:24
+        -- Days diff: 56
+
+        -- NAME from Bulky Bludgeon to Bronze Morningstar
+        UPDATE `item_template` SET `name` = 'Bronze Morningstar' WHERE (`entry` = '1825');
+        -- DMG_MIN1 from 17 to 22
+        UPDATE `item_template` SET `dmg_min1` = '22' WHERE (`entry` = '1825');
+        -- DMG_MAX1 from 32 to 33
+        UPDATE `item_template` SET `dmg_max1` = '33' WHERE (`entry` = '1825');
+        -- REQUIRED_LEVEL from 23 to 18
+        UPDATE `item_template` SET `required_level` = '18' WHERE (`entry` = '1825');
+
+
+        -- Item: Will of the Mountain Giant
+        -- Entry: 9685
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-15 11:07:12
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-15 11:07:12
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 19311 to 18607
+        UPDATE `item_template` SET `display_id` = '18607' WHERE (`entry` = '9685');
+        -- REQUIRED_LEVEL from 46 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '9685');
+
+
+        -- Item: Lightning Gland
+        -- Entry: 4898
+
+        -- STACKABLE
+        -- Current date:     2004-09-15 14:04:04
+        -- New date:         2004-09-15 14:04:04
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4898');
+
+
+        -- Item: Sickle Axe
+        -- Entry: 1602
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-06-28 17:17:50
+        -- Days diff: 94
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-06-28 17:17:50
+        -- Days diff: 94
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-28 17:17:50
+        -- New date:         2004-06-28 17:17:50
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-25 15:17:37
+        -- New date:         2004-08-25 15:17:37
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-25 15:17:37
+        -- New date:         2004-08-25 15:17:37
+        -- Days diff: Unknown
+
+        -- STAT_TYPE1
+        -- Current date:     2004-08-25 15:17:37
+        -- New date:         2004-08-25 15:17:37
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-08-25 15:17:37
+        -- New date:         2004-08-25 15:17:37
+        -- Days diff: Unknown
+
+        -- STAT_TYPE3
+        -- Current date:     2004-09-23 15:40:50
+        -- New date:         2004-08-25 15:17:37
+        -- Days diff: 29
+
+        -- STAT_VALUE3
+        -- Current date:     2004-09-23 15:40:50
+        -- New date:         2004-08-25 15:17:37
+        -- Days diff: 29
+
+        -- DMG_MIN1 from 48 to 39
+        UPDATE `item_template` SET `dmg_min1` = '39' WHERE (`entry` = '1602');
+        -- DMG_MAX1 from 90 to 74
+        UPDATE `item_template` SET `dmg_max1` = '74' WHERE (`entry` = '1602');
+        -- REQUIRED_LEVEL from 34 to 29
+        UPDATE `item_template` SET `required_level` = '29' WHERE (`entry` = '1602');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '1602');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '1602');
+        -- STAT_TYPE1 from 3 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '1602');
+        -- STAT_VALUE1 from 5 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '1602');
+        -- STAT_TYPE3 from 7 to 0
+        UPDATE `item_template` SET `stat_type3` = '0' WHERE (`entry` = '1602');
+        -- STAT_VALUE3 from 3 to 0
+        UPDATE `item_template` SET `stat_value3` = '0' WHERE (`entry` = '1602');
+
+
+        -- Item: Great Horned Owl
+        -- Entry: 8500
+
+        -- CLASS
+        -- Current date:     2004-09-03 16:27:51
+        -- New date:         2004-09-03 16:27:51
+        -- Days diff: Unknown
+
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8500');
+
+
+        -- Item: Frostmane Chain Vest
+        -- Entry: 2109
+
+        -- ARMOR
+        -- Current date:     2004-05-28 12:19:47
+        -- New date:         2004-05-28 12:19:47
+        -- Days diff: Unknown
+
+        -- ARMOR from 17 to 16
+        UPDATE `item_template` SET `armor` = '16' WHERE (`entry` = '2109');
+
+
+        -- Item: Pattern: Red Woolen Bag
+        -- Entry: 5772
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:01:29
+        -- New date:         2005-03-22 21:01:29
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 2 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '5772');
+
+
+        -- Item: Bad Mojo Mask
+        -- Entry: 9470
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-08 16:56:42
+        -- New date:         2004-07-08 16:56:42
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-09-22 21:27:14
+        -- New date:         2004-09-22 21:27:14
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-06-14 18:52:25
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 298
+
+        -- SPELLID_1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-10-01 02:27:06
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-10-01 02:27:06
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 18689 to 18384
+        UPDATE `item_template` SET `display_id` = '18384' WHERE (`entry` = '9470');
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '9470');
+        -- ARMOR from 57 to 43
+        UPDATE `item_template` SET `armor` = '43' WHERE (`entry` = '9470');
+        -- SPELLID_1 from 9414 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '9470');
+        -- STAT_TYPE2 from 0 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '9470');
+
+
+        -- Item: Silent Hunter
+        -- Entry: 9520
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-21 10:31:15
+        -- New date:         2004-08-21 10:31:15
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:33:51
+        -- New date:         2004-07-08 16:07:12
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:33:51
+        -- New date:         2004-07-08 16:07:12
+        -- Days diff: 84
+
+        -- DISPLAY_ID from 20574 to 18445
+        UPDATE `item_template` SET `display_id` = '18445' WHERE (`entry` = '9520');
+        -- DMG_MIN1 from 29 to 27
+        UPDATE `item_template` SET `dmg_min1` = '27' WHERE (`entry` = '9520');
+        -- DMG_MAX1 from 54 to 52
+        UPDATE `item_template` SET `dmg_max1` = '52' WHERE (`entry` = '9520');
+
+
+        -- Item: Heraldic Gloves
+        -- Entry: 8121
+
+        -- ARMOR
+        -- Current date:     2005-03-29 00:18:46
+        -- New date:         2004-08-20 11:50:39
+        -- Days diff: 220
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-08-20 11:50:39
+        -- Days diff: 41
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-08-20 11:50:39
+        -- Days diff: 41
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-08-20 11:50:39
+        -- Days diff: 41
+
+        -- ARMOR from 79 to 36
+        UPDATE `item_template` SET `armor` = '36' WHERE (`entry` = '8121');
+        -- STAT_VALUE1 from 10 to 8
+        UPDATE `item_template` SET `stat_value1` = '8' WHERE (`entry` = '8121');
+        -- STAT_TYPE2 from 3 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '8121');
+        -- STAT_VALUE2 from 10 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '8121');
+
+
+        -- Item: Renegade Chestguard
+        -- Entry: 9866
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 18:16:43
+        -- New date:         2004-11-08 18:16:43
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 18:16:43
+        -- New date:         2004-10-01 08:28:06
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 25787 to 11520
+        UPDATE `item_template` SET `display_id` = '11520' WHERE (`entry` = '9866');
+        -- ARMOR from 223 to 257
+        UPDATE `item_template` SET `armor` = '257' WHERE (`entry` = '9866');
+
+
+        -- Item: Traveler's Gloves
+        -- Entry: 8298
+
+        -- ARMOR
+        -- Current date:     2005-07-14 23:53:22
+        -- New date:         2004-09-30 20:57:21
+        -- Days diff: 287
+
+        -- STAT_TYPE1
+        -- Current date:     2004-09-30 20:57:21
+        -- New date:         2004-09-30 20:57:21
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-09-30 20:57:21
+        -- New date:         2004-09-30 20:57:21
+        -- Days diff: Unknown
+
+        -- ARMOR from 92 to 121
+        UPDATE `item_template` SET `armor` = '121' WHERE (`entry` = '8298');
+        -- STAT_TYPE1 from 4 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '8298');
+        -- STAT_VALUE1 from 13 to 16
+        UPDATE `item_template` SET `stat_value1` = '16' WHERE (`entry` = '8298');
+
+
+        -- Item: Recipe: Kaldorei Spider Kabob
+        -- Entry: 5482
+
+        -- NAME
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-02 19:03:38
+        -- Days diff: 26
+        -- Overrides WDB:                   3925
+
+        -- NAME from Recipe: Kaldorei Spider Kabob to Recipe: Kaldorei Caviar
+        UPDATE `item_template` SET `name` = 'Recipe: Kaldorei Caviar' WHERE (`entry` = '5482');
+
+
+        -- Item: Sungrass
+        -- Entry: 8838
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-20 23:23:38
+        -- New date:         2004-07-20 23:23:38
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 19492 to 1442
+        UPDATE `item_template` SET `display_id` = '1442' WHERE (`entry` = '8838');
+
+
+        -- Item: Sorcerer Sphere
+        -- Entry: 9882
+
+        -- NAME
+        -- Current date:     2004-11-08 07:05:04
+        -- New date:         2004-11-08 07:05:04
+        -- Days diff: Unknown
+
+        -- NAME from Sorcerer Sphere to Sorceress Sphere
+        UPDATE `item_template` SET `name` = 'Sorceress Sphere' WHERE (`entry` = '9882');
+
+
+        -- Item: Royal Gloves
+        -- Entry: 9910
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-11-08 07:05:06
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 28413 to 15008
+        UPDATE `item_template` SET `display_id` = '15008' WHERE (`entry` = '9910');
+        -- ARMOR from 36 to 53
+        UPDATE `item_template` SET `armor` = '53' WHERE (`entry` = '9910');
+
+
+        -- Item: Pattern: Gray Woolen Robe
+        -- Entry: 2601
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:48:34
+        -- New date:         2005-03-22 21:48:34
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 2 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '2601');
+
+
+        -- Item: Champion's Pauldrons
+        -- Entry: 7543
+
+        -- DISPLAY_ID
+        -- Current date:     2005-07-13 09:25:30
+        -- New date:         2004-11-08 03:30:15
+        -- Days diff: 247
+
+        -- ARMOR
+        -- Current date:     2005-07-13 09:25:30
+        -- New date:         2004-07-08 16:07:12
+        -- Days diff: 369
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2005-07-13 09:25:30
+        -- New date:         2004-07-08 16:07:12
+        -- Days diff: 369
+
+        -- ITEM_LEVEL
+        -- Current date:     2005-07-13 09:25:30
+        -- New date:         2004-07-08 16:07:12
+        -- Days diff: 369
+
+        -- DISPLAY_ID from 26091 to 6480
+        UPDATE `item_template` SET `display_id` = '6480' WHERE (`entry` = '7543');
+        -- ARMOR from 194 to 75
+        UPDATE `item_template` SET `armor` = '75' WHERE (`entry` = '7543');
+        -- REQUIRED_LEVEL from 42 to 40
+        UPDATE `item_template` SET `required_level` = '40' WHERE (`entry` = '7543');
+        -- ITEM_LEVEL from 42 to 40
+        UPDATE `item_template` SET `item_level` = '40' WHERE (`entry` = '7543');
+
+
+        -- Item: Baelog's Shortbow
+        -- Entry: 9400
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-21 11:18:18
+        -- New date:         2004-08-21 11:18:18
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:33:52
+        -- New date:         2004-07-19 15:54:41
+        -- Days diff: 73
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:33:52
+        -- New date:         2004-07-19 15:54:41
+        -- Days diff: 73
+
+        -- DISPLAY_ID from 20553 to 18341
+        UPDATE `item_template` SET `display_id` = '18341' WHERE (`entry` = '9400');
+        -- DMG_MIN1 from 26 to 41
+        UPDATE `item_template` SET `dmg_min1` = '41' WHERE (`entry` = '9400');
+        -- DMG_MAX1 from 50 to 76
+        UPDATE `item_template` SET `dmg_max1` = '76' WHERE (`entry` = '9400');
+
+
+        -- Item: Heavy Mithril Breastplate
+        -- Entry: 7930
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:12
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 79
+
+        -- ARMOR from 536 to 126
+        UPDATE `item_template` SET `armor` = '126' WHERE (`entry` = '7930');
+
+
+        -- Item: Hibernal Cloak
+        -- Entry: 8109
+
+        -- NAME
+        -- Current date:     2004-12-23 21:09:49
+        -- New date:         2004-11-08 03:30:01
+        -- Days diff: 45
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-22 21:27:14
+        -- New date:         2004-09-22 21:27:14
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:01
+        -- New date:         2004-08-20 11:50:40
+        -- Days diff: 79
+
+        -- STAT_TYPE1
+        -- Current date:     2004-09-30 20:57:25
+        -- New date:         2004-08-20 11:50:40
+        -- Days diff: 41
+
+        -- STAT_VALUE2
+        -- Current date:     2004-09-30 20:57:25
+        -- New date:         2004-08-20 11:50:40
+        -- Days diff: 41
+
+        -- STAT_VALUE3
+        -- Current date:     2004-08-20 11:50:40
+        -- New date:         2004-08-20 11:50:40
+        -- Days diff: Unknown
+
+        -- NAME from Hibernal Cloak to Venomshroud Cloak
+        UPDATE `item_template` SET `name` = 'Venomshroud Cloak' WHERE (`entry` = '8109');
+        -- DISPLAY_ID from 23107 to 15052
+        UPDATE `item_template` SET `display_id` = '15052' WHERE (`entry` = '8109');
+        -- ARMOR from 30 to 24
+        UPDATE `item_template` SET `armor` = '24' WHERE (`entry` = '8109');
+        -- STAT_TYPE1 from 7 to 3
+        UPDATE `item_template` SET `stat_type1` = '3' WHERE (`entry` = '8109');
+        -- STAT_VALUE2 from 9 to 1
+        UPDATE `item_template` SET `stat_value2` = '1' WHERE (`entry` = '8109');
+        -- STAT_VALUE3 from 0 to 5
+        UPDATE `item_template` SET `stat_value3` = '5' WHERE (`entry` = '8109');
+
+
+        -- Item: Flayed Demon Skin
+        -- Entry: 6766
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-10-14 15:00:34
+        -- New date:         2004-10-14 15:00:34
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-14 15:00:34
+        -- New date:         2004-10-14 15:00:34
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 25 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '6766');
+        -- ITEM_LEVEL from 25 to 0
+        UPDATE `item_template` SET `item_level` = '0' WHERE (`entry` = '6766');
+
+
+        -- Item: Pattern: Dusky Boots
+        -- Entry: 7452
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 22:07:15
+        -- New date:         2005-03-22 22:07:15
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '7452');
+
+
+        -- Item: Expert Goldminer's Helmet
+        -- Entry: 9375
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-24 15:15:48
+        -- New date:         2004-08-24 15:15:48
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-09-29 00:42:23
+        -- New date:         2004-09-29 00:42:23
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 22:09:46
+        -- New date:         2004-08-24 15:15:48
+        -- Days diff: 76
+
+        -- SPELLID_1
+        -- Current date:     2004-10-04 15:05:36
+        -- New date:         2004-08-24 15:15:48
+        -- Days diff: 40
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-04 15:05:36
+        -- New date:         2004-08-24 15:15:48
+        -- Days diff: 40
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-04 15:05:36
+        -- New date:         2004-08-24 15:15:48
+        -- Days diff: 40
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-04 15:05:36
+        -- New date:         2004-08-24 15:15:48
+        -- Days diff: 40
+
+        -- DISPLAY_ID from 21295 to 18231
+        UPDATE `item_template` SET `display_id` = '18231' WHERE (`entry` = '9375');
+        -- SUBCLASS from 2 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '9375');
+        -- ARMOR from 95 to 36
+        UPDATE `item_template` SET `armor` = '36' WHERE (`entry` = '9375');
+        -- SPELLID_1 from 15874 to 11649
+        UPDATE `item_template` SET `spellid_1` = '11649' WHERE (`entry` = '9375');
+        -- STAT_TYPE1 from 7 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '9375');
+        -- STAT_TYPE2 from 3 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '9375');
+        -- STAT_VALUE2 from 5 to 6
+        UPDATE `item_template` SET `stat_value2` = '6' WHERE (`entry` = '9375');
+
+
+        -- Item: Traveler's Boots
+        -- Entry: 8294
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-09-30 22:09:17
+        -- Days diff: 38
+
+        -- ARMOR from 102 to 148
+        UPDATE `item_template` SET `armor` = '148' WHERE (`entry` = '8294');
+
+
+        -- Item: Arcane Bands
+        -- Entry: 8285
+
+        -- NAME
+        -- Current date:     2005-11-01 20:42:01
+        -- New date:         2004-11-08 03:30:04
+        -- Days diff: 358
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 38
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- NAME from Arcane Bands to Zephyr Bands
+        UPDATE `item_template` SET `name` = 'Zephyr Bands' WHERE (`entry` = '8285');
+        -- ARMOR from 32 to 58
+        UPDATE `item_template` SET `armor` = '58' WHERE (`entry` = '8285');
+        -- STAT_TYPE1 from 7 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '8285');
+        -- STAT_VALUE1 from 6 to 10
+        UPDATE `item_template` SET `stat_value1` = '10' WHERE (`entry` = '8285');
+        -- STAT_TYPE2 from 5 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '8285');
+        -- STAT_VALUE2 from 11 to 50
+        UPDATE `item_template` SET `stat_value2` = '50' WHERE (`entry` = '8285');
+
+
+        -- Item: OOX-09/HL Distress Beacon
+        -- Entry: 8704
+
+        -- SELL_PRICE
+        -- Current date:     2004-10-08 01:10:06
+        -- New date:         2004-10-08 01:10:06
+        -- Days diff: Unknown
+
+        -- BUY_PRICE
+        -- Current date:     2004-10-08 01:10:06
+        -- New date:         2004-10-08 01:10:06
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-08-25 15:17:37
+        -- New date:         2004-08-25 15:17:37
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-08-25 15:17:37
+        -- New date:         2004-08-25 15:17:37
+        -- Days diff: Unknown
+
+        -- SELL_PRICE from 0 to 7581
+        UPDATE `item_template` SET `sell_price` = '7581' WHERE (`entry` = '8704');
+        -- BUY_PRICE from 0 to 1895
+        UPDATE `item_template` SET `buy_price` = '1895' WHERE (`entry` = '8704');
+        -- REQUIRED_LEVEL from 43 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '8704');
+        -- ITEM_LEVEL from 43 to 0
+        UPDATE `item_template` SET `item_level` = '0' WHERE (`entry` = '8704');
+
+
+        -- Item: Akiris Reed
+        -- Entry: 4029
+
+        -- STACKABLE
+        -- Current date:     2004-06-21 11:55:21
+        -- New date:         2004-06-21 11:55:21
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4029');
+
+
+        -- Item: Green Hills of Stranglethorn - Page 27
+        -- Entry: 2751
+
+        -- CLASS
+        -- Current date:     2005-10-12 00:27:20
+        -- New date:         2005-10-12 00:27:20
+        -- Days diff: Unknown
+
+        -- CLASS from 15 to 12
+        UPDATE `item_template` SET `class` = '12' WHERE (`entry` = '2751');
+
+
+        -- Item: Pattern: White Leather Jerkin
+        -- Entry: 2407
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:04:27
+        -- New date:         2005-03-22 21:04:27
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '2407');
+
+
+        -- Item: Precisely Calibrated Boomstick
+        -- Entry: 2100
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:13
+        -- New date:         2004-08-20 11:14:41
+        -- Days diff: 41
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:13
+        -- New date:         2004-08-20 11:14:41
+        -- Days diff: 41
+
+        -- DMG_MIN1 from 38 to 50
+        UPDATE `item_template` SET `dmg_min1` = '50' WHERE (`entry` = '2100');
+        -- DMG_MAX1 from 45 to 59
+        UPDATE `item_template` SET `dmg_max1` = '59' WHERE (`entry` = '2100');
+
+
+        -- Item: Linked Chain Belt
+        -- Entry: 1746
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-25 00:00:00
+        -- New date:         2004-05-28 12:19:44
+        -- Days diff: 27
+        -- Overrides WDB:                   4149
+
+        -- REQUIRED_LEVEL from 20 to 15
+        UPDATE `item_template` SET `required_level` = '15' WHERE (`entry` = '1746');
+
+
+        -- Item: Big Voodoo Mask
+        -- Entry: 8201
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:05
+        -- New date:         2004-11-08 03:30:05
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:05
+        -- New date:         2004-08-20 11:50:38
+        -- Days diff: 79
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 25711 to 16509
+        UPDATE `item_template` SET `display_id` = '16509' WHERE (`entry` = '8201');
+        -- ARMOR from 97 to 38
+        UPDATE `item_template` SET `armor` = '38' WHERE (`entry` = '8201');
+        -- STAT_TYPE2 from 6 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '8201');
+        -- STAT_VALUE2 from 9 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '8201');
+
+
+        -- Item: Scorpid Scale
+        -- Entry: 8154
+
+        -- DISPLAY_ID
+        -- Current date:     2005-08-22 00:36:01
+        -- New date:         2005-08-22 00:36:01
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 2874 to 568
+        UPDATE `item_template` SET `display_id` = '568' WHERE (`entry` = '8154');
+
+
+        -- Item: Arcane Boots
+        -- Entry: 8284
+
+        -- NAME
+        -- Current date:     2005-04-11 18:40:43
+        -- New date:         2005-04-11 18:40:43
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-04-11 18:40:43
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: 192
+
+        -- STAT_TYPE3
+        -- Current date:     2005-04-11 18:40:43
+        -- New date:         2005-04-11 18:40:43
+        -- Days diff: Unknown
+
+        -- STAT_VALUE3
+        -- Current date:     2005-04-11 18:40:43
+        -- New date:         2005-04-11 18:40:43
+        -- Days diff: Unknown
+
+        -- NAME from Arcane Boots to Zephyr Boots
+        UPDATE `item_template` SET `name` = 'Zephyr Boots' WHERE (`entry` = '8284');
+        -- ARMOR from 51 to 82
+        UPDATE `item_template` SET `armor` = '82' WHERE (`entry` = '8284');
+        -- STAT_TYPE3 from 7 to 6
+        UPDATE `item_template` SET `stat_type3` = '6' WHERE (`entry` = '8284');
+        -- STAT_VALUE3 from 3 to 2
+        UPDATE `item_template` SET `stat_value3` = '2' WHERE (`entry` = '8284');
+
+
+        -- Item: Accurate Scope
+        -- Entry: 4407
+
+        -- SUBCLASS
+        -- Current date:     2004-08-22 12:15:53
+        -- New date:         2004-08-22 12:15:53
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-28 19:42:35
+        -- New date:         2004-09-28 19:42:35
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 3 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4407');
+        -- REQUIRED_LEVEL from 20 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '4407');
+
+
+        -- Item: Jouster's Legplates
+        -- Entry: 8162
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- DISPLAY_ID from 27344 to 11631
+        UPDATE `item_template` SET `display_id` = '11631' WHERE (`entry` = '8162');
+        -- ARMOR from 263 to 112
+        UPDATE `item_template` SET `armor` = '112' WHERE (`entry` = '8162');
+
+
+        -- Item: Seasoned Wolf Kabob
+        -- Entry: 1017
+
+        -- STACKABLE
+        -- Current date:     2004-05-28 12:19:45
+        -- New date:         2004-05-28 12:19:45
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '1017');
+
+
+        -- Item: Thermaplugg's Left Arm
+        -- Entry: 9459
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-08 16:09:20
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: 84
+
+        -- DISPLAY_ID from 19298 to 18327
+        UPDATE `item_template` SET `display_id` = '18327' WHERE (`entry` = '9459');
+        -- DMG_MIN1 from 70 to 57
+        UPDATE `item_template` SET `dmg_min1` = '57' WHERE (`entry` = '9459');
+        -- DMG_MAX1 from 106 to 86
+        UPDATE `item_template` SET `dmg_max1` = '86' WHERE (`entry` = '9459');
+
+
+        -- Item: Jouster's Gauntlets
+        -- Entry: 8158
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:02
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:02
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- DISPLAY_ID from 27341 to 11626
+        UPDATE `item_template` SET `display_id` = '11626' WHERE (`entry` = '8158');
+        -- ARMOR from 166 to 72
+        UPDATE `item_template` SET `armor` = '72' WHERE (`entry` = '8158');
+
+
+        -- Item: Flesh Eating Worm
+        -- Entry: 7307
+
+        -- DISPLAY_ID
+        -- Current date:     2004-06-28 15:59:16
+        -- New date:         2004-06-28 15:59:16
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 18098 to 12421
+        UPDATE `item_template` SET `display_id` = '12421' WHERE (`entry` = '7307');
+
+
+        -- Item: Purple Lotus
+        -- Entry: 8831
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-12 17:48:11
+        -- New date:         2004-07-12 17:48:11
+        -- Days diff: Unknown
+
+        -- STACKABLE
+        -- Current date:     2004-09-23 00:14:27
+        -- New date:         2004-09-23 00:14:27
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 19493 to 13489
+        UPDATE `item_template` SET `display_id` = '13489' WHERE (`entry` = '8831');
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '8831');
+
+
+        -- Item: Chromite Barbute
+        -- Entry: 8142
+
+        -- NAME
+        -- Current date:     2005-11-01 20:42:02
+        -- New date:         2004-07-14 17:44:21
+        -- Days diff: 475
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-07-14 17:44:21
+        -- Days diff: 116
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-07-14 17:44:21
+        -- Days diff: 116
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 41
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 41
+
+        -- NAME from Chromite Barbute to Valorous Helm
+        UPDATE `item_template` SET `name` = 'Valorous Helm' WHERE (`entry` = '8142');
+        -- DISPLAY_ID from 27338 to 15512
+        UPDATE `item_template` SET `display_id` = '15512' WHERE (`entry` = '8142');
+        -- ARMOR from 348 to 84
+        UPDATE `item_template` SET `armor` = '84' WHERE (`entry` = '8142');
+        -- STAT_TYPE1 from 3 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '8142');
+        -- STAT_VALUE1 from 12 to 3
+        UPDATE `item_template` SET `stat_value1` = '3' WHERE (`entry` = '8142');
+
+
+        -- Item: Cushioned Boots
+        -- Entry: 9601
+
+        -- ARMOR
+        -- Current date:     2004-10-01 02:27:05
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 41
+        -- Overrides WDB:                   3925
+
+        -- ARMOR from 47 to 17
+        UPDATE `item_template` SET `armor` = '17' WHERE (`entry` = '9601');
+
+
+        -- Item: Herb Baked Egg
+        -- Entry: 6888
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-06-28 17:17:50
+        -- Days diff: 92
+        -- Overrides WDB:                   3925
+
+        -- DISPLAY_ID from 18052 to 13210
+        UPDATE `item_template` SET `display_id` = '13210' WHERE (`entry` = '6888');
+
+
+        -- Item: Green Hills of Stranglethorn - Page 8
+        -- Entry: 2732
+
+        -- CLASS
+        -- Current date:     2005-10-12 00:27:21
+        -- New date:         2005-10-12 00:27:21
+        -- Days diff: Unknown
+
+        -- CLASS from 15 to 12
+        UPDATE `item_template` SET `class` = '12' WHERE (`entry` = '2732');
+
+
+        -- Item: Blackmetal Cape
+        -- Entry: 9512
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-23 15:41:31
+        -- New date:         2004-09-23 15:41:31
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-10-02 20:12:30
+        -- New date:         2004-10-02 20:12:30
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-09-10 08:27:37
+        -- New date:         2004-08-20 11:50:18
+        -- Days diff: 385
+
+        -- DISPLAY_ID from 22988 to 18436
+        UPDATE `item_template` SET `display_id` = '18436' WHERE (`entry` = '9512');
+        -- SUBCLASS from 1 to 3
+        UPDATE `item_template` SET `subclass` = '3' WHERE (`entry` = '9512');
+        -- ARMOR from 33 to 76
+        UPDATE `item_template` SET `armor` = '76' WHERE (`entry` = '9512');
+
+
+        -- Item: Chieftain's Leggings
+        -- Entry: 9954
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-10-01 20:31:48
+        -- Days diff: 37
+
+        -- ARMOR from 118 to 171
+        UPDATE `item_template` SET `armor` = '171' WHERE (`entry` = '9954');
+
+
+        -- Item: Heavy Mithril Boots
+        -- Entry: 7933
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:11
+        -- New date:         2004-08-20 11:14:44
+        -- Days diff: 79
+
+        -- ARMOR from 382 to 88
+        UPDATE `item_template` SET `armor` = '88' WHERE (`entry` = '7933');
+
+
+        -- Item: Wirt's Third Leg
+        -- Entry: 9359
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-07 03:43:28
+        -- New date:         2004-08-21 11:18:27
+        -- Days diff: 46
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-07 03:43:28
+        -- New date:         2004-08-21 11:18:27
+        -- Days diff: 46
+
+        -- STAT_TYPE1
+        -- Current date:     2004-09-25 21:26:58
+        -- New date:         2004-08-21 11:18:27
+        -- Days diff: 35
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-07 03:43:28
+        -- New date:         2004-08-21 11:18:27
+        -- Days diff: 46
+
+        -- DMG_MIN1 from 49 to 47
+        UPDATE `item_template` SET `dmg_min1` = '47' WHERE (`entry` = '9359');
+        -- DMG_MAX1 from 91 to 71
+        UPDATE `item_template` SET `dmg_max1` = '71' WHERE (`entry` = '9359');
+        -- STAT_TYPE1 from 3 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '9359');
+        -- STAT_VALUE1 from 9 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '9359');
+
+
+        -- Item: Plans: Mithril Scale Shoulders
+        -- Entry: 7991
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:14:15
+        -- New date:         2005-03-22 21:14:15
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 4 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '7991');
+
+
+        -- Item: Skilled Handling Gloves
+        -- Entry: 9634
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-15 11:07:12
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-08-20 18:08:42
+        -- Days diff: 79
+
+        -- DISPLAY_ID from 18998 to 14323
+        UPDATE `item_template` SET `display_id` = '14323' WHERE (`entry` = '9634');
+        -- ARMOR from 38 to 18
+        UPDATE `item_template` SET `armor` = '18' WHERE (`entry` = '9634');
+
+
+        -- Item: Broken Wine Bottle
+        -- Entry: 6651
+
+        -- DMG_MAX1
+        -- Current date:     2004-11-27 21:03:11
+        -- New date:         2004-11-27 21:03:11
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-11-27 21:03:11
+        -- New date:         2004-11-27 21:03:11
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-11-27 21:03:11
+        -- New date:         2004-11-27 21:03:11
+        -- Days diff: Unknown
+
+        -- DMG_MAX1 from 12 to 11
+        UPDATE `item_template` SET `dmg_max1` = '11' WHERE (`entry` = '6651');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '6651');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '6651');
+
+
+        -- Item: Warmonger's Belt
+        -- Entry: 9961
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:07:59
+        -- New date:         2004-11-08 15:07:59
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:07:59
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 26180 to 11628
+        UPDATE `item_template` SET `display_id` = '11628' WHERE (`entry` = '9961');
+        -- ARMOR from 145 to 131
+        UPDATE `item_template` SET `armor` = '131' WHERE (`entry` = '9961');
+
+
+        -- Item: Felhound Brain
+        -- Entry: 6250
+
+        -- STACKABLE
+        -- Current date:     2004-10-07 18:12:40
+        -- New date:         2004-10-07 18:12:40
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 5
+        UPDATE `item_template` SET `stackable` = '5' WHERE (`entry` = '6250');
+
+
+        -- Item: Medal of Courage
+        -- Entry: 6723
+
+        -- SPELLID_1
+        -- Current date:     2004-10-01 02:27:13
+        -- New date:         2004-10-01 02:27:13
+        -- Days diff: Unknown
+
+        -- NATURE_RES
+        -- Current date:     2004-08-20 11:51:01
+        -- New date:         2004-08-20 11:51:01
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 0 to 5102
+        UPDATE `item_template` SET `spellid_1` = '5102' WHERE (`entry` = '6723');
+        -- NATURE_RES from 0 to 2
+        UPDATE `item_template` SET `nature_res` = '2' WHERE (`entry` = '6723');
+
+
+        -- Item: Grinning Axe
+        -- Entry: 1639
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-06 01:16:56
+        -- New date:         2004-07-12 15:16:30
+        -- Days diff: 85
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-06 01:16:56
+        -- New date:         2004-07-12 15:16:30
+        -- Days diff: 85
+
+        -- DMG_MIN1 from 85 to 91
+        UPDATE `item_template` SET `dmg_min1` = '91' WHERE (`entry` = '1639');
+        -- DMG_MAX1 from 128 to 137
+        UPDATE `item_template` SET `dmg_max1` = '137' WHERE (`entry` = '1639');
+
+
+        -- Item: Marbled Buckler
+        -- Entry: 6725
+
+        -- NAME
+        -- Current date:     2004-12-23 21:07:00
+        -- New date:         2004-08-10 21:16:24
+        -- Days diff: 134
+
+        -- ARMOR
+        -- Current date:     2005-03-20 14:43:20
+        -- New date:         2004-08-10 21:16:24
+        -- Days diff: 221
+
+        -- BLOCK
+        -- Current date:     2005-08-22 04:50:45
+        -- New date:         2004-09-24 06:47:34
+        -- Days diff: 331
+
+        -- STAT_TYPE2
+        -- Current date:     2004-09-24 06:47:34
+        -- New date:         2004-09-24 06:47:34
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-09-24 06:47:34
+        -- New date:         2004-09-24 06:47:34
+        -- Days diff: Unknown
+
+        -- STAT_TYPE3
+        -- Current date:     2004-09-24 06:47:34
+        -- New date:         2004-09-24 06:47:34
+        -- Days diff: Unknown
+
+        -- STAT_VALUE3
+        -- Current date:     2004-09-24 06:47:34
+        -- New date:         2004-09-24 06:47:34
+        -- Days diff: Unknown
+
+        -- STAT_TYPE4
+        -- Current date:     2004-09-24 06:47:34
+        -- New date:         2004-09-24 06:47:34
+        -- Days diff: Unknown
+
+        -- STAT_VALUE4
+        -- Current date:     2004-09-24 06:47:34
+        -- New date:         2004-09-24 06:47:34
+        -- Days diff: Unknown
+
+        -- NAME from Marbled Buckler to Gypsy Buckler
+        UPDATE `item_template` SET `name` = 'Gypsy Buckler' WHERE (`entry` = '6725');
+        -- ARMOR from 775 to 52
+        UPDATE `item_template` SET `armor` = '52' WHERE (`entry` = '6725');
+        -- BLOCK from 17 to 22
+        UPDATE `item_template` SET `block` = '22' WHERE (`entry` = '6725');
+        -- STAT_TYPE2 from 4 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '6725');
+        -- STAT_VALUE2 from 5 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '6725');
+        -- STAT_TYPE3 from 6 to 0
+        UPDATE `item_template` SET `stat_type3` = '0' WHERE (`entry` = '6725');
+        -- STAT_VALUE3 from 5 to 0
+        UPDATE `item_template` SET `stat_value3` = '0' WHERE (`entry` = '6725');
+        -- STAT_TYPE4 from 7 to 0
+        UPDATE `item_template` SET `stat_type4` = '0' WHERE (`entry` = '6725');
+        -- STAT_VALUE4 from 5 to 0
+        UPDATE `item_template` SET `stat_value4` = '0' WHERE (`entry` = '6725');
+
+
+        -- Item: Noggenfogger Elixir
+        -- Entry: 8529
+
+        -- SPELLID_1
+        -- Current date:     2004-09-23 00:14:28
+        -- New date:         2004-09-23 00:14:28
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 16589 to 2600
+        UPDATE `item_template` SET `spellid_1` = '2600' WHERE (`entry` = '8529');
+
+
+        -- Item: Skullsplitter Fetish
+        -- Entry: 2466
+
+        -- STACKABLE
+        -- Current date:     2004-06-21 11:55:33
+        -- New date:         2004-06-21 11:55:33
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '2466');
+
+
+        -- Item: Repairman's Cape
+        -- Entry: 9605
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-21 11:31:55
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: 74
+
+        -- ARMOR
+        -- Current date:     2004-11-08 17:22:30
+        -- New date:         2004-08-20 10:23:57
+        -- Days diff: 80
+
+        -- STAT_TYPE3
+        -- Current date:     2004-08-20 10:23:57
+        -- New date:         2004-08-20 10:23:57
+        -- Days diff: Unknown
+
+        -- STAT_VALUE3
+        -- Current date:     2004-08-20 10:23:57
+        -- New date:         2004-08-20 10:23:57
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 23134 to 15099
+        UPDATE `item_template` SET `display_id` = '15099' WHERE (`entry` = '9605');
+        -- ARMOR from 21 to 17
+        UPDATE `item_template` SET `armor` = '17' WHERE (`entry` = '9605');
+        -- STAT_TYPE3 from 0 to 1
+        UPDATE `item_template` SET `stat_type3` = '1' WHERE (`entry` = '9605');
+        -- STAT_VALUE3 from 0 to 5
+        UPDATE `item_template` SET `stat_value3` = '5' WHERE (`entry` = '9605');
+
+
+        -- Item: Driftwood Club
+        -- Entry: 1394
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-04 11:26:12
+        -- New date:         2004-05-05 23:21:03
+        -- Days diff: 151
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-04 11:26:12
+        -- New date:         2004-05-05 23:21:03
+        -- Days diff: 151
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-05-05 23:21:03
+        -- New date:         2004-05-05 23:21:03
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 9 to 16
+        UPDATE `item_template` SET `dmg_min1` = '16' WHERE (`entry` = '1394');
+        -- DMG_MAX1 from 17 to 24
+        UPDATE `item_template` SET `dmg_max1` = '24' WHERE (`entry` = '1394');
+        -- REQUIRED_LEVEL from 10 to 5
+        UPDATE `item_template` SET `required_level` = '5' WHERE (`entry` = '1394');
+
+
+        -- Item: Bloodstone
+        -- Entry: 5509
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-21 11:55:34
+        -- New date:         2004-06-21 11:55:34
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-06-21 11:55:34
+        -- New date:         2004-06-21 11:55:34
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 24 to 16
+        UPDATE `item_template` SET `required_level` = '16' WHERE (`entry` = '5509');
+        -- ITEM_LEVEL from 24 to 16
+        UPDATE `item_template` SET `item_level` = '16' WHERE (`entry` = '5509');
+
+
+        -- Item: Orcish War Leggings
+        -- Entry: 7929
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-28 18:19:28
+        -- New date:         2004-09-28 18:19:28
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:12
+        -- New date:         2004-10-01 08:28:04
+        -- Days diff: 37
+
+        -- DISPLAY_ID from 23538 to 16108
+        UPDATE `item_template` SET `display_id` = '16108' WHERE (`entry` = '7929');
+        -- ARMOR from 208 to 258
+        UPDATE `item_template` SET `armor` = '258' WHERE (`entry` = '7929');
+
+
+        -- Item: Crafted Light Shot
+        -- Entry: 8067
+
+        -- DMG_MIN1
+        -- Current date:     2004-08-20 11:50:35
+        -- New date:         2004-08-20 11:50:35
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-12-21 20:44:16
+        -- New date:         2004-07-08 15:50:23
+        -- Days diff: 166
+
+        -- STACKABLE
+        -- Current date:     2004-08-20 11:50:35
+        -- New date:         2004-08-20 11:50:35
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-08-20 11:50:35
+        -- New date:         2004-08-20 11:50:35
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 2 to 3
+        UPDATE `item_template` SET `dmg_min1` = '3' WHERE (`entry` = '8067');
+        -- DMG_MAX1 from 2 to 4
+        UPDATE `item_template` SET `dmg_max1` = '4' WHERE (`entry` = '8067');
+        -- STACKABLE from 200 to 100
+        UPDATE `item_template` SET `stackable` = '100' WHERE (`entry` = '8067');
+        -- REQUIRED_LEVEL from 5 to 1
+        UPDATE `item_template` SET `required_level` = '1' WHERE (`entry` = '8067');
+
+
+        -- Item: Rugged Leather
+        -- Entry: 8170
+
+        -- NAME
+        -- Current date:     2004-08-20 11:50:19
+        -- New date:         2004-08-20 11:50:19
+        -- Days diff: Unknown
+
+        -- NAME from Rugged Leather to Armored Leather
+        UPDATE `item_template` SET `name` = 'Armored Leather' WHERE (`entry` = '8170');
+
+
+        -- Item: Hardened Leather Helm
+        -- Entry: 8747
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:29
+        -- New date:         2004-08-20 11:50:29
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-12-21 20:41:45
+        -- New date:         2004-08-20 11:50:29
+        -- Days diff: 123
+
+        -- DISPLAY_ID from 21298 to 15344
+        UPDATE `item_template` SET `display_id` = '15344' WHERE (`entry` = '8747');
+        -- ARMOR from 74 to 20
+        UPDATE `item_template` SET `armor` = '20' WHERE (`entry` = '8747');
+
+
+        -- Item: Fairywing Mantle
+        -- Entry: 9536
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-12 09:57:01
+        -- New date:         2004-07-12 09:57:01
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 19:25:06
+        -- New date:         2004-08-20 11:50:18
+        -- Days diff: 80
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 13:06:06
+        -- New date:         2004-10-01 13:06:06
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 13:06:06
+        -- New date:         2004-10-01 13:06:06
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 18901 to 16827
+        UPDATE `item_template` SET `display_id` = '16827' WHERE (`entry` = '9536');
+        -- ARMOR from 32 to 19
+        UPDATE `item_template` SET `armor` = '19' WHERE (`entry` = '9536');
+        -- STAT_TYPE2 from 5 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '9536');
+        -- STAT_VALUE2 from 8 to 10
+        UPDATE `item_template` SET `stat_value2` = '10' WHERE (`entry` = '9536');
+
+
+        -- Item: Doomwarder Blood
+        -- Entry: 6252
+
+        -- STACKABLE
+        -- Current date:     2004-10-07 18:12:40
+        -- New date:         2004-10-07 18:12:40
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 5
+        UPDATE `item_template` SET `stackable` = '5' WHERE (`entry` = '6252');
+
+
+        -- Item: Francisca
+        -- Entry: 2530
+
+        -- NAME
+        -- Current date:     2004-09-29 11:52:07
+        -- New date:         2004-09-29 11:52:07
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-04 02:55:11
+        -- New date:         2004-07-14 17:44:21
+        -- Days diff: 81
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-04 02:55:11
+        -- New date:         2004-07-14 17:44:21
+        -- Days diff: 81
+
+        -- NAME from Francisca to Cleaving Axe
+        UPDATE `item_template` SET `name` = 'Cleaving Axe' WHERE (`entry` = '2530');
+        -- DMG_MIN1 from 41 to 38
+        UPDATE `item_template` SET `dmg_min1` = '38' WHERE (`entry` = '2530');
+        -- DMG_MAX1 from 78 to 72
+        UPDATE `item_template` SET `dmg_max1` = '72' WHERE (`entry` = '2530');
+
+
+        -- Item: Runed Mithril Hammer
+        -- Entry: 7946
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-02 20:12:31
+        -- New date:         2004-07-12 17:48:12
+        -- Days diff: 82
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-02 20:12:31
+        -- New date:         2004-07-12 17:48:12
+        -- Days diff: 82
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-02 20:12:31
+        -- New date:         2004-10-02 20:12:31
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-02 20:12:31
+        -- New date:         2004-10-02 20:12:31
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 41 to 40
+        UPDATE `item_template` SET `dmg_min1` = '40' WHERE (`entry` = '7946');
+        -- DMG_MAX1 from 76 to 75
+        UPDATE `item_template` SET `dmg_max1` = '75' WHERE (`entry` = '7946');
+        -- STAT_TYPE1 from 4 to 7
+        UPDATE `item_template` SET `stat_type1` = '7' WHERE (`entry` = '7946');
+        -- STAT_VALUE1 from 7 to 5
+        UPDATE `item_template` SET `stat_value1` = '5' WHERE (`entry` = '7946');
+
+
+        -- Item: Embossed Plate Boots
+        -- Entry: 9973
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-11-08 15:00:23
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-09-30 22:09:14
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 27349 to 19676
+        UPDATE `item_template` SET `display_id` = '19676' WHERE (`entry` = '9973');
+        -- ARMOR from 233 to 266
+        UPDATE `item_template` SET `armor` = '266' WHERE (`entry` = '9973');
+
+
+        -- Item: Pratt's Handcrafted Boots
+        -- Entry: 9630
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-08-20 11:50:15
+        -- Days diff: 79
+
+        -- ARMOR from 84 to 43
+        UPDATE `item_template` SET `armor` = '43' WHERE (`entry` = '9630');
+
+
+        -- Item: Aquamarine
+        -- Entry: 7909
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-24 06:47:33
+        -- New date:         2004-09-24 06:47:33
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 13496 to 1659
+        UPDATE `item_template` SET `display_id` = '1659' WHERE (`entry` = '7909');
+
+
+        -- Item: Cog #5
+        -- Entry: 4846
+
+        -- STACKABLE
+        -- Current date:     2004-10-13 10:34:29
+        -- New date:         2004-10-13 10:34:29
+        -- Days diff: Unknown
+
+        -- STACKABLE from 1 to 20
+        UPDATE `item_template` SET `stackable` = '20' WHERE (`entry` = '4846');
+
+
+        -- Item: Crumpled Scroll Fragment
+        -- Entry: 4519
+
+        -- SPELLID_1
+        -- Current date:     2004-09-11 02:33:42
+        -- New date:         2004-09-11 02:33:42
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 0 to 4141
+        UPDATE `item_template` SET `spellid_1` = '4141' WHERE (`entry` = '4519');
+
+
+        -- Item: Galgann's Fireblaster
+        -- Entry: 9412
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 84
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 10:24:00
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 44 to 65
+        UPDATE `item_template` SET `dmg_min1` = '65' WHERE (`entry` = '9412');
+        -- DMG_MAX1 from 84 to 122
+        UPDATE `item_template` SET `dmg_max1` = '122' WHERE (`entry` = '9412');
+        -- SPELLID_1 from 0 to 7721
+        UPDATE `item_template` SET `spellid_1` = '7721' WHERE (`entry` = '9412');
+
+
+        -- Item: Heavy War Staff
+        -- Entry: 4024
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:33:43
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:33:43
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 84
+
+        -- DMG_MIN1 from 59 to 66
+        UPDATE `item_template` SET `dmg_min1` = '66' WHERE (`entry` = '4024');
+        -- DMG_MAX1 from 90 to 100
+        UPDATE `item_template` SET `dmg_max1` = '100' WHERE (`entry` = '4024');
+
+
+        -- Item: Witherbark Skull
+        -- Entry: 9320
+
+        -- NAME
+        -- Current date:     2004-11-24 16:33:36
+        -- New date:         2004-11-24 16:33:36
+        -- Days diff: Unknown
+
+        -- NAME from Witherbark Skull to Witherbark Scalp
+        UPDATE `item_template` SET `name` = 'Witherbark Scalp' WHERE (`entry` = '9320');
+
+
+        -- Item: Rethban Ore
+        -- Entry: 2798
+
+        -- STACKABLE
+        -- Current date:     2004-06-23 13:36:42
+        -- New date:         2004-06-23 13:36:42
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '2798');
+
+
+        -- Item: Hunting Rifle
+        -- Entry: 8181
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-23 00:00:00
+        -- New date:         2004-08-20 11:14:43
+        -- Days diff: 2
+        -- Overrides WDB:                   3810
+
+        -- DMG_MIN1
+        -- Current date:     2004-08-20 11:14:43
+        -- New date:         2004-07-12 09:57:01
+        -- Days diff: 39
+        -- Overrides WDB:                   3810
+
+        -- DMG_MAX1
+        -- Current date:     2004-08-20 11:14:43
+        -- New date:         2004-07-12 09:57:01
+        -- Days diff: 39
+        -- Overrides WDB:                   3810
+
+        -- DISPLAY_ID from 20728 to 18351
+        UPDATE `item_template` SET `display_id` = '18351' WHERE (`entry` = '8181');
+        -- DMG_MIN1 from 5 to 10
+        UPDATE `item_template` SET `dmg_min1` = '10' WHERE (`entry` = '8181');
+        -- DMG_MAX1 from 11 to 19
+        UPDATE `item_template` SET `dmg_max1` = '19' WHERE (`entry` = '8181');
+
+
+        -- Item: Warmonger's Bracers
+        -- Entry: 9956
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-11-08 15:00:23
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-09-24 14:12:52
+        -- Days diff: 45
+
+        -- DISPLAY_ID from 26181 to 11625
+        UPDATE `item_template` SET `display_id` = '11625' WHERE (`entry` = '9956');
+        -- ARMOR from 111 to 140
+        UPDATE `item_template` SET `armor` = '140' WHERE (`entry` = '9956');
+
+
+        -- Item: Scorpashi Venom
+        -- Entry: 6248
+
+        -- NAME
+        -- Current date:     2004-10-07 18:12:40
+        -- New date:         2004-10-07 18:12:40
+        -- Days diff: Unknown
+
+        -- STACKABLE
+        -- Current date:     2004-10-07 18:12:40
+        -- New date:         2004-10-07 18:12:40
+        -- Days diff: Unknown
+
+        -- NAME from Scorpashi Venom to Lasher Venom
+        UPDATE `item_template` SET `name` = 'Lasher Venom' WHERE (`entry` = '6248');
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '6248');
+
+
+        -- Item: Dark Iron Gloves
+        -- Entry: 2274
+
+        -- ARMOR
+        -- Current date:     2004-05-28 12:19:44
+        -- New date:         2004-05-28 12:19:44
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-05-28 12:19:44
+        -- New date:         2004-05-28 12:19:44
+        -- Days diff: Unknown
+
+        -- STAT_TYPE1
+        -- Current date:     2004-05-28 12:19:44
+        -- New date:         2004-05-28 12:19:44
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-05-28 12:19:44
+        -- New date:         2004-05-28 12:19:44
+        -- Days diff: Unknown
+
+        -- ARMOR from 28 to 26
+        UPDATE `item_template` SET `armor` = '26' WHERE (`entry` = '2274');
+        -- REQUIRED_LEVEL from 12 to 7
+        UPDATE `item_template` SET `required_level` = '7' WHERE (`entry` = '2274');
+        -- STAT_TYPE1 from 1 to 7
+        UPDATE `item_template` SET `stat_type1` = '7' WHERE (`entry` = '2274');
+        -- STAT_VALUE1 from 4 to 1
+        UPDATE `item_template` SET `stat_value1` = '1' WHERE (`entry` = '2274');
+
+
+        -- Item: Tough Leather Boots
+        -- Entry: 1804
+
+        -- NAME
+        -- Current date:     2005-07-12 11:37:39
+        -- New date:         2004-05-06 00:41:31
+        -- Days diff: 432
+
+        -- NAME from Tough Leather Boots to Hardened Leather Boots
+        UPDATE `item_template` SET `name` = 'Hardened Leather Boots' WHERE (`entry` = '1804');
+
+
+        -- Item: Eye of Adaegus
+        -- Entry: 5266
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-21 11:31:48
+        -- New date:         2004-09-21 11:31:48
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-09-21 11:31:48
+        -- New date:         2004-09-21 11:31:48
+        -- Days diff: Unknown
+
+        -- FIRE_RES
+        -- Current date:     2004-08-20 10:23:58
+        -- New date:         2004-08-20 10:23:58
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 48 to 45
+        UPDATE `item_template` SET `required_level` = '45' WHERE (`entry` = '5266');
+        -- ITEM_LEVEL from 48 to 45
+        UPDATE `item_template` SET `item_level` = '45' WHERE (`entry` = '5266');
+        -- FIRE_RES from 0 to 2
+        UPDATE `item_template` SET `fire_res` = '2' WHERE (`entry` = '5266');
+
+
+        -- Item: Lapidis Tankard of Tidesippe
+        -- Entry: 4696
+
+        -- SPELLID_1
+        -- Current date:     2005-08-31 21:33:34
+        -- New date:         2004-09-22 21:27:44
+        -- Days diff: 343
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-22 21:27:44
+        -- New date:         2004-09-22 21:27:44
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-09-22 21:27:44
+        -- New date:         2004-09-22 21:27:44
+        -- Days diff: Unknown
+
+        -- FIRE_RES
+        -- Current date:     2004-08-20 11:14:44
+        -- New date:         2004-08-20 11:14:44
+        -- Days diff: Unknown
+
+        -- STAT_TYPE3
+        -- Current date:     2004-09-22 21:27:44
+        -- New date:         2004-09-22 21:27:44
+        -- Days diff: Unknown
+
+        -- STAT_VALUE3
+        -- Current date:     2004-09-22 21:27:44
+        -- New date:         2004-09-22 21:27:44
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 1135 to 1133
+        UPDATE `item_template` SET `spellid_1` = '1133' WHERE (`entry` = '4696');
+        -- REQUIRED_LEVEL from 54 to 45
+        UPDATE `item_template` SET `required_level` = '45' WHERE (`entry` = '4696');
+        -- ITEM_LEVEL from 54 to 45
+        UPDATE `item_template` SET `item_level` = '45' WHERE (`entry` = '4696');
+        -- FIRE_RES from 0 to 2
+        UPDATE `item_template` SET `fire_res` = '2' WHERE (`entry` = '4696');
+        -- STAT_TYPE3 from 5 to 0
+        UPDATE `item_template` SET `stat_type3` = '0' WHERE (`entry` = '4696');
+        -- STAT_VALUE3 from 5 to 50
+        UPDATE `item_template` SET `stat_value3` = '50' WHERE (`entry` = '4696');
+
+
+        -- Item: Gutwrencher
+        -- Entry: 5616
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-02 20:12:31
+        -- New date:         2004-10-02 20:12:31
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-02 20:12:31
+        -- New date:         2004-10-02 20:12:31
+        -- Days diff: Unknown
+
+        -- SPELLID_1
+        -- Current date:     2004-10-02 20:12:31
+        -- New date:         2004-10-02 20:12:31
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 35 to 34
+        UPDATE `item_template` SET `dmg_min1` = '34' WHERE (`entry` = '5616');
+        -- DMG_MAX1 from 66 to 64
+        UPDATE `item_template` SET `dmg_max1` = '64' WHERE (`entry` = '5616');
+        -- SPELLID_1 from 16406 to 13318
+        UPDATE `item_template` SET `spellid_1` = '13318' WHERE (`entry` = '5616');
+
+
+        -- Item: Manual: Strong Anti-Venom
+        -- Entry: 6454
+
+        -- NAME
+        -- Current date:     2004-11-09 17:16:05
+        -- New date:         2004-11-09 17:16:05
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-09 17:16:05
+        -- New date:         2004-11-09 17:16:05
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 22:12:02
+        -- New date:         2005-03-22 22:12:02
+        -- Days diff: Unknown
+
+        -- NAME from Manual: Strong Anti-Venom to Formula: Strong Anti-Venom
+        UPDATE `item_template` SET `name` = 'Formula: Strong Anti-Venom' WHERE (`entry` = '6454');
+        -- DISPLAY_ID from 8117 to 6270
+        UPDATE `item_template` SET `display_id` = '6270' WHERE (`entry` = '6454');
+        -- SUBCLASS from 7 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '6454');
+
+
+        -- Item: Hunting Ammo Sack
+        -- Entry: 3574
+
+        -- SPELLID_1
+        -- Current date:     2004-09-08 04:13:44
+        -- New date:         2004-09-08 04:13:44
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 14824 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '3574');
+
+
+        -- Item: Washte Pawne's Feather
+        -- Entry: 5103
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-10-14 22:31:54
+        -- New date:         2004-10-14 22:31:54
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-14 22:31:54
+        -- New date:         2004-10-14 22:31:54
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 10 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '5103');
+        -- ITEM_LEVEL from 10 to 0
+        UPDATE `item_template` SET `item_level` = '0' WHERE (`entry` = '5103');
+
+
+        -- Item: Hand of Edward the Odd
+        -- Entry: 2243
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-12 13:13:33
+        -- New date:         2004-09-24 14:12:51
+        -- Days diff: 17
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-12 13:13:33
+        -- New date:         2004-09-24 14:12:51
+        -- Days diff: 17
+
+        -- SPELLID_1
+        -- Current date:     2004-10-12 13:13:33
+        -- New date:         2004-09-24 14:12:51
+        -- Days diff: 17
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2005-05-05 11:37:45
+        -- New date:         2004-10-12 13:13:33
+        -- Days diff: 204
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-12 13:13:33
+        -- New date:         2004-10-12 13:13:33
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-12 13:13:33
+        -- New date:         2004-10-02 20:12:31
+        -- Days diff: 9
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-12 13:13:33
+        -- New date:         2004-10-02 20:12:31
+        -- Days diff: 9
+
+        -- DMG_MIN1 from 50 to 56
+        UPDATE `item_template` SET `dmg_min1` = '56' WHERE (`entry` = '2243');
+        -- DMG_MAX1 from 94 to 105
+        UPDATE `item_template` SET `dmg_max1` = '105' WHERE (`entry` = '2243');
+        -- SPELLID_1 from 18803 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '2243');
+        -- REQUIRED_LEVEL from 57 to 55
+        UPDATE `item_template` SET `required_level` = '55' WHERE (`entry` = '2243');
+        -- ITEM_LEVEL from 57 to 55
+        UPDATE `item_template` SET `item_level` = '55' WHERE (`entry` = '2243');
+        -- STAT_TYPE2 from 5 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '2243');
+        -- STAT_VALUE2 from 13 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '2243');
+
+
+        -- Item: Elunite Hammer
+        -- Entry: 6968
+
+        -- NAME
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-07-19 15:13:01
+        -- Days diff: 71
+        -- Overrides WDB:                   3925
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 16:05:03
+        -- New date:         2004-05-28 12:19:45
+        -- Days diff: 126
+        -- Overrides WDB:                   3925
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 16:05:03
+        -- New date:         2004-05-28 12:19:45
+        -- Days diff: 126
+        -- Overrides WDB:                   3925
+
+        -- NAME from Elunite Hammer to Silver Steel Mace
+        UPDATE `item_template` SET `name` = 'Silver Steel Mace' WHERE (`entry` = '6968');
+        -- DMG_MIN1 from 12 to 22
+        UPDATE `item_template` SET `dmg_min1` = '22' WHERE (`entry` = '6968');
+        -- DMG_MAX1 from 23 to 33
+        UPDATE `item_template` SET `dmg_max1` = '33' WHERE (`entry` = '6968');
+
+
+        -- Item: Small Bronze Bomb
+        -- Entry: 4374
+
+        -- SUBCLASS
+        -- Current date:     2004-09-04 02:08:22
+        -- New date:         2004-09-04 02:08:22
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 2 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4374');
+
+
+        -- Item: Caverndeep Trudgers
+        -- Entry: 9510
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-08-20 10:24:00
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-08-20 10:24:00
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 27 to 23
+        UPDATE `item_template` SET `required_level` = '23' WHERE (`entry` = '9510');
+        -- ITEM_LEVEL from 27 to 23
+        UPDATE `item_template` SET `item_level` = '23' WHERE (`entry` = '9510');
+
+
+        -- Item: Huntsman's Bands
+        -- Entry: 9886
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-09-23 00:18:29
+        -- Days diff: 46
+
+        -- ARMOR from 48 to 74
+        UPDATE `item_template` SET `armor` = '74' WHERE (`entry` = '9886');
+
+
+        -- Item: Mithril Insignia
+        -- Entry: 8663
+
+        -- ARMOR
+        -- Current date:     2004-09-23 00:14:27
+        -- New date:         2004-09-23 00:14:27
+        -- Days diff: Unknown
+
+        -- STAT_TYPE1
+        -- Current date:     2004-07-08 16:22:40
+        -- New date:         2004-07-08 16:22:40
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-07-08 16:22:40
+        -- New date:         2004-07-08 16:22:40
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-07-08 16:22:40
+        -- New date:         2004-07-08 16:22:40
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-07-08 16:22:40
+        -- New date:         2004-07-08 16:22:40
+        -- Days diff: Unknown
+
+        -- ARMOR from 50 to 0
+        UPDATE `item_template` SET `armor` = '0' WHERE (`entry` = '8663');
+        -- STAT_TYPE1 from 0 to 7
+        UPDATE `item_template` SET `stat_type1` = '7' WHERE (`entry` = '8663');
+        -- STAT_VALUE1 from 0 to 5
+        UPDATE `item_template` SET `stat_value1` = '5' WHERE (`entry` = '8663');
+        -- STAT_TYPE2 from 0 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '8663');
+        -- STAT_VALUE2 from 0 to 5
+        UPDATE `item_template` SET `stat_value2` = '5' WHERE (`entry` = '8663');
+
+
+        -- Item: Spellshifter Rod
+        -- Entry: 9527
+
+        -- NAME
+        -- Current date:     2005-09-08 09:20:17
+        -- New date:         2005-06-14 18:52:23
+        -- Days diff: 85
+
+        -- DISPLAY_ID
+        -- Current date:     2005-12-31 19:21:12
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 498
+
+        -- DMG_MIN1
+        -- Current date:     2005-12-31 19:21:12
+        -- New date:         2004-07-08 16:07:11
+        -- Days diff: 541
+
+        -- DMG_MAX1
+        -- Current date:     2005-12-31 19:21:12
+        -- New date:         2004-07-08 16:07:11
+        -- Days diff: 541
+
+        -- STAT_TYPE2
+        -- Current date:     2005-12-31 19:21:12
+        -- New date:         2004-09-22 21:27:24
+        -- Days diff: 464
+
+        -- STAT_VALUE2
+        -- Current date:     2005-12-31 19:21:12
+        -- New date:         2004-09-22 21:27:24
+        -- Days diff: 464
+
+        -- NAME from Spellshifter Rod to Spellbinder
+        UPDATE `item_template` SET `name` = 'Spellbinder' WHERE (`entry` = '9527');
+        -- DISPLAY_ID from 20300 to 18467
+        UPDATE `item_template` SET `display_id` = '18467' WHERE (`entry` = '9527');
+        -- DMG_MIN1 from 77 to 80
+        UPDATE `item_template` SET `dmg_min1` = '80' WHERE (`entry` = '9527');
+        -- DMG_MAX1 from 116 to 121
+        UPDATE `item_template` SET `dmg_max1` = '121' WHERE (`entry` = '9527');
+        -- STAT_TYPE2 from 5 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '9527');
+        -- STAT_VALUE2 from 16 to 50
+        UPDATE `item_template` SET `stat_value2` = '50' WHERE (`entry` = '9527');
+
+
+        -- Item: Archer's Shoulderpads
+        -- Entry: 9863
+
+        -- ARMOR
+        -- Current date:     2005-12-02 14:58:27
+        -- New date:         2004-10-01 02:27:19
+        -- Days diff: 427
+
+        -- ARMOR from 79 to 121
+        UPDATE `item_template` SET `armor` = '121' WHERE (`entry` = '9863');
+
+
+        -- Item: Earthen Rod
+        -- Entry: 9381
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:20
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-23 00:14:26
+        -- New date:         2004-07-09 08:52:20
+        -- Days diff: 75
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-23 00:14:26
+        -- New date:         2004-07-09 08:52:20
+        -- Days diff: 75
+
+        -- DISPLAY_ID from 21025 to 18261
+        UPDATE `item_template` SET `display_id` = '18261' WHERE (`entry` = '9381');
+        -- DMG_MIN1 from 42 to 22
+        UPDATE `item_template` SET `dmg_min1` = '22' WHERE (`entry` = '9381');
+        -- DMG_MAX1 from 79 to 42
+        UPDATE `item_template` SET `dmg_max1` = '42' WHERE (`entry` = '9381');
+
+
+        -- Item: Hero's Leggings
+        -- Entry: 8309
+
+        -- ARMOR
+        -- Current date:     2004-11-08 19:25:07
+        -- New date:         2004-11-08 19:25:07
+        -- Days diff: Unknown
+
+        -- ARMOR from 286 to 344
+        UPDATE `item_template` SET `armor` = '344' WHERE (`entry` = '8309');
+
+
+        -- Item: Lumberjack Jerkin
+        -- Entry: 2112
+
+        -- ARMOR
+        -- Current date:     2004-10-02 20:12:31
+        -- New date:         2004-06-12 00:21:05
+        -- Days diff: 112
+        -- Overrides WDB:                   3925
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-06-12 00:21:05
+        -- Days diff: 108
+        -- Overrides WDB:                   3925
+
+        -- ARMOR from 53 to 18
+        UPDATE `item_template` SET `armor` = '18' WHERE (`entry` = '2112');
+        -- REQUIRED_LEVEL from 4 to 1
+        UPDATE `item_template` SET `required_level` = '1' WHERE (`entry` = '2112');
+
+
+        -- Item: Magram Hunter's Belt
+        -- Entry: 6788
+
+        -- ARMOR
+        -- Current date:     2004-11-08 22:09:49
+        -- New date:         2004-10-01 02:33:52
+        -- Days diff: 38
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 02:33:52
+        -- New date:         2004-10-01 02:33:52
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:33:52
+        -- New date:         2004-10-01 02:33:52
+        -- Days diff: Unknown
+
+        -- ARMOR from 65 to 73
+        UPDATE `item_template` SET `armor` = '73' WHERE (`entry` = '6788');
+        -- STAT_TYPE1 from 7 to 3
+        UPDATE `item_template` SET `stat_type1` = '3' WHERE (`entry` = '6788');
+        -- STAT_VALUE1 from 9 to 3
+        UPDATE `item_template` SET `stat_value1` = '3' WHERE (`entry` = '6788');
+
+
+        -- Item: Shovelphlange's Mining Axe
+        -- Entry: 9378
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:07
+        -- New date:         2004-08-20 11:50:21
+        -- Days diff: 41
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:07
+        -- New date:         2004-08-20 11:50:21
+        -- Days diff: 41
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 11:50:21
+        -- New date:         2004-08-20 11:50:21
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 50 to 48
+        UPDATE `item_template` SET `dmg_min1` = '48' WHERE (`entry` = '9378');
+        -- DMG_MAX1 from 94 to 59
+        UPDATE `item_template` SET `dmg_max1` = '59' WHERE (`entry` = '9378');
+        -- SPELLID_1 from 9140 to 7598
+        UPDATE `item_template` SET `spellid_1` = '7598' WHERE (`entry` = '9378');
+
+
+        -- Item: Embossed Plate Shield
+        -- Entry: 9935
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-10-01 01:09:07
+        -- Days diff: 38
+
+        -- BLOCK
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-09-23 19:49:10
+        -- Days diff: 45
+
+        -- ARMOR from 1408 to 648
+        UPDATE `item_template` SET `armor` = '648' WHERE (`entry` = '9935');
+        -- BLOCK from 20 to 15
+        UPDATE `item_template` SET `block` = '15' WHERE (`entry` = '9935');
+
+
+        -- Item: Cadet's Bow
+        -- Entry: 8179
+
+        -- DMG_MIN1
+        -- Current date:     2004-08-20 11:50:34
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: 36
+        -- Overrides WDB:                   3925
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: 77
+        -- Overrides WDB:                   3925
+
+        -- DMG_MIN1 from 4 to 8
+        UPDATE `item_template` SET `dmg_min1` = '8' WHERE (`entry` = '8179');
+        -- DMG_MAX1 from 8 to 16
+        UPDATE `item_template` SET `dmg_max1` = '16' WHERE (`entry` = '8179');
+
+
+        -- Item: Blocking Targe
+        -- Entry: 3989
+
+        -- SUBCLASS
+        -- Current date:     2004-07-17 18:13:55
+        -- New date:         2004-07-17 18:13:55
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 6 to 5
+        UPDATE `item_template` SET `subclass` = '5' WHERE (`entry` = '3989');
+
+
+        -- Item: Brigade Cloak
+        -- Entry: 9929
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:04
+        -- New date:         2004-11-08 07:05:04
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-10-01 02:27:20
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:04
+        -- New date:         2004-09-25 10:22:04
+        -- Days diff: 43
+
+        -- DISPLAY_ID from 25938 to 15080
+        UPDATE `item_template` SET `display_id` = '15080' WHERE (`entry` = '9929');
+        -- SUBCLASS from 1 to 3
+        UPDATE `item_template` SET `subclass` = '3' WHERE (`entry` = '9929');
+        -- ARMOR from 27 to 193
+        UPDATE `item_template` SET `armor` = '193' WHERE (`entry` = '9929');
+
+
+        -- Item: Barkmail Leggings
+        -- Entry: 9599
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-07-12 09:57:01
+        -- Days diff: 78
+        -- Overrides WDB:                   3925
+
+        -- ARMOR
+        -- Current date:     2004-10-01 02:27:05
+        -- New date:         2004-08-22 15:23:51
+        -- Days diff: 39
+        -- Overrides WDB:                   3925
+
+        -- STAT_TYPE1
+        -- Current date:     2005-03-14 13:42:38
+        -- New date:         2004-08-22 15:23:51
+        -- Days diff: 203
+        -- Overrides WDB:                   3925
+
+        -- STAT_VALUE1
+        -- Current date:     2005-03-14 13:42:38
+        -- New date:         2004-08-22 15:23:51
+        -- Days diff: 203
+        -- Overrides WDB:                   3925
+
+        -- DISPLAY_ID from 19575 to 5337
+        UPDATE `item_template` SET `display_id` = '5337' WHERE (`entry` = '9599');
+        -- ARMOR from 85 to 29
+        UPDATE `item_template` SET `armor` = '29' WHERE (`entry` = '9599');
+        -- STAT_TYPE1 from 7 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '9599');
+        -- STAT_VALUE1 from 1 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '9599');
+
+
+        -- Item: Hibernal Armor
+        -- Entry: 8106
+
+        -- NAME
+        -- Current date:     2004-11-08 19:25:07
+        -- New date:         2004-11-08 19:25:07
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 19:25:07
+        -- New date:         2004-08-20 11:50:40
+        -- Days diff: 80
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-02 10:49:57
+        -- New date:         2004-08-20 11:50:40
+        -- Days diff: 42
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-02 10:49:57
+        -- New date:         2004-08-20 11:50:40
+        -- Days diff: 42
+
+        -- NAME from Hibernal Armor to Venomshroud Armor
+        UPDATE `item_template` SET `name` = 'Venomshroud Armor' WHERE (`entry` = '8106');
+        -- ARMOR from 66 to 33
+        UPDATE `item_template` SET `armor` = '33' WHERE (`entry` = '8106');
+        -- STAT_TYPE1 from 7 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '8106');
+        -- STAT_VALUE1 from 4 to 8
+        UPDATE `item_template` SET `stat_value1` = '8' WHERE (`entry` = '8106');
+
+
+        -- Item: Long Elegant Feather
+        -- Entry: 4589
+
+        -- NAME
+        -- Current date:     2004-09-28 19:42:35
+        -- New date:         2004-09-28 19:42:35
+        -- Days diff: Unknown
+
+        -- NAME from Long Elegant Feather to Long Gryphon Feather
+        UPDATE `item_template` SET `name` = 'Long Gryphon Feather' WHERE (`entry` = '4589');
+
+
+        -- Item: Brigade Leggings
+        -- Entry: 9933
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 09:47:03
+        -- New date:         2004-11-08 09:47:03
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 09:47:03
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 25934 to 11607
+        UPDATE `item_template` SET `display_id` = '11607' WHERE (`entry` = '9933');
+        -- ARMOR from 217 to 253
+        UPDATE `item_template` SET `armor` = '253' WHERE (`entry` = '9933');
+
+
+        -- Item: Rockshard Pauldrons
+        -- Entry: 9411
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:58
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: 79
+
+        -- ARMOR from 186 to 77
+        UPDATE `item_template` SET `armor` = '77' WHERE (`entry` = '9411');
+
+
+        -- Item: Imperial Red Pants
+        -- Entry: 8251
+
+        -- NAME
+        -- Current date:     2004-11-08 19:25:07
+        -- New date:         2004-08-20 10:26:36
+        -- Days diff: 80
+
+        -- ARMOR
+        -- Current date:     2004-11-08 19:25:07
+        -- New date:         2004-08-20 10:26:36
+        -- Days diff: 80
+
+        -- NAME from Imperial Red Pants to Arcane Pants
+        UPDATE `item_template` SET `name` = 'Arcane Pants' WHERE (`entry` = '8251');
+        -- ARMOR from 61 to 31
+        UPDATE `item_template` SET `armor` = '31' WHERE (`entry` = '8251');
+
+
+        -- Item: Rustler Gloves
+        -- Entry: 9704
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:08:00
+        -- New date:         2004-11-08 15:08:00
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:08:00
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: 77
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 08:28:01
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: 38
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 08:28:01
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: 38
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 08:28:01
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: 38
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 08:28:01
+        -- New date:         2004-08-23 10:43:33
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 28296 to 17185
+        UPDATE `item_template` SET `display_id` = '17185' WHERE (`entry` = '9704');
+        -- ARMOR from 73 to 34
+        UPDATE `item_template` SET `armor` = '34' WHERE (`entry` = '9704');
+        -- STAT_TYPE1 from 4 to 3
+        UPDATE `item_template` SET `stat_type1` = '3' WHERE (`entry` = '9704');
+        -- STAT_VALUE1 from 9 to 6
+        UPDATE `item_template` SET `stat_value1` = '6' WHERE (`entry` = '9704');
+        -- STAT_TYPE2 from 5 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '9704');
+        -- STAT_VALUE2 from 9 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '9704');
+
+
+        -- Item: Tough Leather Bracers
+        -- Entry: 1805
+
+        -- NAME
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-05-02 01:14:56
+        -- Days diff: 149
+        -- Overrides WDB:                   3925
+
+        -- ARMOR
+        -- Current date:     2004-09-30 22:09:17
+        -- New date:         2004-05-02 01:14:56
+        -- Days diff: 151
+        -- Overrides WDB:                   3925
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-05-02 01:14:56
+        -- Days diff: 149
+        -- Overrides WDB:                   3925
+
+        -- NAME from Tough Leather Bracers to Hardened Leather Bracers
+        UPDATE `item_template` SET `name` = 'Hardened Leather Bracers' WHERE (`entry` = '1805');
+        -- ARMOR from 50 to 12
+        UPDATE `item_template` SET `armor` = '12' WHERE (`entry` = '1805');
+        -- REQUIRED_LEVEL from 22 to 17
+        UPDATE `item_template` SET `required_level` = '17' WHERE (`entry` = '1805');
+
+
+        -- Item: Skeleton Finger
+        -- Entry: 2378
+
+        -- STACKABLE
+        -- Current date:     2005-11-12 20:47:31
+        -- New date:         2004-06-23 13:32:15
+        -- Days diff: 507
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '2378');
+
+
+        -- Item: Abjurer's Boots
+        -- Entry: 9936
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-11-08 07:05:05
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 28010 to 15409
+        UPDATE `item_template` SET `display_id` = '15409' WHERE (`entry` = '9936');
+        -- ARMOR from 44 to 71
+        UPDATE `item_template` SET `armor` = '71' WHERE (`entry` = '9936');
+
+
+        -- Item: Cragfists
+        -- Entry: 9410
+
+        -- DISPLAY_ID
+        -- Current date:     2004-12-21 20:41:44
+        -- New date:         2004-11-08 03:29:58
+        -- Days diff: 43
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:58
+        -- New date:         2004-08-20 10:24:01
+        -- Days diff: 79
+
+        -- DISPLAY_ID from 29000 to 18292
+        UPDATE `item_template` SET `display_id` = '18292' WHERE (`entry` = '9410');
+        -- ARMOR from 300 to 73
+        UPDATE `item_template` SET `armor` = '73' WHERE (`entry` = '9410');
+
+
+        -- Item: Basalt Buckler
+        -- Entry: 6746
+
+        -- ARMOR
+        -- Current date:     2004-11-16 04:36:29
+        -- New date:         2004-09-04 02:08:23
+        -- Days diff: 73
+
+        -- BLOCK
+        -- Current date:     2004-10-07 23:50:05
+        -- New date:         2004-09-29 01:17:35
+        -- Days diff: 8
+
+        -- ARMOR from 963 to 82
+        UPDATE `item_template` SET `armor` = '82' WHERE (`entry` = '6746');
+        -- BLOCK from 17 to 11
+        UPDATE `item_template` SET `block` = '11' WHERE (`entry` = '6746');
+
+
+        -- Item: Double Mail Coif
+        -- Entry: 8748
+
+        -- DISPLAY_ID
+        -- Current date:     2004-12-28 09:48:00
+        -- New date:         2004-11-08 02:27:38
+        -- Days diff: 50
+
+        -- ARMOR
+        -- Current date:     2004-12-28 09:48:00
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 129
+
+        -- DISPLAY_ID from 28389 to 15318
+        UPDATE `item_template` SET `display_id` = '15318' WHERE (`entry` = '8748');
+        -- ARMOR from 145 to 27
+        UPDATE `item_template` SET `armor` = '27' WHERE (`entry` = '8748');
+
+
+        -- Item: Hero's Buckler
+        -- Entry: 8313
+
+        -- DISPLAY_ID
+        -- Current date:     2005-09-02 17:22:09
+        -- New date:         2005-09-02 17:22:09
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-09-02 17:22:09
+        -- New date:         2005-09-02 17:22:09
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 26324 to 18457
+        UPDATE `item_template` SET `display_id` = '18457' WHERE (`entry` = '8313');
+        -- ARMOR from 1890 to 945
+        UPDATE `item_template` SET `armor` = '945' WHERE (`entry` = '8313');
+
+
+        -- Item: Chromite Pauldrons
+        -- Entry: 8144
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-11-08 03:30:06
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 79
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 41
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 41
+
+        -- DISPLAY_ID from 27336 to 19740
+        UPDATE `item_template` SET `display_id` = '19740' WHERE (`entry` = '8144');
+        -- ARMOR from 327 to 109
+        UPDATE `item_template` SET `armor` = '109' WHERE (`entry` = '8144');
+        -- STAT_TYPE2 from 7 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '8144');
+        -- STAT_VALUE2 from 9 to 30
+        UPDATE `item_template` SET `stat_value2` = '30' WHERE (`entry` = '8144');
+
+
+        -- Item: Olaf's All Purpose Shield
+        -- Entry: 9404
+
+        -- ARMOR
+        -- Current date:     2004-11-09 17:07:06
+        -- New date:         2004-08-24 15:56:49
+        -- Days diff: 77
+
+        -- BLOCK
+        -- Current date:     2005-03-17 20:12:32
+        -- New date:         2004-08-24 15:56:49
+        -- Days diff: 205
+
+        -- SPELLID_1
+        -- Current date:     2004-11-09 17:07:06
+        -- New date:         2004-11-09 17:07:06
+        -- Days diff: Unknown
+
+        -- ARMOR from 1287 to 187
+        UPDATE `item_template` SET `armor` = '187' WHERE (`entry` = '9404');
+        -- BLOCK from 22 to 35
+        UPDATE `item_template` SET `block` = '35' WHERE (`entry` = '9404');
+        -- SPELLID_1 from 12438 to 130
+        UPDATE `item_template` SET `spellid_1` = '130' WHERE (`entry` = '9404');
+
+
+        -- Item: OOX-17/TN Distress Beacon
+        -- Entry: 8623
+
+        -- SELL_PRICE
+        -- Current date:     2004-09-24 06:47:32
+        -- New date:         2004-09-24 06:47:32
+        -- Days diff: Unknown
+
+        -- BUY_PRICE
+        -- Current date:     2004-09-24 06:47:32
+        -- New date:         2004-09-24 06:47:32
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-02 19:03:36
+        -- New date:         2004-09-02 19:03:36
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-09-02 19:03:36
+        -- New date:         2004-09-02 19:03:36
+        -- Days diff: Unknown
+
+        -- SELL_PRICE from 0 to 8851
+        UPDATE `item_template` SET `sell_price` = '8851' WHERE (`entry` = '8623');
+        -- BUY_PRICE from 0 to 2212
+        UPDATE `item_template` SET `buy_price` = '2212' WHERE (`entry` = '8623');
+        -- REQUIRED_LEVEL from 43 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '8623');
+        -- ITEM_LEVEL from 43 to 0
+        UPDATE `item_template` SET `item_level` = '0' WHERE (`entry` = '8623');
+
+
+        -- Item: Plans: Wicked Mithril Blade
+        -- Entry: 8029
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:09:46
+        -- New date:         2005-03-22 21:09:46
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 4 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '8029');
+
+
+        -- Item: Bloodscalp Tusk
+        -- Entry: 3901
+
+        -- STACKABLE
+        -- Current date:     2004-06-20 23:30:34
+        -- New date:         2004-06-20 23:30:34
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '3901');
+
+
+        -- Item: Scarlet Kris
+        -- Entry: 5267
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-30 20:57:25
+        -- New date:         2004-07-09 10:27:00
+        -- Days diff: 83
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-30 20:57:25
+        -- New date:         2004-07-09 10:27:00
+        -- Days diff: 83
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-23 00:18:28
+        -- New date:         2004-07-09 10:27:00
+        -- Days diff: 75
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-09-23 00:18:28
+        -- New date:         2004-07-09 10:27:00
+        -- Days diff: 75
+
+        -- STAT_TYPE1
+        -- Current date:     2004-09-23 00:18:28
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: 33
+
+        -- STAT_VALUE1
+        -- Current date:     2004-09-23 00:18:28
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: 33
+
+        -- STAT_TYPE2
+        -- Current date:     2004-09-23 00:18:28
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: 33
+
+        -- STAT_VALUE2
+        -- Current date:     2004-09-23 00:18:28
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: 33
+
+        -- DMG_MIN1 from 43 to 32
+        UPDATE `item_template` SET `dmg_min1` = '32' WHERE (`entry` = '5267');
+        -- DMG_MAX1 from 81 to 60
+        UPDATE `item_template` SET `dmg_max1` = '60' WHERE (`entry` = '5267');
+        -- REQUIRED_LEVEL from 58 to 45
+        UPDATE `item_template` SET `required_level` = '45' WHERE (`entry` = '5267');
+        -- ITEM_LEVEL from 58 to 45
+        UPDATE `item_template` SET `item_level` = '45' WHERE (`entry` = '5267');
+        -- STAT_TYPE1 from 3 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '5267');
+        -- STAT_VALUE1 from 10 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '5267');
+        -- STAT_TYPE2 from 7 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '5267');
+        -- STAT_VALUE2 from 10 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '5267');
+
+
+        -- Item: Warmonger's Gauntlets
+        -- Entry: 9960
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:00:22
+        -- New date:         2004-11-08 15:00:22
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:22
+        -- New date:         2004-10-01 02:27:16
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 26185 to 11626
+        UPDATE `item_template` SET `display_id` = '11626' WHERE (`entry` = '9960');
+        -- ARMOR from 162 to 169
+        UPDATE `item_template` SET `armor` = '169' WHERE (`entry` = '9960');
+
+
+        -- Item: Venomtail Poison Sac
+        -- Entry: 4886
+
+        -- STACKABLE
+        -- Current date:     2004-09-11 00:01:06
+        -- New date:         2004-09-11 00:01:06
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4886');
+
+
+        -- Item: Old Whistle of the Ivory Raptor
+        -- Entry: 8589
+
+        -- NAME
+        -- Current date:     2004-12-07 14:08:13
+        -- New date:         2004-12-07 14:08:13
+        -- Days diff: Unknown
+
+        -- CLASS
+        -- Current date:     2004-09-13 07:17:54
+        -- New date:         2004-09-13 07:17:54
+        -- Days diff: Unknown
+
+        -- NAME from Old Whistle of the Ivory Raptor to Whistle of the Ivory Raptor
+        UPDATE `item_template` SET `name` = 'Whistle of the Ivory Raptor' WHERE (`entry` = '8589');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8589');
+
+
+        -- Item: Brown Ram
+        -- Entry: 5872
+
+        -- NAME
+        -- Current date:     2004-10-09 03:13:01
+        -- New date:         2004-08-05 21:03:41
+        -- Days diff: 64
+
+        -- CLASS
+        -- Current date:     2004-09-07 22:09:09
+        -- New date:         2004-09-07 22:09:09
+        -- Days diff: Unknown
+
+        -- NAME from Brown Ram to Brown Ram Harness
+        UPDATE `item_template` SET `name` = 'Brown Ram Harness' WHERE (`entry` = '5872');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '5872');
+
+
+        -- Item: Tough Scorpid Boots
+        -- Entry: 8209
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:01
+        -- New date:         2004-08-20 11:50:37
+        -- Days diff: 79
+
+        -- ARMOR from 178 to 66
+        UPDATE `item_template` SET `armor` = '66' WHERE (`entry` = '8209');
+
+
+        -- Item: Blight
+        -- Entry: 7959
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-22 21:27:14
+        -- New date:         2004-08-20 11:50:42
+        -- Days diff: 33
+
+        -- SUBCLASS
+        -- Current date:     2004-11-08 03:30:11
+        -- New date:         2004-11-08 03:30:11
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-07-08 15:42:36
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-07-08 15:42:36
+        -- Days diff: 84
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 11:50:42
+        -- New date:         2004-08-20 11:50:42
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 22234 to 16150
+        UPDATE `item_template` SET `display_id` = '16150' WHERE (`entry` = '7959');
+        -- SUBCLASS from 6 to 17
+        UPDATE `item_template` SET `subclass` = '17' WHERE (`entry` = '7959');
+        -- DMG_MIN1 from 93 to 94
+        UPDATE `item_template` SET `dmg_min1` = '94' WHERE (`entry` = '7959');
+        -- DMG_MAX1 from 141 to 142
+        UPDATE `item_template` SET `dmg_max1` = '142' WHERE (`entry` = '7959');
+        -- SPELLID_1 from 9796 to 9797
+        UPDATE `item_template` SET `spellid_1` = '9797' WHERE (`entry` = '7959');
+
+
+        -- Item: Nightscape Boots
+        -- Entry: 8197
+
+        -- NAME
+        -- Current date:     2005-06-14 18:52:44
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 298
+
+        -- ARMOR
+        -- Current date:     2005-05-01 16:41:02
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 254
+
+        -- SPELLID_1
+        -- Current date:     2005-05-01 16:41:02
+        -- New date:         2004-11-08 03:30:03
+        -- Days diff: 174
+
+        -- NAME from Nightscape Boots to Nightscape Leather Boots
+        UPDATE `item_template` SET `name` = 'Nightscape Leather Boots' WHERE (`entry` = '8197');
+        -- ARMOR from 87 to 44
+        UPDATE `item_template` SET `armor` = '44' WHERE (`entry` = '8197');
+        -- SPELLID_1 from 17746 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '8197');
+
+
+        -- Item: Crested Scepter
+        -- Entry: 3414
+
+        -- NAME
+        -- Current date:     2004-11-08 22:04:59
+        -- New date:         2004-11-08 22:04:59
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-17 12:40:49
+        -- New date:         2004-07-01 04:24:20
+        -- Days diff: 108
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-17 12:40:49
+        -- New date:         2004-07-01 04:24:20
+        -- Days diff: 108
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-08-26 11:23:22
+        -- New date:         2004-07-01 04:24:20
+        -- Days diff: 56
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-08-26 11:23:22
+        -- New date:         2004-07-01 04:24:20
+        -- Days diff: 56
+
+        -- NAME from Crested Scepter to Crested Sceptre
+        UPDATE `item_template` SET `name` = 'Crested Sceptre' WHERE (`entry` = '3414');
+        -- DMG_MIN1 from 31 to 21
+        UPDATE `item_template` SET `dmg_min1` = '21' WHERE (`entry` = '3414');
+        -- DMG_MAX1 from 58 to 39
+        UPDATE `item_template` SET `dmg_max1` = '39' WHERE (`entry` = '3414');
+        -- REQUIRED_LEVEL from 22 to 15
+        UPDATE `item_template` SET `required_level` = '15' WHERE (`entry` = '3414');
+        -- ITEM_LEVEL from 22 to 15
+        UPDATE `item_template` SET `item_level` = '15' WHERE (`entry` = '3414');
+
+
+        -- Item: Gossamer Gloves
+        -- Entry: 7521
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:15
+        -- New date:         2004-08-20 10:23:59
+        -- Days diff: 79
+
+        -- ARMOR from 38 to 16
+        UPDATE `item_template` SET `armor` = '16' WHERE (`entry` = '7521');
+
+
+        -- Item: Chieftain's Gloves
+        -- Entry: 9952
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-09-30 20:57:25
+        -- Days diff: 38
+
+        -- ARMOR from 82 to 106
+        UPDATE `item_template` SET `armor` = '106' WHERE (`entry` = '9952');
+
+
+        -- Item: Band of the Great Tortoise
+        -- Entry: 9642
+
+        -- ARMOR
+        -- Current date:     2004-10-01 02:27:05
+        -- New date:         2004-08-20 11:50:15
+        -- Days diff: 41
+
+        -- ARMOR from 120 to 25
+        UPDATE `item_template` SET `armor` = '25' WHERE (`entry` = '9642');
+
+
+        -- Item: Warmonger's Chestpiece
+        -- Entry: 9957
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 19:25:10
+        -- New date:         2004-11-08 19:25:10
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 19:25:10
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 26183 to 11624
+        UPDATE `item_template` SET `display_id` = '11624' WHERE (`entry` = '9957');
+        -- ARMOR from 273 to 317
+        UPDATE `item_template` SET `armor` = '317' WHERE (`entry` = '9957');
+
+
+        -- Item: Banded Cloak
+        -- Entry: 9838
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 06:11:43
+        -- New date:         2004-09-22 21:27:24
+        -- Days diff: 46
+
+        -- SUBCLASS
+        -- Current date:     2004-10-01 02:27:21
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 06:11:43
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 27779 to 15053
+        UPDATE `item_template` SET `display_id` = '15053' WHERE (`entry` = '9838');
+        -- SUBCLASS from 1 to 3
+        UPDATE `item_template` SET `subclass` = '3' WHERE (`entry` = '9838');
+        -- ARMOR from 21 to 153
+        UPDATE `item_template` SET `armor` = '153' WHERE (`entry` = '9838');
+
+
+        -- Item: Kang the Decapitator
+        -- Entry: 2291
+
+        -- DMG_MIN1
+        -- Current date:     2005-07-26 23:03:03
+        -- New date:         2004-09-23 15:40:49
+        -- Days diff: 306
+
+        -- DMG_MAX1
+        -- Current date:     2005-07-26 23:03:03
+        -- New date:         2004-09-23 15:40:49
+        -- Days diff: 306
+
+        -- SPELLID_1
+        -- Current date:     2005-07-26 23:03:03
+        -- New date:         2004-09-23 15:40:49
+        -- Days diff: 306
+
+        -- STAT_TYPE1
+        -- Current date:     2004-09-23 15:40:49
+        -- New date:         2004-09-23 15:40:49
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-09-23 15:40:49
+        -- New date:         2004-09-23 15:40:49
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 136 to 193
+        UPDATE `item_template` SET `dmg_min1` = '193' WHERE (`entry` = '2291');
+        -- DMG_MAX1 from 205 to 291
+        UPDATE `item_template` SET `dmg_max1` = '291' WHERE (`entry` = '2291');
+        -- SPELLID_1 from 17153 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '2291');
+        -- STAT_TYPE1 from 0 to 4
+        UPDATE `item_template` SET `stat_type1` = '4' WHERE (`entry` = '2291');
+        -- STAT_VALUE1 from 0 to 38
+        UPDATE `item_template` SET `stat_value1` = '38' WHERE (`entry` = '2291');
+
+
+        -- Item: Ornate Mithril Gloves
+        -- Entry: 7927
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:02
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 79
+
+        -- SPELLID_1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 41
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-08 15:42:36
+        -- New date:         2004-07-08 15:42:36
+        -- Days diff: Unknown
+
+        -- ARMOR from 268 to 67
+        UPDATE `item_template` SET `armor` = '67' WHERE (`entry` = '7927');
+        -- SPELLID_1 from 7597 to 9141
+        UPDATE `item_template` SET `spellid_1` = '9141' WHERE (`entry` = '7927');
+        -- REQUIRED_LEVEL from 40 to 39
+        UPDATE `item_template` SET `required_level` = '39' WHERE (`entry` = '7927');
+
+
+        -- Item: Royal Cape
+        -- Entry: 9908
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-09-23 00:18:29
+        -- Days diff: 46
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-09-23 00:18:29
+        -- Days diff: 46
+
+        -- DISPLAY_ID from 28412 to 15178
+        UPDATE `item_template` SET `display_id` = '15178' WHERE (`entry` = '9908');
+        -- ARMOR from 28 to 65
+        UPDATE `item_template` SET `armor` = '65' WHERE (`entry` = '9908');
+
+
+        -- Item: Wild Leather Helmet
+        -- Entry: 8214
+
+        -- DISPLAY_ID
+        -- Current date:     2005-04-20 16:20:03
+        -- New date:         2004-08-20 11:50:37
+        -- Days diff: 243
+
+        -- ARMOR
+        -- Current date:     2005-04-20 16:20:03
+        -- New date:         2004-08-20 11:50:37
+        -- Days diff: 243
+
+        -- DISPLAY_ID from 25693 to 17206
+        UPDATE `item_template` SET `display_id` = '17206' WHERE (`entry` = '8214');
+        -- ARMOR from 99 to 39
+        UPDATE `item_template` SET `armor` = '39' WHERE (`entry` = '8214');
+
+
+        -- Item: Worn Dragonscale
+        -- Entry: 8165
+
+        -- NAME
+        -- Current date:     2005-08-18 20:53:23
+        -- New date:         2005-08-18 20:53:23
+        -- Days diff: Unknown
+
+        -- NAME from Worn Dragonscale to Dragonscale
+        UPDATE `item_template` SET `name` = 'Dragonscale' WHERE (`entry` = '8165');
+
+
+        -- Item: Large River Crocilisk Skin
+        -- Entry: 4053
+
+        -- STACKABLE
+        -- Current date:     2004-06-21 11:55:26
+        -- New date:         2004-06-21 11:55:26
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4053');
+
+
+        -- Item: Lesser Bloodstone Ore
+        -- Entry: 4278
+
+        -- STACKABLE
+        -- Current date:     2004-06-21 11:55:20
+        -- New date:         2004-06-21 11:55:20
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4278');
+
+
+        -- Item: Wicked Claw
+        -- Entry: 8146
+
+        -- NAME
+        -- Current date:     2004-08-20 18:08:42
+        -- New date:         2004-08-20 18:08:42
+        -- Days diff: Unknown
+
+        -- NAME from Wicked Claw to Wicked Sharp Talon
+        UPDATE `item_template` SET `name` = 'Wicked Sharp Talon' WHERE (`entry` = '8146');
+
+
+        -- Item: Tasty Lion Steak
+        -- Entry: 3728
+
+        -- STACKABLE
+        -- Current date:     2004-05-28 12:19:47
+        -- New date:         2004-05-28 12:19:47
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '3728');
+
+
+        -- Item: Dawnrider's Chestpiece
+        -- Entry: 9663
+
+        -- DISPLAY_ID
+        -- Current date:     2005-05-21 17:15:16
+        -- New date:         2005-05-21 17:15:16
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-05-21 17:15:16
+        -- New date:         2004-08-22 15:23:48
+        -- Days diff: 272
+
+        -- DISPLAY_ID from 28315 to 8638
+        UPDATE `item_template` SET `display_id` = '8638' WHERE (`entry` = '9663');
+        -- ARMOR from 248 to 93
+        UPDATE `item_template` SET `armor` = '93' WHERE (`entry` = '9663');
+
+
+        -- Item: Conjurer's Cloak
+        -- Entry: 9847
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-09-30 22:09:17
+        -- Days diff: 38
+
+        -- ARMOR from 23 to 54
+        UPDATE `item_template` SET `armor` = '54' WHERE (`entry` = '9847');
+
+
+        -- Item: Alabaster Shield
+        -- Entry: 8320
+
+        -- NAME
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-11-08 03:30:04
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-11-08 03:30:04
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-10-01 02:27:08
+        -- Days diff: 38
+
+        -- BLOCK
+        -- Current date:     2004-10-01 02:27:08
+        -- New date:         2004-09-23 00:14:28
+        -- Days diff: 8
+
+        -- STAT_TYPE1
+        -- Current date:     2004-09-23 00:14:28
+        -- New date:         2004-09-23 00:14:28
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:08
+        -- New date:         2004-10-01 02:27:08
+        -- Days diff: Unknown
+
+        -- NAME from Alabaster Shield to Spectral Shield
+        UPDATE `item_template` SET `name` = 'Spectral Shield' WHERE (`entry` = '8320');
+        -- DISPLAY_ID from 27571 to 18790
+        UPDATE `item_template` SET `display_id` = '18790' WHERE (`entry` = '8320');
+        -- ARMOR from 1748 to 797
+        UPDATE `item_template` SET `armor` = '797' WHERE (`entry` = '8320');
+        -- BLOCK from 31 to 25
+        UPDATE `item_template` SET `block` = '25' WHERE (`entry` = '8320');
+        -- STAT_TYPE1 from 4 to 6
+        UPDATE `item_template` SET `stat_type1` = '6' WHERE (`entry` = '8320');
+        -- STAT_VALUE1 from 3 to 5
+        UPDATE `item_template` SET `stat_value1` = '5' WHERE (`entry` = '8320');
+
+
+        -- Item: Elven Wand
+        -- Entry: 5604
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-22 21:27:14
+        -- Days diff: 6
+        -- Overrides WDB:                   3925
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-22 21:27:14
+        -- Days diff: 6
+        -- Overrides WDB:                   3925
+
+        -- DMG_MIN1 from 10 to 6
+        UPDATE `item_template` SET `dmg_min1` = '6' WHERE (`entry` = '5604');
+        -- DMG_MAX1 from 20 to 13
+        UPDATE `item_template` SET `dmg_max1` = '13' WHERE (`entry` = '5604');
+
+
+        -- Item: Scythe Axe
+        -- Entry: 5749
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-07-26 01:10:43
+        -- Days diff: 71
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-07-26 01:10:43
+        -- Days diff: 71
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-09-28 11:38:10
+        -- Days diff: 6
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-09-28 11:38:10
+        -- Days diff: 6
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-09-28 11:38:10
+        -- Days diff: 6
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-09-28 11:38:10
+        -- Days diff: 6
+
+        -- DMG_MIN1 from 43 to 39
+        UPDATE `item_template` SET `dmg_min1` = '39' WHERE (`entry` = '5749');
+        -- DMG_MAX1 from 66 to 59
+        UPDATE `item_template` SET `dmg_max1` = '59' WHERE (`entry` = '5749');
+        -- STAT_TYPE1 from 7 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '5749');
+        -- STAT_VALUE1 from 3 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '5749');
+        -- STAT_TYPE2 from 3 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '5749');
+        -- STAT_VALUE2 from 6 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '5749');
+
+
+        -- Item: An Old History Book
+        -- Entry: 2794
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-21 11:55:33
+        -- New date:         2004-06-21 11:55:33
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-06-21 11:55:33
+        -- New date:         2004-06-21 11:55:33
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 20 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '2794');
+        -- ITEM_LEVEL from 20 to 0
+        UPDATE `item_template` SET `item_level` = '0' WHERE (`entry` = '2794');
+
+
+        -- Item: Plans: Golden Scale Cuirass
+        -- Entry: 3873
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:09:47
+        -- New date:         2005-03-22 21:09:47
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 4 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '3873');
+
+
+        -- Item: Helm of Fire
+        -- Entry: 8348
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 79
+
+        -- FIRE_RES
+        -- Current date:     2004-08-20 10:24:00
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-09-30 20:57:25
+        -- New date:         2004-09-30 20:57:25
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-09-30 20:57:25
+        -- New date:         2004-09-30 20:57:25
+        -- Days diff: Unknown
+
+        -- ARMOR from 118 to 43
+        UPDATE `item_template` SET `armor` = '43' WHERE (`entry` = '8348');
+        -- FIRE_RES from 5 to 0
+        UPDATE `item_template` SET `fire_res` = '0' WHERE (`entry` = '8348');
+        -- STAT_TYPE2 from 7 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '8348');
+        -- STAT_VALUE2 from 10 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '8348');
+
+
+        -- Item: Bloodrazor
+        -- Entry: 809
+
+        -- DMG_MIN1
+        -- Current date:     2005-11-20 06:38:26
+        -- New date:         2004-09-22 21:27:22
+        -- Days diff: 423
+
+        -- DMG_MAX1
+        -- Current date:     2005-11-20 06:38:26
+        -- New date:         2004-09-22 21:27:22
+        -- Days diff: 423
+
+        -- SPELLID_1
+        -- Current date:     2005-11-20 06:38:26
+        -- New date:         2004-10-01 02:33:45
+        -- Days diff: 415
+
+        -- DMG_MIN1 from 70 to 83
+        UPDATE `item_template` SET `dmg_min1` = '83' WHERE (`entry` = '809');
+        -- DMG_MAX1 from 130 to 155
+        UPDATE `item_template` SET `dmg_max1` = '155' WHERE (`entry` = '809');
+        -- SPELLID_1 from 17504 to 13318
+        UPDATE `item_template` SET `spellid_1` = '13318' WHERE (`entry` = '809');
+
+
+        -- Item: Pratt's Handcrafted Gloves
+        -- Entry: 9631
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-11-08 03:29:57
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-08-20 11:50:15
+        -- Days diff: 79
+
+        -- DISPLAY_ID from 28339 to 17185
+        UPDATE `item_template` SET `display_id` = '17185' WHERE (`entry` = '9631');
+        -- ARMOR from 76 to 35
+        UPDATE `item_template` SET `armor` = '35' WHERE (`entry` = '9631');
+
+
+        -- Item: Scaled Leather Belt
+        -- Entry: 9827
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 11:17:26
+        -- New date:         2004-11-08 11:17:26
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-06-14 18:52:36
+        -- New date:         2004-09-23 00:18:29
+        -- Days diff: 264
+
+        -- DISPLAY_ID from 14936 to 14774
+        UPDATE `item_template` SET `display_id` = '14774' WHERE (`entry` = '9827');
+        -- ARMOR from 53 to 52
+        UPDATE `item_template` SET `armor` = '52' WHERE (`entry` = '9827');
+
+
+        -- Item: Plans: Runed Mithril Hammer
+        -- Entry: 8028
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:26:06
+        -- New date:         2005-03-22 21:26:06
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 4 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '8028');
+
+
+        -- Item: Platemail Helm
+        -- Entry: 8092
+
+        -- NAME
+        -- Current date:     2004-08-22 15:23:50
+        -- New date:         2004-08-22 15:23:50
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-11-08 04:19:37
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-08-22 15:23:50
+        -- Days diff: 77
+
+        -- STAT_TYPE1
+        -- Current date:     2004-08-22 15:23:50
+        -- New date:         2004-08-22 15:23:50
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-08-22 15:23:50
+        -- New date:         2004-08-22 15:23:50
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-08-22 15:23:50
+        -- New date:         2004-08-22 15:23:50
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-08-22 15:23:50
+        -- New date:         2004-08-22 15:23:50
+        -- Days diff: Unknown
+
+        -- NAME from Platemail Helm to Field Plate Helm
+        UPDATE `item_template` SET `name` = 'Field Plate Helm' WHERE (`entry` = '8092');
+        -- DISPLAY_ID from 15340 to 15320
+        UPDATE `item_template` SET `display_id` = '15320' WHERE (`entry` = '8092');
+        -- ARMOR from 371 to 75
+        UPDATE `item_template` SET `armor` = '75' WHERE (`entry` = '8092');
+        -- STAT_TYPE1 from 0 to 6
+        UPDATE `item_template` SET `stat_type1` = '6' WHERE (`entry` = '8092');
+        -- STAT_VALUE1 from 0 to 4
+        UPDATE `item_template` SET `stat_value1` = '4' WHERE (`entry` = '8092');
+        -- STAT_TYPE2 from 0 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '8092');
+        -- STAT_VALUE2 from 0 to 4
+        UPDATE `item_template` SET `stat_value2` = '4' WHERE (`entry` = '8092');
+
+
+        -- Item: Gloves of Old
+        -- Entry: 9395
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:59
+        -- New date:         2004-08-20 10:26:36
+        -- Days diff: 79
+
+        -- ARMOR from 32 to 16
+        UPDATE `item_template` SET `armor` = '16' WHERE (`entry` = '9395');
+
+
+        -- Item: Vice Grips
+        -- Entry: 9640
+
+        -- ARMOR
+        -- Current date:     2005-12-15 12:54:07
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 482
+
+        -- SPELLID_1
+        -- Current date:     2005-12-15 12:54:07
+        -- New date:         2004-10-01 02:27:05
+        -- Days diff: 440
+
+        -- ARMOR from 318 to 76
+        UPDATE `item_template` SET `armor` = '76' WHERE (`entry` = '9640');
+        -- SPELLID_1 from 9142 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '9640');
+
+
+        -- Item: Fortified Spaulders
+        -- Entry: 9817
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:09:02
+        -- New date:         2004-11-08 03:09:02
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-05-22 23:05:00
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 233
+
+        -- DISPLAY_ID from 25774 to 12489
+        UPDATE `item_template` SET `display_id` = '12489' WHERE (`entry` = '9817');
+        -- ARMOR from 139 to 150
+        UPDATE `item_template` SET `armor` = '150' WHERE (`entry` = '9817');
+
+
+        -- Item: Mistscape Mantle
+        -- Entry: 4734
+
+        -- NAME
+        -- Current date:     2004-06-25 00:00:00
+        -- New date:         2004-06-21 11:55:32
+        -- Days diff: 3
+        -- Overrides WDB:                   4149
+
+        -- NAME from Mistscape Mantle to Mistweave Mantle
+        UPDATE `item_template` SET `name` = 'Mistweave Mantle' WHERE (`entry` = '4734');
+
+
+        -- Item: Gnomish Universal Remote
+        -- Entry: 7506
+
+        -- SUBCLASS
+        -- Current date:     2004-08-20 11:14:41
+        -- New date:         2004-08-20 11:14:41
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:14:41
+        -- New date:         2004-08-20 11:14:41
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:14:41
+        -- New date:         2004-08-20 11:14:41
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 3 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '7506');
+        -- INVENTORY_TYPE from 12 to 0
+        UPDATE `item_template` SET `inventory_type` = '0' WHERE (`entry` = '7506');
+        -- INVENTORY_TYPE from 12 to 0
+        UPDATE `item_template` SET `inventory_type` = '0' WHERE (`entry` = '7506');
+
+
+        -- Item: Crochet Hat
+        -- Entry: 8749
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-08-20 11:50:29
+        -- Days diff: 79
+
+        -- ARMOR from 41 to 12
+        UPDATE `item_template` SET `armor` = '12' WHERE (`entry` = '8749');
+
+
+        -- Item: Volatile Rum
+        -- Entry: 9260
+
+        -- STACKABLE
+        -- Current date:     2004-08-20 11:51:10
+        -- New date:         2004-08-20 11:51:10
+        -- Days diff: Unknown
+
+        -- STACKABLE from 10 to 1
+        UPDATE `item_template` SET `stackable` = '1' WHERE (`entry` = '9260');
+
+
+        -- Item: Efflorescent Robe
+        -- Entry: 7334
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-01 19:23:53
+        -- New date:         2004-07-01 19:23:53
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 22:05:00
+        -- New date:         2004-08-30 16:50:40
+        -- Days diff: 70
+
+        -- FIRE_RES
+        -- Current date:     2004-08-30 16:50:40
+        -- New date:         2004-08-30 16:50:40
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 16523 to 14067
+        UPDATE `item_template` SET `display_id` = '14067' WHERE (`entry` = '7334');
+        -- ARMOR from 41 to 20
+        UPDATE `item_template` SET `armor` = '20' WHERE (`entry` = '7334');
+        -- FIRE_RES from 0 to 1
+        UPDATE `item_template` SET `fire_res` = '1' WHERE (`entry` = '7334');
+
+
+        -- Item: Silithid Heart
+        -- Entry: 5855
+
+        -- NAME
+        -- Current date:     2004-09-04 02:08:24
+        -- New date:         2004-09-04 02:08:24
+        -- Days diff: Unknown
+
+        -- NAME from Silithid Heart to Sillithid Heart
+        UPDATE `item_template` SET `name` = 'Sillithid Heart' WHERE (`entry` = '5855');
+
+
+        -- Item: Small Stone Shard
+        -- Entry: 4626
+
+        -- STACKABLE
+        -- Current date:     2004-07-29 15:49:43
+        -- New date:         2004-07-29 15:49:43
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4626');
+
+
+        -- Item: Brushwood Blade
+        -- Entry: 9602
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-08-22 15:23:51
+        -- Days diff: 37
+        -- Overrides WDB:                   3925
+
+        -- DISPLAY_ID from 20069 to 1621
+        UPDATE `item_template` SET `display_id` = '1621' WHERE (`entry` = '9602');
+
+
+        -- Item: Skullchipper
+        -- Entry: 5626
+
+        -- DMG_MIN1
+        -- Current date:     2004-05-28 12:19:37
+        -- New date:         2004-05-28 12:19:37
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-05-28 12:19:37
+        -- New date:         2004-05-28 12:19:37
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-05-28 12:19:37
+        -- New date:         2004-05-28 12:19:37
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 32 to 47
+        UPDATE `item_template` SET `dmg_min1` = '47' WHERE (`entry` = '5626');
+        -- DMG_MAX1 from 48 to 64
+        UPDATE `item_template` SET `dmg_max1` = '64' WHERE (`entry` = '5626');
+        -- REQUIRED_LEVEL from 15 to 10
+        UPDATE `item_template` SET `required_level` = '10' WHERE (`entry` = '5626');
+
+
+        -- Item: Adventurer's Pith Helmet
+        -- Entry: 9420
+
+        -- ARMOR
+        -- Current date:     2005-05-02 18:08:52
+        -- New date:         2004-08-20 11:14:43
+        -- Days diff: 255
+
+        -- STAT_TYPE3
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-10-01 02:27:06
+        -- Days diff: Unknown
+
+        -- STAT_VALUE3
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-10-01 02:27:06
+        -- Days diff: Unknown
+
+        -- ARMOR from 94 to 35
+        UPDATE `item_template` SET `armor` = '35' WHERE (`entry` = '9420');
+        -- STAT_TYPE3 from 7 to 0
+        UPDATE `item_template` SET `stat_type3` = '0' WHERE (`entry` = '9420');
+        -- STAT_VALUE3 from 14 to 0
+        UPDATE `item_template` SET `stat_value3` = '0' WHERE (`entry` = '9420');
+
+
+        -- Item: Grimlok's Charge
+        -- Entry: 9416
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-21 11:32:08
+        -- New date:         2004-09-21 11:32:08
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2005-04-26 00:17:21
+        -- New date:         2005-04-26 00:17:21
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2005-04-26 00:17:21
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 291
+
+        -- DMG_MAX1
+        -- Current date:     2005-04-26 00:17:21
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 291
+
+        -- INVENTORY_TYPE
+        -- Current date:     2005-04-26 00:17:21
+        -- New date:         2005-04-26 00:17:21
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2005-04-26 00:17:21
+        -- New date:         2005-04-26 00:17:21
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 22233 to 18306
+        UPDATE `item_template` SET `display_id` = '18306' WHERE (`entry` = '9416');
+        -- SUBCLASS from 6 to 17
+        UPDATE `item_template` SET `subclass` = '17' WHERE (`entry` = '9416');
+        -- DMG_MIN1 from 88 to 61
+        UPDATE `item_template` SET `dmg_min1` = '61' WHERE (`entry` = '9416');
+        -- DMG_MAX1 from 133 to 92
+        UPDATE `item_template` SET `dmg_max1` = '92' WHERE (`entry` = '9416');
+        -- INVENTORY_TYPE from 17 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '9416');
+        -- INVENTORY_TYPE from 17 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '9416');
+
+
+        -- Item: Tough Leather Gloves
+        -- Entry: 1807
+
+        -- NAME
+        -- Current date:     2004-06-25 00:00:00
+        -- New date:         2004-05-25 13:47:18
+        -- Days diff: 30
+        -- Overrides WDB:                   4149
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-25 00:00:00
+        -- New date:         2004-05-25 13:47:18
+        -- Days diff: 30
+        -- Overrides WDB:                   4149
+
+        -- NAME from Tough Leather Gloves to Hardened Leather Gloves
+        UPDATE `item_template` SET `name` = 'Hardened Leather Gloves' WHERE (`entry` = '1807');
+        -- REQUIRED_LEVEL from 24 to 19
+        UPDATE `item_template` SET `required_level` = '19' WHERE (`entry` = '1807');
+
+
+        -- Item: Gothic Shield
+        -- Entry: 7537
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-08 15:42:33
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:38
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: 79
+
+        -- BLOCK
+        -- Current date:     2004-09-23 00:15:42
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: 76
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-08-20 10:26:39
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-08-20 10:26:39
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 18775 to 15419
+        UPDATE `item_template` SET `display_id` = '15419' WHERE (`entry` = '7537');
+        -- ARMOR from 1521 to 187
+        UPDATE `item_template` SET `armor` = '187' WHERE (`entry` = '7537');
+        -- BLOCK from 23 to 58
+        UPDATE `item_template` SET `block` = '58' WHERE (`entry` = '7537');
+        -- REQUIRED_LEVEL from 44 to 42
+        UPDATE `item_template` SET `required_level` = '42' WHERE (`entry` = '7537');
+        -- ITEM_LEVEL from 44 to 42
+        UPDATE `item_template` SET `item_level` = '42' WHERE (`entry` = '7537');
+
+
+        -- Item: Hefty War Axe
+        -- Entry: 3779
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:08
+        -- New date:         2004-07-12 15:16:31
+        -- Days diff: 80
+
+        -- DMG_MAX1 from 44 to 43
+        UPDATE `item_template` SET `dmg_max1` = '43' WHERE (`entry` = '3779');
+
+
+        -- Item: Worn Running Boots
+        -- Entry: 9398
+
+        -- ARMOR
+        -- Current date:     2005-03-13 13:57:38
+        -- New date:         2004-09-04 02:08:22
+        -- Days diff: 190
+
+        -- STAT_VALUE1
+        -- Current date:     2005-03-13 13:57:38
+        -- New date:         2004-09-04 02:08:22
+        -- Days diff: 190
+
+        -- ARMOR from 72 to 36
+        UPDATE `item_template` SET `armor` = '36' WHERE (`entry` = '9398');
+        -- STAT_VALUE1 from 11 to 3
+        UPDATE `item_template` SET `stat_value1` = '3' WHERE (`entry` = '9398');
+
+
+        -- Item: Celestial Stave
+        -- Entry: 9517
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-22 15:23:48
+        -- New date:         2004-08-22 15:23:48
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-02 10:49:56
+        -- New date:         2004-07-12 15:16:31
+        -- Days diff: 81
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-02 10:49:56
+        -- New date:         2004-07-12 15:16:31
+        -- Days diff: 81
+
+        -- SPELLID_1
+        -- Current date:     2004-10-02 10:49:56
+        -- New date:         2004-08-22 15:23:48
+        -- Days diff: 40
+
+        -- SPELLID_2
+        -- Current date:     2004-10-02 10:49:56
+        -- New date:         2004-08-22 15:23:48
+        -- Days diff: 40
+
+        -- SPELLID_3
+        -- Current date:     2004-10-02 10:49:56
+        -- New date:         2004-08-22 15:23:48
+        -- Days diff: 40
+
+        -- STAT_TYPE1
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-11-08 04:19:36
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-11-08 04:19:36
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20348 to 18442
+        UPDATE `item_template` SET `display_id` = '18442' WHERE (`entry` = '9517');
+        -- DMG_MIN1 from 69 to 71
+        UPDATE `item_template` SET `dmg_min1` = '71' WHERE (`entry` = '9517');
+        -- DMG_MAX1 from 104 to 107
+        UPDATE `item_template` SET `dmg_max1` = '107' WHERE (`entry` = '9517');
+        -- SPELLID_1 from 13597 to 7687
+        UPDATE `item_template` SET `spellid_1` = '7687' WHERE (`entry` = '9517');
+        -- SPELLID_2 from 9399 to 7701
+        UPDATE `item_template` SET `spellid_2` = '7701' WHERE (`entry` = '9517');
+        -- SPELLID_3 from 9402 to 0
+        UPDATE `item_template` SET `spellid_3` = '0' WHERE (`entry` = '9517');
+        -- STAT_TYPE1 from 5 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '9517');
+        -- STAT_VALUE1 from 2 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '9517');
+
+
+        -- Item: Dire Wand
+        -- Entry: 8186
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:30
+        -- New date:         2004-08-20 11:50:30
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-22 21:27:14
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 76
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-22 21:27:14
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 76
+
+        -- DISPLAY_ID from 20851 to 18344
+        UPDATE `item_template` SET `display_id` = '18344' WHERE (`entry` = '8186');
+        -- DMG_MIN1 from 24 to 15
+        UPDATE `item_template` SET `dmg_min1` = '15' WHERE (`entry` = '8186');
+        -- DMG_MAX1 from 45 to 29
+        UPDATE `item_template` SET `dmg_max1` = '29' WHERE (`entry` = '8186');
+
+
+        -- Item: Fiery War Axe
+        -- Entry: 870
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-12 08:22:30
+        -- New date:         2004-07-12 15:16:43
+        -- Days diff: 91
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-12 08:22:30
+        -- New date:         2004-07-12 15:16:43
+        -- Days diff: 91
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-10-12 08:22:30
+        -- New date:         2004-06-30 21:47:49
+        -- Days diff: 103
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-12 08:22:30
+        -- New date:         2004-06-30 21:47:49
+        -- Days diff: 103
+
+        -- DMG_MIN1 from 93 to 88
+        UPDATE `item_template` SET `dmg_min1` = '88' WHERE (`entry` = '870');
+        -- DMG_MAX1 from 141 to 133
+        UPDATE `item_template` SET `dmg_max1` = '133' WHERE (`entry` = '870');
+        -- REQUIRED_LEVEL from 35 to 29
+        UPDATE `item_template` SET `required_level` = '29' WHERE (`entry` = '870');
+        -- ITEM_LEVEL from 35 to 29
+        UPDATE `item_template` SET `item_level` = '29' WHERE (`entry` = '870');
+
+
+        -- Item: Firestarter
+        -- Entry: 8184
+
+        -- DMG_MIN1
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-07-08 16:56:42
+        -- Days diff: 122
+
+        -- DMG_MAX1
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-07-08 16:56:42
+        -- Days diff: 122
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-11-08 04:19:37
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-11-08 04:19:37
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 24 to 13
+        UPDATE `item_template` SET `dmg_min1` = '13' WHERE (`entry` = '8184');
+        -- DMG_MAX1 from 46 to 26
+        UPDATE `item_template` SET `dmg_max1` = '26' WHERE (`entry` = '8184');
+        -- REQUIRED_LEVEL from 24 to 23
+        UPDATE `item_template` SET `required_level` = '23' WHERE (`entry` = '8184');
+        -- ITEM_LEVEL from 24 to 23
+        UPDATE `item_template` SET `item_level` = '23' WHERE (`entry` = '8184');
+
+
+        -- Item: Wolfshead Helm
+        -- Entry: 8345
+
+        -- DISPLAY_ID
+        -- Current date:     2004-12-21 20:44:43
+        -- New date:         2004-11-08 03:30:02
+        -- Days diff: 43
+
+        -- SUBCLASS
+        -- Current date:     2004-07-08 15:42:35
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:02
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- SPELLID_1
+        -- Current date:     2004-10-01 08:28:03
+        -- New date:         2004-10-01 08:28:03
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 28987 to 16675
+        UPDATE `item_template` SET `display_id` = '16675' WHERE (`entry` = '8345');
+        -- SUBCLASS from 2 to 3
+        UPDATE `item_template` SET `subclass` = '3' WHERE (`entry` = '8345');
+        -- ARMOR from 109 to 61
+        UPDATE `item_template` SET `armor` = '61' WHERE (`entry` = '8345');
+        -- SPELLID_1 from 17768 to 10576
+        UPDATE `item_template` SET `spellid_1` = '10576' WHERE (`entry` = '8345');
+
+
+        -- Item: Iron Knuckles
+        -- Entry: 2942
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-10 06:50:13
+        -- New date:         2004-09-27 21:31:46
+        -- Days diff: 12
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-10 06:50:13
+        -- New date:         2004-09-27 21:31:46
+        -- Days diff: 12
+
+        -- DMG_MIN1 from 19 to 16
+        UPDATE `item_template` SET `dmg_min1` = '16' WHERE (`entry` = '2942');
+        -- DMG_MAX1 from 37 to 30
+        UPDATE `item_template` SET `dmg_max1` = '30' WHERE (`entry` = '2942');
+
+
+        -- Item: Gritroot Staff
+        -- Entry: 9603
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-08-21 10:31:23
+        -- Days diff: 38
+        -- Overrides WDB:                   3925
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:05
+        -- New date:         2004-07-09 11:31:51
+        -- Days diff: 83
+        -- Overrides WDB:                   3925
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:05
+        -- New date:         2004-07-09 11:31:51
+        -- Days diff: 83
+        -- Overrides WDB:                   3925
+
+        -- DISPLAY_ID from 20432 to 18530
+        UPDATE `item_template` SET `display_id` = '18530' WHERE (`entry` = '9603');
+        -- DMG_MIN1 from 14 to 13
+        UPDATE `item_template` SET `dmg_min1` = '13' WHERE (`entry` = '9603');
+        -- DMG_MAX1 from 22 to 21
+        UPDATE `item_template` SET `dmg_max1` = '21' WHERE (`entry` = '9603');
+
+
+        -- Item: Pendulum of Doom
+        -- Entry: 9425
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-23 19:49:10
+        -- New date:         2004-09-23 19:49:10
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-23 19:49:10
+        -- New date:         2004-08-21 11:18:27
+        -- Days diff: 33
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-23 19:49:10
+        -- New date:         2004-08-21 11:18:27
+        -- Days diff: 33
+
+        -- SPELLID_1
+        -- Current date:     2004-08-21 11:18:27
+        -- New date:         2004-08-21 11:18:27
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 22220 to 18326
+        UPDATE `item_template` SET `display_id` = '18326' WHERE (`entry` = '9425');
+        -- DMG_MIN1 from 124 to 103
+        UPDATE `item_template` SET `dmg_min1` = '103' WHERE (`entry` = '9425');
+        -- DMG_MAX1 from 187 to 155
+        UPDATE `item_template` SET `dmg_max1` = '155' WHERE (`entry` = '9425');
+        -- SPELLID_1 from 10373 to 9405
+        UPDATE `item_template` SET `spellid_1` = '9405' WHERE (`entry` = '9425');
+
+
+        -- Item: Orb of Deception
+        -- Entry: 1973
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-21 11:31:46
+        -- New date:         2004-09-21 11:31:46
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-09-21 11:31:46
+        -- New date:         2004-09-21 11:31:46
+        -- Days diff: Unknown
+
+        -- SHADOW_RES
+        -- Current date:     2004-08-20 10:23:59
+        -- New date:         2004-08-20 10:23:59
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 54 to 43
+        UPDATE `item_template` SET `required_level` = '43' WHERE (`entry` = '1973');
+        -- ITEM_LEVEL from 54 to 43
+        UPDATE `item_template` SET `item_level` = '43' WHERE (`entry` = '1973');
+        -- SHADOW_RES from 0 to 1
+        UPDATE `item_template` SET `shadow_res` = '1' WHERE (`entry` = '1973');
+
+
+        -- Item: Banded Bracers
+        -- Entry: 9837
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-11-08 07:05:06
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-12-21 20:41:52
+        -- New date:         2004-09-24 14:12:47
+        -- Days diff: 88
+
+        -- DISPLAY_ID from 27783 to 12492
+        UPDATE `item_template` SET `display_id` = '12492' WHERE (`entry` = '9837');
+        -- ARMOR from 87 to 100
+        UPDATE `item_template` SET `armor` = '100' WHERE (`entry` = '9837');
+
+
+        -- Item: Tok'kar's Murloc Shanker
+        -- Entry: 9680
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:14
+        -- New date:         2004-08-20 11:50:14
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:33:51
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 77
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:33:51
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 77
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:33:51
+        -- New date:         2004-09-23 00:14:24
+        -- Days diff: 8
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:33:51
+        -- New date:         2004-08-20 11:50:14
+        -- Days diff: 41
+
+        -- DISPLAY_ID from 20475 to 18596
+        UPDATE `item_template` SET `display_id` = '18596' WHERE (`entry` = '9680');
+        -- DMG_MIN1 from 28 to 26
+        UPDATE `item_template` SET `dmg_min1` = '26' WHERE (`entry` = '9680');
+        -- DMG_MAX1 from 52 to 50
+        UPDATE `item_template` SET `dmg_max1` = '50' WHERE (`entry` = '9680');
+        -- STAT_TYPE2 from 3 to 6
+        UPDATE `item_template` SET `stat_type2` = '6' WHERE (`entry` = '9680');
+        -- STAT_VALUE2 from 6 to 2
+        UPDATE `item_template` SET `stat_value2` = '2' WHERE (`entry` = '9680');
+
+
+        -- Item: Ice Deflector
+        -- Entry: 4386
+
+        -- SUBCLASS
+        -- Current date:     2004-10-06 18:15:19
+        -- New date:         2004-10-06 18:15:19
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 3 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4386');
+
+
+        -- Item: Krol Blade
+        -- Entry: 2244
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-14 11:13:17
+        -- New date:         2004-09-25 21:26:58
+        -- Days diff: 18
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-14 11:13:17
+        -- New date:         2004-09-25 21:26:58
+        -- Days diff: 18
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-04 11:26:12
+        -- New date:         2004-09-25 21:26:58
+        -- Days diff: 8
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-04 11:26:12
+        -- New date:         2004-09-25 21:26:58
+        -- Days diff: 8
+
+        -- DMG_MIN1 from 80 to 93
+        UPDATE `item_template` SET `dmg_min1` = '93' WHERE (`entry` = '2244');
+        -- DMG_MAX1 from 149 to 174
+        UPDATE `item_template` SET `dmg_max1` = '174' WHERE (`entry` = '2244');
+        -- STAT_TYPE1 from 4 to 3
+        UPDATE `item_template` SET `stat_type1` = '3' WHERE (`entry` = '2244');
+        -- STAT_VALUE1 from 7 to 14
+        UPDATE `item_template` SET `stat_value1` = '14' WHERE (`entry` = '2244');
+
+
+        -- Item: Shinkicker Boots
+        -- Entry: 9637
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 02:27:41
+        -- New date:         2004-07-08 15:50:26
+        -- Days diff: 122
+
+        -- ARMOR
+        -- Current date:     2004-11-08 02:27:41
+        -- New date:         2004-08-20 10:23:59
+        -- Days diff: 79
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:27:05
+        -- New date:         2004-08-20 10:23:59
+        -- Days diff: 41
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:05
+        -- New date:         2004-08-20 10:23:59
+        -- Days diff: 41
+
+        -- DISPLAY_ID from 28252 to 18582
+        UPDATE `item_template` SET `display_id` = '18582' WHERE (`entry` = '9637');
+        -- ARMOR from 300 to 85
+        UPDATE `item_template` SET `armor` = '85' WHERE (`entry` = '9637');
+        -- STAT_TYPE2 from 3 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '9637');
+        -- STAT_VALUE2 from 9 to 10
+        UPDATE `item_template` SET `stat_value2` = '10' WHERE (`entry` = '9637');
+
+
+        -- Item: Hero's Belt
+        -- Entry: 8306
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:02
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: 38
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:33:44
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:33:44
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: Unknown
+
+        -- ARMOR from 179 to 162
+        UPDATE `item_template` SET `armor` = '162' WHERE (`entry` = '8306');
+        -- STAT_TYPE2 from 7 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '8306');
+        -- STAT_VALUE2 from 13 to 4
+        UPDATE `item_template` SET `stat_value2` = '4' WHERE (`entry` = '8306');
+
+
+        -- Item: Tough Leather Belt
+        -- Entry: 1803
+
+        -- NAME
+        -- Current date:     2004-06-25 00:00:00
+        -- New date:         2004-05-28 12:19:51
+        -- Days diff: 27
+        -- Overrides WDB:                   4149
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-25 00:00:00
+        -- New date:         2004-05-28 12:19:51
+        -- Days diff: 27
+        -- Overrides WDB:                   4149
+
+        -- NAME from Tough Leather Belt to Hardened Leather Belt
+        UPDATE `item_template` SET `name` = 'Hardened Leather Belt' WHERE (`entry` = '1803');
+        -- REQUIRED_LEVEL from 25 to 20
+        UPDATE `item_template` SET `required_level` = '20' WHERE (`entry` = '1803');
+
+
+        -- Item: Black Water Hammer
+        -- Entry: 4511
+
+        -- NAME
+        -- Current date:     2004-07-14 17:12:25
+        -- New date:         2004-07-14 17:12:25
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:07
+        -- New date:         2004-06-20 23:31:02
+        -- Days diff: 102
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:07
+        -- New date:         2004-06-20 23:31:02
+        -- Days diff: 102
+
+        -- NAME from Black Water Hammer to Black Sea Mace
+        UPDATE `item_template` SET `name` = 'Black Sea Mace' WHERE (`entry` = '4511');
+        -- DMG_MIN1 from 42 to 41
+        UPDATE `item_template` SET `dmg_min1` = '41' WHERE (`entry` = '4511');
+        -- DMG_MAX1 from 78 to 77
+        UPDATE `item_template` SET `dmg_max1` = '77' WHERE (`entry` = '4511');
+
+
+        -- Item: Skull Hatchet
+        -- Entry: 2066
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-08-22 12:15:44
+        -- New date:         2004-05-28 12:19:47
+        -- Days diff: 85
+
+        -- REQUIRED_LEVEL from 3 to 1
+        UPDATE `item_template` SET `required_level` = '1' WHERE (`entry` = '2066');
+
+
+        -- Item: Pattern: Tough Scorpid Breastplate
+        -- Entry: 8395
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:10:46
+        -- New date:         2005-03-22 21:10:46
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '8395');
+
+
+        -- Item: Staff of Jordan
+        -- Entry: 873
+
+        -- SPELLID_1
+        -- Current date:     2004-10-12 15:51:29
+        -- New date:         2004-08-20 11:51:08
+        -- Days diff: 53
+
+        -- SPELLID_1 from 18049 to 9346
+        UPDATE `item_template` SET `spellid_1` = '9346' WHERE (`entry` = '873');
+
+
+        -- Item: Pattern: Greater Adept's Robe
+        -- Entry: 6275
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:18:14
+        -- New date:         2005-03-22 21:18:14
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 2 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '6275');
+
+
+        -- Item: Wall of the Dead
+        -- Entry: 1979
+
+        -- ARMOR
+        -- Current date:     2004-10-01 02:27:13
+        -- New date:         2004-08-20 11:51:01
+        -- Days diff: 41
+
+        -- BLOCK
+        -- Current date:     2005-03-04 22:01:01
+        -- New date:         2004-08-20 11:51:01
+        -- Days diff: 196
+
+        -- SPELLID_1
+        -- Current date:     2005-03-04 22:01:01
+        -- New date:         2004-10-01 02:27:13
+        -- Days diff: 154
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2005-03-04 22:01:01
+        -- New date:         2004-10-12 18:27:21
+        -- Days diff: 143
+
+        -- ITEM_LEVEL
+        -- Current date:     2005-03-04 22:01:01
+        -- New date:         2004-10-12 18:27:21
+        -- Days diff: 143
+
+        -- ARMOR from 864 to 228
+        UPDATE `item_template` SET `armor` = '228' WHERE (`entry` = '1979');
+        -- BLOCK from 34 to 53
+        UPDATE `item_template` SET `block` = '53' WHERE (`entry` = '1979');
+        -- SPELLID_1 from 19409 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '1979');
+        -- REQUIRED_LEVEL from 45 to 43
+        UPDATE `item_template` SET `required_level` = '43' WHERE (`entry` = '1979');
+        -- ITEM_LEVEL from 45 to 43
+        UPDATE `item_template` SET `item_level` = '43' WHERE (`entry` = '1979');
+
+
+        -- Item: Harness: Black Ram
+        -- Entry: 5874
+
+        -- NAME
+        -- Current date:     2004-08-05 21:03:41
+        -- New date:         2004-08-05 21:03:41
+        -- Days diff: Unknown
+
+        -- CLASS
+        -- Current date:     2004-09-07 22:09:09
+        -- New date:         2004-09-07 22:09:09
+        -- Days diff: Unknown
+
+        -- NAME from Harness: Black Ram to Black Ram Harness
+        UPDATE `item_template` SET `name` = 'Black Ram Harness' WHERE (`entry` = '5874');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '5874');
+
+
+        -- Item: White Ram
+        -- Entry: 5873
+
+        -- NAME
+        -- Current date:     2004-10-09 03:13:01
+        -- New date:         2004-08-05 21:03:41
+        -- Days diff: 64
+
+        -- CLASS
+        -- Current date:     2004-09-07 22:09:09
+        -- New date:         2004-09-07 22:09:09
+        -- Days diff: Unknown
+
+        -- NAME from White Ram to White Ram Harness
+        UPDATE `item_template` SET `name` = 'White Ram Harness' WHERE (`entry` = '5873');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '5873');
+
+
+        -- Item: Gizmotron Megachopper
+        -- Entry: 9490
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-07-09 11:31:51
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-07-09 11:31:51
+        -- Days diff: 84
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-10-01 18:41:21
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-10-01 18:41:21
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 61 to 48
+        UPDATE `item_template` SET `dmg_min1` = '48' WHERE (`entry` = '9490');
+        -- DMG_MAX1 from 92 to 72
+        UPDATE `item_template` SET `dmg_max1` = '72' WHERE (`entry` = '9490');
+        -- STAT_TYPE2 from 3 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '9490');
+        -- STAT_VALUE2 from 5 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '9490');
+
+
+        -- Item: Spidertank Oilrag
+        -- Entry: 9448
+
+        -- ARMOR
+        -- Current date:     2004-11-08 22:09:46
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: 80
+
+        -- ARMOR from 20 to 13
+        UPDATE `item_template` SET `armor` = '13' WHERE (`entry` = '9448');
+
+
+        -- Item: Steelarrow Crossbow
+        -- Entry: 6315
+
+        -- NAME
+        -- Current date:     2004-08-20 11:51:03
+        -- New date:         2004-08-20 11:51:03
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2005-02-15 14:01:41
+        -- New date:         2004-08-20 11:51:03
+        -- Days diff: 179
+
+        -- DMG_MAX1
+        -- Current date:     2005-02-15 14:01:41
+        -- New date:         2004-08-20 11:51:03
+        -- Days diff: 179
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-01 17:09:00
+        -- New date:         2004-07-01 17:09:00
+        -- Days diff: Unknown
+
+        -- NAME from Steelarrow Crossbow to Dark Iron Crossbow
+        UPDATE `item_template` SET `name` = 'Dark Iron Crossbow' WHERE (`entry` = '6315');
+        -- DMG_MIN1 from 29 to 27
+        UPDATE `item_template` SET `dmg_min1` = '27' WHERE (`entry` = '6315');
+        -- DMG_MAX1 from 45 to 41
+        UPDATE `item_template` SET `dmg_max1` = '41' WHERE (`entry` = '6315');
+        -- REQUIRED_LEVEL from 22 to 17
+        UPDATE `item_template` SET `required_level` = '17' WHERE (`entry` = '6315');
+
+
+        -- Item: Hollow Vulture Bone
+        -- Entry: 5848
+
+        -- STACKABLE
+        -- Current date:     2004-07-15 00:04:17
+        -- New date:         2004-07-15 00:04:17
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '5848');
+
+
+        -- Item: Sorcerer Mantle
+        -- Entry: 9881
+
+        -- NAME
+        -- Current date:     2005-12-23 20:27:47
+        -- New date:         2004-11-08 07:05:06
+        -- Days diff: 410
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-11-08 07:05:06
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- NAME from Sorcerer Mantle to Sorceress Mantle
+        UPDATE `item_template` SET `name` = 'Sorceress Mantle' WHERE (`entry` = '9881');
+        -- DISPLAY_ID from 28068 to 14589
+        UPDATE `item_template` SET `display_id` = '14589' WHERE (`entry` = '9881');
+        -- ARMOR from 40 to 71
+        UPDATE `item_template` SET `armor` = '71' WHERE (`entry` = '9881');
+
+
+        -- Item: Crystalized Scales
+        -- Entry: 5675
+
+        -- STACKABLE
+        -- Current date:     2004-06-23 13:32:13
+        -- New date:         2004-06-23 13:32:13
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '5675');
+
+
+        -- Item: Lightforge Ingot
+        -- Entry: 2702
+
+        -- STACKABLE
+        -- Current date:     2004-07-27 15:33:11
+        -- New date:         2004-07-27 15:33:11
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '2702');
+
+
+        -- Item: Axe of the Deep Woods
+        -- Entry: 811
+
+        -- SPELLID_1
+        -- Current date:     2004-10-01 08:28:05
+        -- New date:         2004-09-22 21:27:22
+        -- Days diff: 8
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-10-12 03:55:59
+        -- New date:         2004-10-12 03:55:59
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-12 03:55:59
+        -- New date:         2004-10-12 03:55:59
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 18104 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '811');
+        -- REQUIRED_LEVEL from 52 to 48
+        UPDATE `item_template` SET `required_level` = '48' WHERE (`entry` = '811');
+        -- ITEM_LEVEL from 52 to 48
+        UPDATE `item_template` SET `item_level` = '48' WHERE (`entry` = '811');
+
+
+        -- Item: Beacon of Hope
+        -- Entry: 9393
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 18:08:43
+        -- New date:         2004-08-20 18:08:43
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 9408 to 498
+        UPDATE `item_template` SET `spellid_1` = '498' WHERE (`entry` = '9393');
+
+
+        -- Item: Abjurer's Tunic
+        -- Entry: 9946
+
+        -- DISPLAY_ID
+        -- Current date:     2004-12-21 20:44:16
+        -- New date:         2004-12-21 20:44:16
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 28972 to 28971
+        UPDATE `item_template` SET `display_id` = '28971' WHERE (`entry` = '9946');
+
+
+        -- Item: Truesilver Champion
+        -- Entry: 7960
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-21 11:32:31
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 32
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-30 20:57:24
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 41
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-30 20:57:24
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 41
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 10:26:38
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 23264 to 16151
+        UPDATE `item_template` SET `display_id` = '16151' WHERE (`entry` = '7960');
+        -- DMG_MIN1 from 108 to 97
+        UPDATE `item_template` SET `dmg_min1` = '97' WHERE (`entry` = '7960');
+        -- DMG_MAX1 from 162 to 146
+        UPDATE `item_template` SET `dmg_max1` = '146' WHERE (`entry` = '7960');
+        -- SPELLID_1 from 9800 to 9801
+        UPDATE `item_template` SET `spellid_1` = '9801' WHERE (`entry` = '7960');
+
+
+        -- Item: Rabbit Crate (Snowshoe)
+        -- Entry: 8497
+
+        -- CLASS
+        -- Current date:     2004-09-03 16:27:50
+        -- New date:         2004-09-03 16:27:50
+        -- Days diff: Unknown
+
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8497');
+
+
+        -- Item: OOX-22/FE Distress Beacon
+        -- Entry: 8705
+
+        -- SELL_PRICE
+        -- Current date:     2004-10-14 15:33:33
+        -- New date:         2004-10-14 15:33:33
+        -- Days diff: Unknown
+
+        -- BUY_PRICE
+        -- Current date:     2004-10-14 15:33:33
+        -- New date:         2004-10-14 15:33:33
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-10-14 15:33:33
+        -- New date:         2004-10-14 15:33:33
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-14 15:33:33
+        -- New date:         2004-10-14 15:33:33
+        -- Days diff: Unknown
+
+        -- SELL_PRICE from 0 to 6851
+        UPDATE `item_template` SET `sell_price` = '6851' WHERE (`entry` = '8705');
+        -- BUY_PRICE from 0 to 1712
+        UPDATE `item_template` SET `buy_price` = '1712' WHERE (`entry` = '8705');
+        -- REQUIRED_LEVEL from 40 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '8705');
+        -- ITEM_LEVEL from 40 to 0
+        UPDATE `item_template` SET `item_level` = '0' WHERE (`entry` = '8705');
+
+
+        -- Item: Steelscale Crushfish
+        -- Entry: 6360
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-07-06 21:24:37
+        -- New date:         2004-07-06 21:24:37
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-07-06 21:24:37
+        -- New date:         2004-07-06 21:24:37
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '6360');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '6360');
+
+
+        -- Item: Traveler's Belt
+        -- Entry: 8293
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-09-30 20:57:21
+        -- Days diff: 38
+
+        -- STAT_TYPE1
+        -- Current date:     2004-09-30 20:57:21
+        -- New date:         2004-09-30 20:57:21
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-09-30 20:57:21
+        -- New date:         2004-09-30 20:57:21
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-09-30 20:57:21
+        -- New date:         2004-09-30 20:57:21
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-09-30 20:57:21
+        -- New date:         2004-09-30 20:57:21
+        -- Days diff: Unknown
+
+        -- ARMOR from 82 to 93
+        UPDATE `item_template` SET `armor` = '93' WHERE (`entry` = '8293');
+        -- STAT_TYPE1 from 7 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '8293');
+        -- STAT_VALUE1 from 5 to 12
+        UPDATE `item_template` SET `stat_value1` = '12' WHERE (`entry` = '8293');
+        -- STAT_TYPE2 from 5 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '8293');
+        -- STAT_VALUE2 from 16 to 35
+        UPDATE `item_template` SET `stat_value2` = '35' WHERE (`entry` = '8293');
+
+
+        -- Item: Skullcrusher Mace
+        -- Entry: 1608
+
+        -- NAME
+        -- Current date:     2004-11-11 11:43:44
+        -- New date:         2004-11-11 11:43:44
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-02 07:55:18
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 85
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-02 07:55:18
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 85
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-11-11 11:43:44
+        -- New date:         2004-11-11 11:43:44
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-11-11 11:43:44
+        -- New date:         2004-11-11 11:43:44
+        -- Days diff: Unknown
+
+        -- NAME from Skullcrusher Mace to Skullcrusher
+        UPDATE `item_template` SET `name` = 'Skullcrusher' WHERE (`entry` = '1608');
+        -- DMG_MIN1 from 53 to 51
+        UPDATE `item_template` SET `dmg_min1` = '51' WHERE (`entry` = '1608');
+        -- DMG_MAX1 from 99 to 96
+        UPDATE `item_template` SET `dmg_max1` = '96' WHERE (`entry` = '1608');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '1608');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '1608');
+
+
+        -- Item: Fortified Cloak
+        -- Entry: 9812
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 02:27:39
+        -- New date:         2004-11-08 02:27:39
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-10-01 01:09:04
+        -- New date:         2004-10-01 01:09:04
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 02:27:39
+        -- New date:         2004-09-23 00:18:29
+        -- Days diff: 46
+
+        -- DISPLAY_ID from 25975 to 15113
+        UPDATE `item_template` SET `display_id` = '15113' WHERE (`entry` = '9812');
+        -- SUBCLASS from 1 to 3
+        UPDATE `item_template` SET `subclass` = '3' WHERE (`entry` = '9812');
+        -- ARMOR from 18 to 111
+        UPDATE `item_template` SET `armor` = '111' WHERE (`entry` = '9812');
+
+
+        -- Item: Ironshod Bludgeon
+        -- Entry: 9408
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:14:43
+        -- New date:         2004-08-20 11:14:43
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:07
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:07
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 84
+
+        -- STAT_TYPE1
+        -- Current date:     2004-09-23 00:14:26
+        -- New date:         2004-08-20 11:14:43
+        -- Days diff: 33
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:07
+        -- New date:         2004-08-20 11:14:43
+        -- Days diff: 41
+
+        -- DISPLAY_ID from 20274 to 18289
+        UPDATE `item_template` SET `display_id` = '18289' WHERE (`entry` = '9408');
+        -- DMG_MIN1 from 74 to 68
+        UPDATE `item_template` SET `dmg_min1` = '68' WHERE (`entry` = '9408');
+        -- DMG_MAX1 from 112 to 102
+        UPDATE `item_template` SET `dmg_max1` = '102' WHERE (`entry` = '9408');
+        -- STAT_TYPE1 from 7 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '9408');
+        -- STAT_VALUE1 from 20 to 6
+        UPDATE `item_template` SET `stat_value1` = '6' WHERE (`entry` = '9408');
+
+
+        -- Item: Malem Pendant
+        -- Entry: 6479
+
+        -- NAME
+        -- Current date:     2004-10-07 18:12:40
+        -- New date:         2004-10-07 18:12:40
+        -- Days diff: Unknown
+
+        -- NAME from Malem Pendant to A Malem Pendant
+        UPDATE `item_template` SET `name` = 'A Malem Pendant' WHERE (`entry` = '6479');
+
+
+        -- Item: Blunting Mace
+        -- Entry: 4021
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:33:43
+        -- New date:         2004-07-03 16:18:02
+        -- Days diff: 89
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:33:43
+        -- New date:         2004-07-03 16:18:02
+        -- Days diff: 89
+
+        -- DMG_MIN1 from 24 to 25
+        UPDATE `item_template` SET `dmg_min1` = '25' WHERE (`entry` = '4021');
+        -- DMG_MAX1 from 45 to 48
+        UPDATE `item_template` SET `dmg_max1` = '48' WHERE (`entry` = '4021');
+
+
+        -- Item: Abjurer's Bands
+        -- Entry: 9937
+
+        -- DISPLAY_ID
+        -- Current date:     2005-12-31 09:50:21
+        -- New date:         2004-11-08 22:05:00
+        -- Days diff: 417
+
+        -- ARMOR
+        -- Current date:     2005-12-31 09:50:21
+        -- New date:         2004-09-23 00:18:29
+        -- Days diff: 464
+
+        -- DISPLAY_ID from 16936 to 15407
+        UPDATE `item_template` SET `display_id` = '15407' WHERE (`entry` = '9937');
+        -- ARMOR from 27 to 48
+        UPDATE `item_template` SET `armor` = '48' WHERE (`entry` = '9937');
+
+
+        -- Item: Ebonhold Leggings
+        -- Entry: 8271
+
+        -- NAME
+        -- Current date:     2004-09-23 00:14:28
+        -- New date:         2004-09-23 00:14:28
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: 38
+
+        -- STAT_TYPE1
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: 38
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-12 15:51:29
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: 11
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:33:44
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:33:44
+        -- New date:         2004-10-01 02:33:44
+        -- Days diff: Unknown
+
+        -- NAME from Ebonhold Leggings to Ebon Chain Leggings
+        UPDATE `item_template` SET `name` = 'Ebon Chain Leggings' WHERE (`entry` = '8271');
+        -- ARMOR from 265 to 308
+        UPDATE `item_template` SET `armor` = '308' WHERE (`entry` = '8271');
+        -- STAT_TYPE1 from 7 to 3
+        UPDATE `item_template` SET `stat_type1` = '3' WHERE (`entry` = '8271');
+        -- STAT_VALUE1 from 14 to 5
+        UPDATE `item_template` SET `stat_value1` = '5' WHERE (`entry` = '8271');
+        -- STAT_TYPE2 from 3 to 6
+        UPDATE `item_template` SET `stat_type2` = '6' WHERE (`entry` = '8271');
+        -- STAT_VALUE2 from 5 to 20
+        UPDATE `item_template` SET `stat_value2` = '20' WHERE (`entry` = '8271');
+
+
+        -- Item: Elemental Air
+        -- Entry: 7069
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-28 17:19:50
+        -- New date:         2004-08-20 11:50:55
+        -- Days diff: 39
+
+        -- DISPLAY_ID from 23755 to 13687
+        UPDATE `item_template` SET `display_id` = '13687' WHERE (`entry` = '7069');
+
+
+        -- Item: Cabalist Belt
+        -- Entry: 7535
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:15
+        -- New date:         2004-08-20 10:26:36
+        -- Days diff: 79
+
+        -- ARMOR from 70 to 28
+        UPDATE `item_template` SET `armor` = '28' WHERE (`entry` = '7535');
+
+
+        -- Item: Deviate Fish
+        -- Entry: 6522
+
+        -- CLASS
+        -- Current date:     2005-12-09 01:31:01
+        -- New date:         2005-12-09 01:31:01
+        -- Days diff: Unknown
+
+        -- CLASS from 7 to 5
+        UPDATE `item_template` SET `class` = '5' WHERE (`entry` = '6522');
+
+
+        -- Item: Raptor Heart
+        -- Entry: 4513
+
+        -- STACKABLE
+        -- Current date:     2004-08-31 18:33:21
+        -- New date:         2004-08-31 18:33:21
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4513');
+
+
+        -- Item: Vibroblade
+        -- Entry: 9485
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-07-09 12:26:56
+        -- Days diff: 83
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-07-09 12:26:56
+        -- Days diff: 83
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 11:50:19
+        -- New date:         2004-08-20 11:50:19
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 21 to 20
+        UPDATE `item_template` SET `dmg_min1` = '20' WHERE (`entry` = '9485');
+        -- DMG_MAX1 from 40 to 25
+        UPDATE `item_template` SET `dmg_max1` = '25' WHERE (`entry` = '9485');
+        -- SPELLID_1 from 11791 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '9485');
+
+
+        -- Item: Oilskin Leggings
+        -- Entry: 9414
+
+        -- ARMOR
+        -- Current date:     2005-03-27 06:06:12
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 218
+
+        -- ARMOR from 108 to 56
+        UPDATE `item_template` SET `armor` = '56' WHERE (`entry` = '9414');
+
+
+        -- Item: Caliph Scorpidsting's Head
+        -- Entry: 8723
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-15 11:07:13
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 3918 to 2945
+        UPDATE `item_template` SET `display_id` = '2945' WHERE (`entry` = '8723');
+
+
+        -- Item: Nether Wing
+        -- Entry: 6251
+
+        -- STACKABLE
+        -- Current date:     2004-10-07 18:12:40
+        -- New date:         2004-10-07 18:12:40
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 5
+        UPDATE `item_template` SET `stackable` = '5' WHERE (`entry` = '6251');
+
+
+        -- Item: Recipe: Savory Deviate Delight
+        -- Entry: 6661
+
+        -- SUBCLASS
+        -- Current date:     2005-05-09 18:26:10
+        -- New date:         2005-05-09 18:26:10
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 5 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '6661');
+
+
+        -- Item: Aged Kodo Hide
+        -- Entry: 6249
+
+        -- STACKABLE
+        -- Current date:     2004-10-07 18:12:40
+        -- New date:         2004-10-07 18:12:40
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 5
+        UPDATE `item_template` SET `stackable` = '5' WHERE (`entry` = '6249');
+
+
+        -- Item: Light Plate Pants
+        -- Entry: 8085
+
+        -- ARMOR
+        -- Current date:     2004-11-12 20:49:01
+        -- New date:         2004-10-06 16:07:18
+        -- Days diff: 37
+
+        -- ARMOR from 413 to 394
+        UPDATE `item_template` SET `armor` = '394' WHERE (`entry` = '8085');
+
+
+        -- Item: Gypsy Cloak
+        -- Entry: 9754
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-22 21:27:25
+        -- Days diff: 6
+        -- Overrides WDB:                   3925
+
+        -- DISPLAY_ID from 23034 to 19031
+        UPDATE `item_template` SET `display_id` = '19031' WHERE (`entry` = '9754');
+
+
+        -- Item: Jet Black Feather
+        -- Entry: 8168
+
+        -- DISPLAY_ID
+        -- Current date:     2005-02-09 23:21:59
+        -- New date:         2005-02-09 23:21:59
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 19531 to 11207
+        UPDATE `item_template` SET `display_id` = '11207' WHERE (`entry` = '8168');
+
+
+        -- Item: Superior Buckler
+        -- Entry: 9804
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:04:37
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 38
+
+        -- BLOCK
+        -- Current date:     2004-11-08 03:04:37
+        -- New date:         2004-11-08 03:04:37
+        -- Days diff: Unknown
+
+        -- ARMOR from 511 to 405
+        UPDATE `item_template` SET `armor` = '405' WHERE (`entry` = '9804');
+        -- BLOCK from 9 to 10
+        UPDATE `item_template` SET `block` = '10' WHERE (`entry` = '9804');
+
+
+        -- Item: Portable Bronze Mortar
+        -- Entry: 4403
+
+        -- SUBCLASS
+        -- Current date:     2004-08-20 11:50:22
+        -- New date:         2004-08-20 11:50:22
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 3 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4403');
+
+
+        -- Item: Skullsplitter
+        -- Entry: 9521
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-14 17:12:25
+        -- New date:         2004-07-14 17:12:25
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 08:28:01
+        -- New date:         2004-07-14 17:12:25
+        -- Days diff: 78
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 08:28:01
+        -- New date:         2004-07-14 17:12:25
+        -- Days diff: 78
+
+        -- STAT_VALUE3
+        -- Current date:     2004-09-04 02:08:22
+        -- New date:         2004-09-04 02:08:22
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 19307 to 18446
+        UPDATE `item_template` SET `display_id` = '18446' WHERE (`entry` = '9521');
+        -- DMG_MIN1 from 70 to 72
+        UPDATE `item_template` SET `dmg_min1` = '72' WHERE (`entry` = '9521');
+        -- DMG_MAX1 from 105 to 109
+        UPDATE `item_template` SET `dmg_max1` = '109' WHERE (`entry` = '9521');
+        -- STAT_VALUE3 from 0 to 20
+        UPDATE `item_template` SET `stat_value3` = '20' WHERE (`entry` = '9521');
+
+
+        -- Item: Superior Leggings
+        -- Entry: 9808
+
+        -- ARMOR
+        -- Current date:     2004-12-21 20:41:52
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 81
+
+        -- ARMOR from 79 to 103
+        UPDATE `item_template` SET `armor` = '103' WHERE (`entry` = '9808');
+
+
+        -- Item: Lifestone
+        -- Entry: 833
+
+        -- NAME
+        -- Current date:     2004-09-24 14:12:50
+        -- New date:         2004-09-24 14:12:50
+        -- Days diff: Unknown
+
+        -- SPELLID_1
+        -- Current date:     2004-10-01 18:41:20
+        -- New date:         2004-09-24 14:12:50
+        -- Days diff: 7
+
+        -- STAT_TYPE1
+        -- Current date:     2004-09-24 14:12:50
+        -- New date:         2004-09-24 14:12:50
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-09-24 14:12:50
+        -- New date:         2004-09-24 14:12:50
+        -- Days diff: Unknown
+
+        -- NAME from Lifestone to Lifestone Medallion
+        UPDATE `item_template` SET `name` = 'Lifestone Medallion' WHERE (`entry` = '833');
+        -- SPELLID_1 from 17712 to 10577
+        UPDATE `item_template` SET `spellid_1` = '10577' WHERE (`entry` = '833');
+        -- STAT_TYPE1 from 0 to 7
+        UPDATE `item_template` SET `stat_type1` = '7' WHERE (`entry` = '833');
+        -- STAT_VALUE1 from 0 to 22
+        UPDATE `item_template` SET `stat_value1` = '22' WHERE (`entry` = '833');
+
+
+        -- Item: Perenolde Tiara
+        -- Entry: 3684
+
+        -- STACKABLE
+        -- Current date:     2004-08-12 15:36:05
+        -- New date:         2004-08-12 15:36:05
+        -- Days diff: Unknown
+
+        -- STACKABLE from 1 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '3684');
+
+
+        -- Item: Ivy Orb
+        -- Entry: 9800
+
+        -- NAME
+        -- Current date:     2004-11-08 15:08:00
+        -- New date:         2004-11-08 15:08:00
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:08:00
+        -- New date:         2004-11-08 15:08:00
+        -- Days diff: Unknown
+
+        -- NAME from Ivy Orb to Enchantress Orb
+        UPDATE `item_template` SET `name` = 'Enchantress Orb' WHERE (`entry` = '9800');
+        -- DISPLAY_ID from 27756 to 21599
+        UPDATE `item_template` SET `display_id` = '21599' WHERE (`entry` = '9800');
+
+
+        -- Item: Interlaced Cowl
+        -- Entry: 8746
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:04:38
+        -- New date:         2004-08-20 11:50:29
+        -- Days diff: 79
+
+        -- ARMOR from 33 to 10
+        UPDATE `item_template` SET `armor` = '10' WHERE (`entry` = '8746');
+
+
+        -- Item: Bandit Cloak
+        -- Entry: 9779
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-22 21:27:25
+        -- Days diff: 6
+        -- Overrides WDB:                   3925
+
+        -- DISPLAY_ID from 23005 to 15222
+        UPDATE `item_template` SET `display_id` = '15222' WHERE (`entry` = '9779');
+
+
+        -- Item: Heraldic Breastplate
+        -- Entry: 8119
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-11-08 04:19:37
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 79
+
+        -- DISPLAY_ID from 28737 to 16513
+        UPDATE `item_template` SET `display_id` = '16513' WHERE (`entry` = '8119');
+        -- ARMOR from 135 to 67
+        UPDATE `item_template` SET `armor` = '67' WHERE (`entry` = '8119');
+
+
+        -- Item: Ornate Mithril Helm
+        -- Entry: 7937
+
+        -- ARMOR
+        -- Current date:     2005-06-26 17:57:35
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 310
+
+        -- ARMOR from 383 to 82
+        UPDATE `item_template` SET `armor` = '82' WHERE (`entry` = '7937');
+
+
+        -- Item: Copper Claymore
+        -- Entry: 7955
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-05 20:29:59
+        -- Days diff: 23
+        -- Overrides WDB:                   3925
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 13:06:07
+        -- New date:         2004-07-09 08:52:20
+        -- Days diff: 84
+        -- Overrides WDB:                   3925
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 13:06:07
+        -- New date:         2004-07-09 08:52:20
+        -- Days diff: 84
+        -- Overrides WDB:                   3925
+
+        -- DISPLAY_ID from 20071 to 3372
+        UPDATE `item_template` SET `display_id` = '3372' WHERE (`entry` = '7955');
+        -- DMG_MIN1 from 15 to 14
+        UPDATE `item_template` SET `dmg_min1` = '14' WHERE (`entry` = '7955');
+        -- DMG_MAX1 from 23 to 28
+        UPDATE `item_template` SET `dmg_max1` = '28' WHERE (`entry` = '7955');
+
+
+        -- Item: Reinforced Chain Cloak
+        -- Entry: 1757
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-25 00:00:00
+        -- New date:         2004-06-17 17:32:06
+        -- Days diff: 7
+        -- Overrides WDB:                   4149
+
+        -- REQUIRED_LEVEL from 24 to 19
+        UPDATE `item_template` SET `required_level` = '19' WHERE (`entry` = '1757');
+
+
+        -- Item: Battleworn Axe
+        -- Entry: 3014
+
+        -- STACKABLE
+        -- Current date:     2004-06-21 11:51:48
+        -- New date:         2004-06-21 11:51:48
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '3014');
+
+
+        -- Item: Monolithic Bow
+        -- Entry: 9426
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-24 09:02:58
+        -- New date:         2004-08-24 09:02:58
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-07-18 13:06:25
+        -- Days diff: 75
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-07-18 13:06:25
+        -- Days diff: 75
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-10-01 18:41:21
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-10-01 18:41:21
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20556 to 18329
+        UPDATE `item_template` SET `display_id` = '18329' WHERE (`entry` = '9426');
+        -- DMG_MIN1 from 41 to 55
+        UPDATE `item_template` SET `dmg_min1` = '55' WHERE (`entry` = '9426');
+        -- DMG_MAX1 from 77 to 103
+        UPDATE `item_template` SET `dmg_max1` = '103' WHERE (`entry` = '9426');
+        -- STAT_TYPE2 from 3 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '9426');
+        -- STAT_VALUE2 from 3 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '9426');
+
+
+        -- Item: Jouster's Greaves
+        -- Entry: 8160
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-07-09 08:52:20
+        -- Days diff: 121
+
+        -- ARMOR
+        -- Current date:     2005-03-05 13:07:50
+        -- New date:         2004-07-09 08:52:20
+        -- Days diff: 239
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 18:41:20
+        -- New date:         2004-08-20 11:14:43
+        -- Days diff: 42
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 18:41:20
+        -- New date:         2004-08-20 11:14:43
+        -- Days diff: 42
+
+        -- DISPLAY_ID from 27343 to 11629
+        UPDATE `item_template` SET `display_id` = '11629' WHERE (`entry` = '8160');
+        -- ARMOR from 182 to 85
+        UPDATE `item_template` SET `armor` = '85' WHERE (`entry` = '8160');
+        -- STAT_TYPE2 from 7 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '8160');
+        -- STAT_VALUE2 from 8 to 4
+        UPDATE `item_template` SET `stat_value2` = '4' WHERE (`entry` = '8160');
+
+
+        -- Item: Truesilver Breastplate
+        -- Entry: 7939
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-30 20:57:24
+        -- New date:         2004-09-30 20:57:24
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-09-08 03:07:06
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 383
+
+        -- DISPLAY_ID from 24393 to 16125
+        UPDATE `item_template` SET `display_id` = '16125' WHERE (`entry` = '7939');
+        -- ARMOR from 519 to 137
+        UPDATE `item_template` SET `armor` = '137' WHERE (`entry` = '7939');
+
+
+        -- Item: Arthas' Tears
+        -- Entry: 8836
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-20 23:23:38
+        -- New date:         2004-07-20 23:23:38
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 19498 to 7328
+        UPDATE `item_template` SET `display_id` = '7328' WHERE (`entry` = '8836');
+
+
+        -- Item: Steel Plate Helm
+        -- Entry: 7922
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-08-20 11:14:44
+        -- Days diff: 79
+
+        -- SPELLID_1
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-11-08 04:19:37
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-08 15:50:26
+        -- New date:         2004-07-08 15:50:26
+        -- Days diff: Unknown
+
+        -- ARMOR from 355 to 65
+        UPDATE `item_template` SET `armor` = '65' WHERE (`entry` = '7922');
+        -- SPELLID_1 from 0 to 9765
+        UPDATE `item_template` SET `spellid_1` = '9765' WHERE (`entry` = '7922');
+        -- REQUIRED_LEVEL from 40 to 38
+        UPDATE `item_template` SET `required_level` = '38' WHERE (`entry` = '7922');
+
+
+        -- Item: Bloodletter Scalpel
+        -- Entry: 9511
+
+        -- DISPLAY_ID
+        -- Current date:     2004-10-14 13:31:00
+        -- New date:         2004-10-14 13:31:00
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-14 13:31:00
+        -- New date:         2004-10-14 13:31:00
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-14 13:31:00
+        -- New date:         2004-10-14 13:31:00
+        -- Days diff: Unknown
+
+        -- SPELLID_1
+        -- Current date:     2004-10-14 13:31:00
+        -- New date:         2004-10-14 13:31:00
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20029 to 16128
+        UPDATE `item_template` SET `display_id` = '16128' WHERE (`entry` = '9511');
+        -- DMG_MIN1 from 39 to 45
+        UPDATE `item_template` SET `dmg_min1` = '45' WHERE (`entry` = '9511');
+        -- DMG_MAX1 from 73 to 55
+        UPDATE `item_template` SET `dmg_max1` = '55' WHERE (`entry` = '9511');
+        -- SPELLID_1 from 13486 to 7599
+        UPDATE `item_template` SET `spellid_1` = '7599' WHERE (`entry` = '9511');
+
+
+        -- Item: Hero's Breastplate
+        -- Entry: 8303
+
+        -- ARMOR
+        -- Current date:     2005-04-24 07:26:38
+        -- New date:         2005-04-24 07:26:38
+        -- Days diff: Unknown
+
+        -- ARMOR from 332 to 400
+        UPDATE `item_template` SET `armor` = '400' WHERE (`entry` = '8303');
+
+
+        -- Item: Tigule and Foror's Strawberry Ice Cream
+        -- Entry: 7228
+
+        -- SELL_PRICE
+        -- Current date:     2005-09-11 01:38:15
+        -- New date:         2005-09-11 01:38:15
+        -- Days diff: Unknown
+
+        -- SELL_PRICE from 25 to 500
+        UPDATE `item_template` SET `sell_price` = '500' WHERE (`entry` = '7228');
+
+
+        -- Item: Tracker's Shoulderpads
+        -- Entry: 9923
+
+        -- ARMOR
+        -- Current date:     2005-07-26 12:54:02
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 298
+
+        -- ARMOR from 91 to 142
+        UPDATE `item_template` SET `armor` = '142' WHERE (`entry` = '9923');
+
+
+        -- Item: Pattern: Big Voodoo Cloak
+        -- Entry: 8390
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 20:59:19
+        -- New date:         2005-03-22 20:59:19
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '8390');
+
+
+        -- Item: Jouster's Pauldrons
+        -- Entry: 8163
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-07-12 09:57:01
+        -- Days diff: 118
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-07-12 09:57:01
+        -- Days diff: 118
+
+        -- STAT_TYPE2
+        -- Current date:     2004-09-23 00:14:29
+        -- New date:         2004-08-20 11:50:38
+        -- Days diff: 33
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-09-23 00:14:29
+        -- Days diff: 8
+
+        -- DISPLAY_ID from 27346 to 6480
+        UPDATE `item_template` SET `display_id` = '6480' WHERE (`entry` = '8163');
+        -- ARMOR from 225 to 93
+        UPDATE `item_template` SET `armor` = '93' WHERE (`entry` = '8163');
+        -- STAT_TYPE2 from 6 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '8163');
+        -- STAT_VALUE2 from 8 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '8163');
+
+
+        -- Item: Cabalist Boots
+        -- Entry: 7531
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:15
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: 122
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-08 15:42:33
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-07-08 15:42:33
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: Unknown
+
+        -- ARMOR from 85 to 43
+        UPDATE `item_template` SET `armor` = '43' WHERE (`entry` = '7531');
+        -- REQUIRED_LEVEL from 41 to 40
+        UPDATE `item_template` SET `required_level` = '40' WHERE (`entry` = '7531');
+        -- ITEM_LEVEL from 41 to 40
+        UPDATE `item_template` SET `item_level` = '40' WHERE (`entry` = '7531');
+
+
+        -- Item: Emissary Cuffs
+        -- Entry: 9455
+
+        -- ARMOR
+        -- Current date:     2004-12-21 21:19:46
+        -- New date:         2004-08-27 16:08:57
+        -- Days diff: 116
+
+        -- ARCANE_RES
+        -- Current date:     2004-10-16 11:24:01
+        -- New date:         2004-08-27 16:08:57
+        -- Days diff: 49
+
+        -- ARMOR from 47 to 26
+        UPDATE `item_template` SET `armor` = '26' WHERE (`entry` = '9455');
+        -- ARCANE_RES from 5 to 0
+        UPDATE `item_template` SET `arcane_res` = '0' WHERE (`entry` = '9455');
+
+
+        -- Item: Witherbark Medicine Pouch
+        -- Entry: 4522
+
+        -- STACKABLE
+        -- Current date:     2004-07-29 18:27:53
+        -- New date:         2004-07-29 18:27:53
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 5
+        UPDATE `item_template` SET `stackable` = '5' WHERE (`entry` = '4522');
+
+
+        -- Item: Nightscape Pants
+        -- Entry: 8193
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:05
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 79
+
+        -- ARMOR from 108 to 55
+        UPDATE `item_template` SET `armor` = '55' WHERE (`entry` = '8193');
+
+
+        -- Item: Fine Pointed Dagger
+        -- Entry: 4023
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:07
+        -- New date:         2004-07-13 21:45:18
+        -- Days diff: 79
+
+        -- DMG_MAX1 from 28 to 29
+        UPDATE `item_template` SET `dmg_max1` = '29' WHERE (`entry` = '4023');
+
+
+        -- Item: Broken Tools
+        -- Entry: 4703
+
+        -- SELL_PRICE
+        -- Current date:     2004-06-17 15:02:48
+        -- New date:         2004-06-17 15:02:48
+        -- Days diff: Unknown
+
+        -- STACKABLE
+        -- Current date:     2004-06-17 15:02:48
+        -- New date:         2004-06-17 15:02:48
+        -- Days diff: Unknown
+
+        -- SELL_PRICE from 0 to 1
+        UPDATE `item_template` SET `sell_price` = '1' WHERE (`entry` = '4703');
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4703');
+
+
+        -- Item: Royal Boots
+        -- Entry: 9907
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:08:00
+        -- New date:         2004-10-01 02:27:16
+        -- Days diff: 38
+
+        -- ARMOR from 40 to 65
+        UPDATE `item_template` SET `armor` = '65' WHERE (`entry` = '9907');
+
+
+        -- Item: Blade of the Basilisk
+        -- Entry: 8223
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-24 09:02:50
+        -- New date:         2004-08-24 09:02:50
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2005-10-22 11:19:41
+        -- New date:         2004-08-24 09:02:50
+        -- Days diff: 424
+
+        -- DMG_MAX1
+        -- Current date:     2005-10-22 11:19:41
+        -- New date:         2004-08-24 09:02:50
+        -- Days diff: 424
+
+        -- DISPLAY_ID from 20073 to 16535
+        UPDATE `item_template` SET `display_id` = '16535' WHERE (`entry` = '8223');
+        -- DMG_MIN1 from 33 to 30
+        UPDATE `item_template` SET `dmg_min1` = '30' WHERE (`entry` = '8223');
+        -- DMG_MAX1 from 62 to 38
+        UPDATE `item_template` SET `dmg_max1` = '38' WHERE (`entry` = '8223');
+
+
+        -- Item: Cold Iron Pick
+        -- Entry: 1959
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-04 12:22:03
+        -- New date:         2004-06-23 13:36:43
+        -- Days diff: 102
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-04 12:22:03
+        -- New date:         2004-06-23 13:36:43
+        -- Days diff: 102
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-04 12:22:03
+        -- New date:         2004-10-04 12:22:03
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-04 12:22:03
+        -- New date:         2004-10-04 12:22:03
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-04 12:22:03
+        -- New date:         2004-10-04 12:22:03
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-04 12:22:03
+        -- New date:         2004-10-04 12:22:03
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 27 to 23
+        UPDATE `item_template` SET `dmg_min1` = '23' WHERE (`entry` = '1959');
+        -- DMG_MAX1 from 41 to 35
+        UPDATE `item_template` SET `dmg_max1` = '35' WHERE (`entry` = '1959');
+        -- STAT_TYPE1 from 7 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '1959');
+        -- STAT_VALUE1 from 2 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '1959');
+        -- STAT_TYPE2 from 6 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '1959');
+        -- STAT_VALUE2 from 4 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '1959');
+
+
+        -- Item: Thunderhawk Saliva Gland
+        -- Entry: 4897
+
+        -- STACKABLE
+        -- Current date:     2004-09-15 14:04:04
+        -- New date:         2004-09-15 14:04:04
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4897');
+
+
+        -- Item: Bloodstone Amulet
+        -- Entry: 4495
+
+        -- STACKABLE
+        -- Current date:     2004-06-16 21:50:09
+        -- New date:         2004-06-16 21:50:09
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4495');
+
+
+        -- Item: Tough Leather Pants
+        -- Entry: 1808
+
+        -- NAME
+        -- Current date:     2004-05-25 13:47:18
+        -- New date:         2004-05-25 13:47:18
+        -- Days diff: Unknown
+
+        -- NAME from Tough Leather Pants to Hardened Leather Pants
+        UPDATE `item_template` SET `name` = 'Hardened Leather Pants' WHERE (`entry` = '1808');
+
+
+        -- Item: Ripsaw
+        -- Entry: 9478
+
+        -- DISPLAY_ID
+        -- Current date:     2005-08-08 00:50:33
+        -- New date:         2005-08-08 00:50:33
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2005-09-08 11:54:00
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 426
+
+        -- DMG_MAX1
+        -- Current date:     2005-09-08 11:54:00
+        -- New date:         2004-07-08 16:22:39
+        -- Days diff: 426
+
+        -- SPELLID_1
+        -- Current date:     2005-09-08 11:54:00
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 384
+
+        -- DISPLAY_ID from 25598 to 18391
+        UPDATE `item_template` SET `display_id` = '18391' WHERE (`entry` = '9478');
+        -- DMG_MIN1 from 63 to 58
+        UPDATE `item_template` SET `dmg_min1` = '58' WHERE (`entry` = '9478');
+        -- DMG_MAX1 from 117 to 109
+        UPDATE `item_template` SET `dmg_max1` = '109' WHERE (`entry` = '9478');
+        -- SPELLID_1 from 16405 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '9478');
+
+
+        -- Item: Icepane Warhammer
+        -- Entry: 2254
+
+        -- NAME
+        -- Current date:     2004-10-03 05:47:23
+        -- New date:         2004-10-03 05:47:23
+        -- Days diff: Unknown
+
+        -- NAME from Icepane Warhammer to Icebane Warhammer
+        UPDATE `item_template` SET `name` = 'Icebane Warhammer' WHERE (`entry` = '2254');
+
+
+        -- Item: Ghoul Rib
+        -- Entry: 884
+
+        -- STACKABLE
+        -- Current date:     2004-06-23 13:32:16
+        -- New date:         2004-06-23 13:32:16
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '884');
+
+
+        -- Item: Brigade Breastplate
+        -- Entry: 9928
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 17:22:32
+        -- New date:         2004-11-08 17:22:32
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 17:22:32
+        -- New date:         2004-09-24 06:47:42
+        -- Days diff: 45
+
+        -- DISPLAY_ID from 25932 to 11601
+        UPDATE `item_template` SET `display_id` = '11601' WHERE (`entry` = '9928');
+        -- ARMOR from 248 to 275
+        UPDATE `item_template` SET `armor` = '275' WHERE (`entry` = '9928');
+
+
+        -- Item: Warmonger's Pauldrons
+        -- Entry: 9965
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:08:00
+        -- New date:         2004-11-08 15:08:00
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-09-23 22:09:51
+        -- New date:         2004-10-01 02:33:51
+        -- Days diff: 357
+
+        -- DISPLAY_ID from 26194 to 6480
+        UPDATE `item_template` SET `display_id` = '6480' WHERE (`entry` = '9965');
+        -- ARMOR from 201 to 253
+        UPDATE `item_template` SET `armor` = '253' WHERE (`entry` = '9965');
+
+
+        -- Item: Mithril Coif
+        -- Entry: 7931
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:37
+        -- New date:         2004-08-20 11:50:42
+        -- Days diff: 79
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-08-20 11:50:42
+        -- Days diff: 41
+
+        -- ARMOR from 206 to 59
+        UPDATE `item_template` SET `armor` = '59' WHERE (`entry` = '7931');
+        -- STAT_VALUE2 from 12 to 6
+        UPDATE `item_template` SET `stat_value2` = '6' WHERE (`entry` = '7931');
+
+
+        -- Item: Field Plate Armor
+        -- Entry: 9286
+
+        -- NAME
+        -- Current date:     2005-12-23 20:27:48
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 533
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:29:59
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- ARMOR
+        -- Current date:     2005-11-05 05:55:13
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 484
+
+        -- NAME from Field Plate Armor to Gothic Plate Breastplate
+        UPDATE `item_template` SET `name` = 'Gothic Plate Breastplate' WHERE (`entry` = '9286');
+        -- DISPLAY_ID from 27356 to 11624
+        UPDATE `item_template` SET `display_id` = '11624' WHERE (`entry` = '9286');
+        -- ARMOR from 428 to 124
+        UPDATE `item_template` SET `armor` = '124' WHERE (`entry` = '9286');
+
+
+        -- Item: Sorcerer Slippers
+        -- Entry: 9876
+
+        -- NAME
+        -- Current date:     2005-09-06 00:57:51
+        -- New date:         2004-11-08 07:05:04
+        -- Days diff: 301
+
+        -- DISPLAY_ID
+        -- Current date:     2005-03-11 17:19:17
+        -- New date:         2004-11-08 07:05:04
+        -- Days diff: 123
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:04
+        -- New date:         2004-09-22 21:27:24
+        -- Days diff: 46
+
+        -- NAME from Sorcerer Slippers to Sorceress Slippers
+        UPDATE `item_template` SET `name` = 'Sorceress Slippers' WHERE (`entry` = '9876');
+        -- DISPLAY_ID from 28088 to 14645
+        UPDATE `item_template` SET `display_id` = '14645' WHERE (`entry` = '9876');
+        -- ARMOR from 36 to 56
+        UPDATE `item_template` SET `armor` = '56' WHERE (`entry` = '9876');
+
+
+        -- Item: Smotts' Compass
+        -- Entry: 4130
+
+        -- STAT_TYPE1
+        -- Current date:     2005-05-21 17:18:30
+        -- New date:         2004-08-20 10:23:58
+        -- Days diff: 274
+
+        -- STAT_VALUE1
+        -- Current date:     2005-05-21 17:18:30
+        -- New date:         2004-08-20 10:23:58
+        -- Days diff: 274
+
+        -- STAT_TYPE1 from 0 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '4130');
+        -- STAT_VALUE1 from 0 to 3
+        UPDATE `item_template` SET `stat_value1` = '3' WHERE (`entry` = '4130');
+
+
+        -- Item: Tok'kar's Murloc Chopper
+        -- Entry: 9679
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-29 03:56:05
+        -- New date:         2004-09-29 03:56:05
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-02 13:14:21
+        -- New date:         2004-09-29 03:56:05
+        -- Days diff: 3
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-02 13:14:21
+        -- New date:         2004-09-29 03:56:05
+        -- Days diff: 3
+
+        -- DISPLAY_ID from 22223 to 19310
+        UPDATE `item_template` SET `display_id` = '19310' WHERE (`entry` = '9679');
+        -- DMG_MIN1 from 83 to 78
+        UPDATE `item_template` SET `dmg_min1` = '78' WHERE (`entry` = '9679');
+        -- DMG_MAX1 from 125 to 118
+        UPDATE `item_template` SET `dmg_max1` = '118' WHERE (`entry` = '9679');
+
+
+        -- Item: Arcane Armor
+        -- Entry: 8283
+
+        -- NAME
+        -- Current date:     2005-08-18 20:53:22
+        -- New date:         2005-08-18 20:53:22
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-08-18 20:53:22
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 321
+
+        -- STAT_TYPE2
+        -- Current date:     2005-08-18 20:53:22
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 321
+
+        -- STAT_VALUE2
+        -- Current date:     2005-08-18 20:53:22
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 321
+
+        -- NAME from Arcane Armor to Zephyr Armor
+        UPDATE `item_template` SET `name` = 'Zephyr Armor' WHERE (`entry` = '8283');
+        -- ARMOR from 79 to 126
+        UPDATE `item_template` SET `armor` = '126' WHERE (`entry` = '8283');
+        -- STAT_TYPE2 from 5 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '8283');
+        -- STAT_VALUE2 from 23 to 50
+        UPDATE `item_template` SET `stat_value2` = '50' WHERE (`entry` = '8283');
+
+
+        -- Item: Foreman's Leggings
+        -- Entry: 2166
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-05 21:02:47
+        -- New date:         2004-09-05 21:02:47
+        -- Days diff: Unknown
+
+        -- STAT_TYPE3
+        -- Current date:     2004-09-05 21:02:47
+        -- New date:         2004-09-05 21:02:47
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 15 to 10
+        UPDATE `item_template` SET `required_level` = '10' WHERE (`entry` = '2166');
+        -- STAT_TYPE3 from 1 to 0
+        UPDATE `item_template` SET `stat_type3` = '0' WHERE (`entry` = '2166');
+
+
+        -- Item: Cabalist Chestpiece
+        -- Entry: 7527
+
+        -- NAME
+        -- Current date:     2004-07-08 15:42:33
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:15
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: 122
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-08 15:42:33
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-07-08 15:42:33
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: Unknown
+
+        -- NAME from Cabalist Chestpiece to Cabalist Breastplate
+        UPDATE `item_template` SET `name` = 'Cabalist Breastplate' WHERE (`entry` = '7527');
+        -- ARMOR from 132 to 63
+        UPDATE `item_template` SET `armor` = '63' WHERE (`entry` = '7527');
+        -- REQUIRED_LEVEL from 45 to 41
+        UPDATE `item_template` SET `required_level` = '41' WHERE (`entry` = '7527');
+        -- ITEM_LEVEL from 45 to 41
+        UPDATE `item_template` SET `item_level` = '41' WHERE (`entry` = '7527');
+
+
+        -- Item: Cabalist Helm
+        -- Entry: 7529
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:50
+        -- New date:         2004-08-20 11:50:50
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-04-25 10:38:18
+        -- New date:         2004-08-20 11:50:50
+        -- Days diff: 247
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-09 08:52:19
+        -- New date:         2004-07-09 08:52:19
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-07-09 08:52:19
+        -- New date:         2004-07-09 08:52:19
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 21292 to 15549
+        UPDATE `item_template` SET `display_id` = '15549' WHERE (`entry` = '7529');
+        -- ARMOR from 103 to 36
+        UPDATE `item_template` SET `armor` = '36' WHERE (`entry` = '7529');
+        -- REQUIRED_LEVEL from 42 to 41
+        UPDATE `item_template` SET `required_level` = '41' WHERE (`entry` = '7529');
+        -- ITEM_LEVEL from 42 to 41
+        UPDATE `item_template` SET `item_level` = '41' WHERE (`entry` = '7529');
+
+
+        -- Item: Bathran's Hair
+        -- Entry: 5437
+
+        -- STACKABLE
+        -- Current date:     2004-07-19 15:54:43
+        -- New date:         2004-07-19 15:54:43
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '5437');
+
+
+        -- Item: Golden Scale Gauntlets
+        -- Entry: 9366
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-08-20 18:08:40
+        -- Days diff: 79
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-10-01 18:41:21
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 18:41:21
+        -- New date:         2004-10-01 18:41:21
+        -- Days diff: Unknown
+
+        -- ARMOR from 146 to 49
+        UPDATE `item_template` SET `armor` = '49' WHERE (`entry` = '9366');
+        -- STAT_TYPE2 from 6 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '9366');
+        -- STAT_VALUE2 from 4 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '9366');
+
+
+        -- Item: Turtle Skin Vest
+        -- Entry: 8189
+
+        -- STAT_TYPE3
+        -- Current date:     2004-10-02 23:39:05
+        -- New date:         2004-10-02 23:39:05
+        -- Days diff: Unknown
+
+        -- STAT_TYPE3 from 5 to 0
+        UPDATE `item_template` SET `stat_type3` = '0' WHERE (`entry` = '8189');
+
+
+        -- Item: Plans: Iron Counterweight
+        -- Entry: 6045
+
+        -- SUBCLASS
+        -- Current date:     2005-04-11 18:40:00
+        -- New date:         2005-04-11 18:40:00
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 4 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '6045');
+
+
+        -- Item: Hunting Bow
+        -- Entry: 8180
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-07-19 15:54:42
+        -- Days diff: 73
+        -- Overrides WDB:                   3925
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-07-19 15:54:42
+        -- Days diff: 73
+        -- Overrides WDB:                   3925
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-07-19 15:54:42
+        -- Days diff: 71
+        -- Overrides WDB:                   3925
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-07-19 15:54:42
+        -- Days diff: 71
+        -- Overrides WDB:                   3925
+
+        -- DMG_MIN1 from 8 to 9
+        UPDATE `item_template` SET `dmg_min1` = '9' WHERE (`entry` = '8180');
+        -- DMG_MAX1 from 16 to 17
+        UPDATE `item_template` SET `dmg_max1` = '17' WHERE (`entry` = '8180');
+        -- REQUIRED_LEVEL from 6 to 3
+        UPDATE `item_template` SET `required_level` = '3' WHERE (`entry` = '8180');
+        -- ITEM_LEVEL from 6 to 3
+        UPDATE `item_template` SET `item_level` = '3' WHERE (`entry` = '8180');
+
+
+        -- Item: Petrified Shinbone
+        -- Entry: 1958
+
+        -- DMG_MIN1
+        -- Current date:     2004-05-28 12:19:40
+        -- New date:         2004-05-28 12:19:40
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-08-24 15:15:51
+        -- New date:         2004-05-28 12:19:40
+        -- Days diff: 88
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-05-28 12:19:40
+        -- New date:         2004-05-28 12:19:40
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 10 to 20
+        UPDATE `item_template` SET `dmg_min1` = '20' WHERE (`entry` = '1958');
+        -- DMG_MAX1 from 19 to 31
+        UPDATE `item_template` SET `dmg_max1` = '31' WHERE (`entry` = '1958');
+        -- REQUIRED_LEVEL from 12 to 7
+        UPDATE `item_template` SET `required_level` = '7' WHERE (`entry` = '1958');
+
+
+        -- Item: Rawhide Pants
+        -- Entry: 1800
+
+        -- NAME
+        -- Current date:     2004-05-09 17:24:29
+        -- New date:         2004-05-09 17:24:29
+        -- Days diff: Unknown
+
+        -- NAME from Rawhide Pants to Tough Leather Pants
+        UPDATE `item_template` SET `name` = 'Tough Leather Pants' WHERE (`entry` = '1800');
+
+
+        -- Item: Brilliant Gold Ring
+        -- Entry: 9362
+
+        -- SELL_PRICE
+        -- Current date:     2004-08-20 10:26:36
+        -- New date:         2004-08-20 10:26:36
+        -- Days diff: Unknown
+
+        -- BUY_PRICE
+        -- Current date:     2004-07-08 16:09:20
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: Unknown
+
+        -- SELL_PRICE from 0 to 15852
+        UPDATE `item_template` SET `sell_price` = '15852' WHERE (`entry` = '9362');
+        -- BUY_PRICE from 0 to 3963
+        UPDATE `item_template` SET `buy_price` = '3963' WHERE (`entry` = '9362');
+
+
+        -- Item: Blackskull Shield
+        -- Entry: 1169
+
+        -- BLOCK
+        -- Current date:     2005-08-19 21:09:48
+        -- New date:         2004-07-08 17:58:29
+        -- Days diff: 407
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-10-12 13:13:33
+        -- New date:         2004-10-12 13:13:33
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-12 13:13:33
+        -- New date:         2004-10-12 13:13:33
+        -- Days diff: Unknown
+
+        -- SHADOW_RES
+        -- Current date:     2005-08-19 21:09:48
+        -- New date:         2004-10-01 02:27:15
+        -- Days diff: 322
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 02:27:15
+        -- New date:         2004-10-01 02:27:15
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-08-22 12:15:45
+        -- New date:         2004-08-22 12:15:45
+        -- Days diff: Unknown
+
+        -- BLOCK from 30 to 50
+        UPDATE `item_template` SET `block` = '50' WHERE (`entry` = '1169');
+        -- REQUIRED_LEVEL from 41 to 38
+        UPDATE `item_template` SET `required_level` = '38' WHERE (`entry` = '1169');
+        -- ITEM_LEVEL from 41 to 38
+        UPDATE `item_template` SET `item_level` = '38' WHERE (`entry` = '1169');
+        -- SHADOW_RES from 10 to 0
+        UPDATE `item_template` SET `shadow_res` = '0' WHERE (`entry` = '1169');
+        -- STAT_TYPE1 from 6 to 3
+        UPDATE `item_template` SET `stat_type1` = '3' WHERE (`entry` = '1169');
+        -- STAT_VALUE1 from 10 to 11
+        UPDATE `item_template` SET `stat_value1` = '11' WHERE (`entry` = '1169');
+
+
+        -- Item: Raw Spotted Yellowtail
+        -- Entry: 4603
+
+        -- NAME
+        -- Current date:     2005-06-14 18:50:33
+        -- New date:         2004-06-21 11:55:23
+        -- Days diff: 358
+
+        -- BUY_PRICE
+        -- Current date:     2004-06-21 11:55:23
+        -- New date:         2004-06-21 11:55:23
+        -- Days diff: Unknown
+
+        -- SPELLID_1
+        -- Current date:     2004-06-21 11:55:23
+        -- New date:         2004-06-21 11:55:23
+        -- Days diff: Unknown
+
+        -- NAME from Raw Spotted Yellowtail to Raw Spotted Fin Yellowtail
+        UPDATE `item_template` SET `name` = 'Raw Spotted Fin Yellowtail' WHERE (`entry` = '4603');
+        -- BUY_PRICE from 80 to 150
+        UPDATE `item_template` SET `buy_price` = '150' WHERE (`entry` = '4603');
+        -- SPELLID_1 from 1127 to 1129
+        UPDATE `item_template` SET `spellid_1` = '1129' WHERE (`entry` = '4603');
+
+
+        -- Item: The Butcher
+        -- Entry: 8226
+
+        -- DMG_MIN1
+        -- Current date:     2005-06-26 17:57:34
+        -- New date:         2004-07-19 15:13:00
+        -- Days diff: 342
+
+        -- DMG_MAX1
+        -- Current date:     2005-06-26 17:57:34
+        -- New date:         2004-07-19 15:13:00
+        -- Days diff: 342
+
+        -- STAT_TYPE2
+        -- Current date:     2005-06-26 17:57:34
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 268
+
+        -- STAT_VALUE2
+        -- Current date:     2005-06-26 17:57:34
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 268
+
+        -- DMG_MIN1 from 38 to 30
+        UPDATE `item_template` SET `dmg_min1` = '30' WHERE (`entry` = '8226');
+        -- DMG_MAX1 from 72 to 57
+        UPDATE `item_template` SET `dmg_max1` = '57' WHERE (`entry` = '8226');
+        -- STAT_TYPE2 from 7 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '8226');
+        -- STAT_VALUE2 from 4 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '8226');
+
+
+        -- Item: Huntsman's Armor
+        -- Entry: 9887
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:08:00
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- ARMOR from 117 to 169
+        UPDATE `item_template` SET `armor` = '169' WHERE (`entry` = '9887');
+
+
+        -- Item: Sang'thraze the Deflector
+        -- Entry: 9379
+
+        -- DISPLAY_ID
+        -- Current date:     2004-12-12 08:19:59
+        -- New date:         2004-12-12 08:19:59
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-12-12 08:19:59
+        -- New date:         2004-12-12 08:19:59
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-12-12 08:19:59
+        -- New date:         2004-12-12 08:19:59
+        -- Days diff: Unknown
+
+        -- SPELLID_1
+        -- Current date:     2004-12-12 08:19:59
+        -- New date:         2004-12-12 08:19:59
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-12-12 08:19:59
+        -- New date:         2004-12-12 08:19:59
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-12-12 08:19:59
+        -- New date:         2004-12-12 08:19:59
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-12-12 08:19:59
+        -- New date:         2004-12-12 08:19:59
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-12-12 08:19:59
+        -- New date:         2004-12-12 08:19:59
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20032 to 18562
+        UPDATE `item_template` SET `display_id` = '18562' WHERE (`entry` = '9379');
+        -- DMG_MIN1 from 34 to 40
+        UPDATE `item_template` SET `dmg_min1` = '40' WHERE (`entry` = '9379');
+        -- DMG_MAX1 from 65 to 49
+        UPDATE `item_template` SET `dmg_max1` = '49' WHERE (`entry` = '9379');
+        -- SPELLID_1 from 13665 to 11655
+        UPDATE `item_template` SET `spellid_1` = '11655' WHERE (`entry` = '9379');
+        -- REQUIRED_LEVEL from 44 to 41
+        UPDATE `item_template` SET `required_level` = '41' WHERE (`entry` = '9379');
+        -- ITEM_LEVEL from 44 to 41
+        UPDATE `item_template` SET `item_level` = '41' WHERE (`entry` = '9379');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '9379');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '9379');
+
+
+        -- Item: Large War Club
+        -- Entry: 3782
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-07 21:49:39
+        -- New date:         2004-07-12 15:16:30
+        -- Days diff: 87
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-07 21:49:39
+        -- New date:         2004-07-12 15:16:30
+        -- Days diff: 87
+
+        -- DMG_MIN1 from 35 to 36
+        UPDATE `item_template` SET `dmg_min1` = '36' WHERE (`entry` = '3782');
+        -- DMG_MAX1 from 53 to 54
+        UPDATE `item_template` SET `dmg_max1` = '54' WHERE (`entry` = '3782');
+
+
+        -- Item: Ensorcelled Parchment
+        -- Entry: 3706
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-10-07 21:49:39
+        -- New date:         2004-10-07 21:49:39
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-10-07 21:49:39
+        -- New date:         2004-10-07 21:49:39
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 30 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '3706');
+        -- ITEM_LEVEL from 30 to 0
+        UPDATE `item_template` SET `item_level` = '0' WHERE (`entry` = '3706');
+
+
+        -- Item: Daggerspine Scale
+        -- Entry: 3509
+
+        -- STACKABLE
+        -- Current date:     2004-06-20 23:30:34
+        -- New date:         2004-06-20 23:30:34
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '3509');
+
+
+        -- Item: Cabalist Gloves
+        -- Entry: 7530
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:15
+        -- New date:         2004-08-20 10:26:36
+        -- Days diff: 79
+
+        -- ARMOR from 77 to 35
+        UPDATE `item_template` SET `armor` = '35' WHERE (`entry` = '7530');
+
+
+        -- Item: Traveler's Helm
+        -- Entry: 8299
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 38
+
+        -- STAT_TYPE1
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 38
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-12 08:22:29
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 11
+
+        -- ARMOR from 124 to 139
+        UPDATE `item_template` SET `armor` = '139' WHERE (`entry` = '8299');
+        -- STAT_TYPE1 from 7 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '8299');
+        -- STAT_VALUE1 from 13 to 17
+        UPDATE `item_template` SET `stat_value1` = '17' WHERE (`entry` = '8299');
+
+
+        -- Item: Noboru's Cudgel
+        -- Entry: 6196
+
+        -- SUBCLASS
+        -- Current date:     2004-11-08 19:51:10
+        -- New date:         2004-10-14 15:00:34
+        -- Days diff: 25
+
+        -- DMG_MIN1
+        -- Current date:     2004-11-08 19:51:10
+        -- New date:         2004-11-08 19:51:10
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-11-08 19:51:10
+        -- New date:         2004-11-08 19:51:10
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 4 to 14
+        UPDATE `item_template` SET `subclass` = '14' WHERE (`entry` = '6196');
+        -- DMG_MIN1 from 15 to 33
+        UPDATE `item_template` SET `dmg_min1` = '33' WHERE (`entry` = '6196');
+        -- DMG_MAX1 from 29 to 50
+        UPDATE `item_template` SET `dmg_max1` = '50' WHERE (`entry` = '6196');
+
+
+        -- Item: Valorous Wristguards
+        -- Entry: 8273
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-11-08 03:30:04
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 27373 to 19871
+        UPDATE `item_template` SET `display_id` = '19871' WHERE (`entry` = '8273');
+        -- ARMOR from 195 to 211
+        UPDATE `item_template` SET `armor` = '211' WHERE (`entry` = '8273');
+
+
+        -- Item: Goblin Power Shovel
+        -- Entry: 1991
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-08-06 12:34:03
+        -- New date:         2004-08-06 12:34:03
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 29 to 24
+        UPDATE `item_template` SET `required_level` = '24' WHERE (`entry` = '1991');
+
+
+        -- Item: Cabalist Bracers
+        -- Entry: 7534
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:15
+        -- New date:         2004-07-08 15:42:33
+        -- Days diff: 122
+
+        -- ARMOR from 53 to 32
+        UPDATE `item_template` SET `armor` = '32' WHERE (`entry` = '7534');
+
+
+        -- Item: Tough Scorpid Helm
+        -- Entry: 8208
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:05
+        -- New date:         2004-08-21 11:18:16
+        -- Days diff: 78
+
+        -- NATURE_RES
+        -- Current date:     2004-08-21 11:18:16
+        -- New date:         2004-08-21 11:18:16
+        -- Days diff: Unknown
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-21 11:18:16
+        -- Days diff: 40
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-21 11:18:16
+        -- Days diff: 40
+
+        -- ARMOR from 222 to 62
+        UPDATE `item_template` SET `armor` = '62' WHERE (`entry` = '8208');
+        -- NATURE_RES from 0 to 3
+        UPDATE `item_template` SET `nature_res` = '3' WHERE (`entry` = '8208');
+        -- STAT_TYPE1 from 3 to 4
+        UPDATE `item_template` SET `stat_type1` = '4' WHERE (`entry` = '8208');
+        -- STAT_VALUE1 from 14 to 8
+        UPDATE `item_template` SET `stat_value1` = '8' WHERE (`entry` = '8208');
+
+
+        -- Item: Worn Stone Token
+        -- Entry: 3714
+
+        -- STACKABLE
+        -- Current date:     2004-09-28 17:19:54
+        -- New date:         2004-09-28 17:19:54
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '3714');
+
+
+        -- Item: Renegade Gauntlets
+        -- Entry: 9868
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 02:27:37
+        -- New date:         2004-11-08 02:27:37
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-10-05 17:08:36
+        -- New date:         2004-09-30 22:09:15
+        -- Days diff: 369
+
+        -- DISPLAY_ID from 25788 to 11522
+        UPDATE `item_template` SET `display_id` = '11522' WHERE (`entry` = '9868');
+        -- ARMOR from 133 to 136
+        UPDATE `item_template` SET `armor` = '136' WHERE (`entry` = '9868');
+
+
+        -- Item: Nightscape Tunic
+        -- Entry: 8175
+
+        -- NAME
+        -- Current date:     2005-11-01 20:42:02
+        -- New date:         2004-08-20 10:23:58
+        -- Days diff: 438
+
+        -- ARMOR
+        -- Current date:     2004-12-13 23:44:28
+        -- New date:         2004-08-20 10:23:58
+        -- Days diff: 115
+
+        -- STAT_TYPE2
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-08-20 10:23:58
+        -- Days diff: 79
+
+        -- STAT_VALUE2
+        -- Current date:     2004-11-08 03:30:06
+        -- New date:         2004-08-20 10:23:58
+        -- Days diff: 79
+
+        -- NAME from Nightscape Tunic to Nightscape Leather Tunic
+        UPDATE `item_template` SET `name` = 'Nightscape Leather Tunic' WHERE (`entry` = '8175');
+        -- ARMOR from 113 to 58
+        UPDATE `item_template` SET `armor` = '58' WHERE (`entry` = '8175');
+        -- STAT_TYPE2 from 7 to 3
+        UPDATE `item_template` SET `stat_type2` = '3' WHERE (`entry` = '8175');
+        -- STAT_VALUE2 from 6 to 5
+        UPDATE `item_template` SET `stat_value2` = '5' WHERE (`entry` = '8175');
+
+
+        -- Item: Runic Cane
+        -- Entry: 7559
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 20:31:46
+        -- New date:         2004-10-01 20:31:46
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 20:31:46
+        -- New date:         2004-10-01 20:31:46
+        -- Days diff: Unknown
+
+        -- STAT_TYPE1 from 7 to 1
+        UPDATE `item_template` SET `stat_type1` = '1' WHERE (`entry` = '7559');
+        -- STAT_VALUE1 from 3 to 30
+        UPDATE `item_template` SET `stat_value1` = '30' WHERE (`entry` = '7559');
+
+
+        -- Item: Glowing Brightwood Staff
+        -- Entry: 812
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 08:28:05
+        -- New date:         2004-09-27 21:44:28
+        -- Days diff: 3
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 08:28:05
+        -- New date:         2004-09-27 21:44:28
+        -- Days diff: 3
+
+        -- STAT_TYPE3
+        -- Current date:     2004-10-01 08:28:05
+        -- New date:         2004-10-01 08:28:05
+        -- Days diff: Unknown
+
+        -- STAT_VALUE3
+        -- Current date:     2004-10-01 08:28:05
+        -- New date:         2004-10-01 08:28:05
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 127 to 122
+        UPDATE `item_template` SET `dmg_min1` = '122' WHERE (`entry` = '812');
+        -- DMG_MAX1 from 191 to 184
+        UPDATE `item_template` SET `dmg_max1` = '184' WHERE (`entry` = '812');
+        -- STAT_TYPE3 from 6 to 0
+        UPDATE `item_template` SET `stat_type3` = '0' WHERE (`entry` = '812');
+        -- STAT_VALUE3 from 9 to 0
+        UPDATE `item_template` SET `stat_value3` = '0' WHERE (`entry` = '812');
+
+
+        -- Item: Fiery Gland
+        -- Entry: 4557
+
+        -- NAME
+        -- Current date:     2004-11-08 15:07:57
+        -- New date:         2004-07-03 16:18:01
+        -- Days diff: 127
+
+        -- NAME from Fiery Gland to [ph] Shards
+        UPDATE `item_template` SET `name` = '[ph] Shards' WHERE (`entry` = '4557');
+
+
+        -- Item: Plans: Craftsman's Monocle
+        -- Entry: 4415
+
+        -- SUBCLASS
+        -- Current date:     2005-08-28 01:42:13
+        -- New date:         2005-08-28 01:42:13
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 3 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4415');
+
+
+        -- Item: Heavy Mithril Helm
+        -- Entry: 7934
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:03
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 79
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-08-20 10:26:38
+        -- Days diff: 41
+
+        -- ARMOR from 469 to 80
+        UPDATE `item_template` SET `armor` = '80' WHERE (`entry` = '7934');
+        -- STAT_VALUE1 from 15 to 7
+        UPDATE `item_template` SET `stat_value1` = '7' WHERE (`entry` = '7934');
+
+
+        -- Item: Royal Trousers
+        -- Entry: 9911
+
+        -- DISPLAY_ID
+        -- Current date:     2005-02-26 20:04:52
+        -- New date:         2004-11-08 09:47:03
+        -- Days diff: 110
+
+        -- ARMOR
+        -- Current date:     2005-02-26 20:04:52
+        -- New date:         2004-10-01 19:39:30
+        -- Days diff: 148
+
+        -- DISPLAY_ID from 28416 to 15015
+        UPDATE `item_template` SET `display_id` = '15015' WHERE (`entry` = '9911');
+        -- ARMOR from 53 to 85
+        UPDATE `item_template` SET `armor` = '85' WHERE (`entry` = '9911');
+
+
+        -- Item: Centipaar Insect Parts
+        -- Entry: 8587
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-15 11:07:12
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 18723 to 17493
+        UPDATE `item_template` SET `display_id` = '17493' WHERE (`entry` = '8587');
+
+
+        -- Item: Talvash's Enhancing Necklace
+        -- Entry: 7673
+
+        -- STAT_TYPE4
+        -- Current date:     2005-07-11 01:33:20
+        -- New date:         2004-08-20 10:23:58
+        -- Days diff: 324
+
+        -- STAT_VALUE4
+        -- Current date:     2005-07-11 01:33:20
+        -- New date:         2004-08-20 10:23:58
+        -- Days diff: 324
+
+        -- STAT_TYPE4 from 0 to 4
+        UPDATE `item_template` SET `stat_type4` = '4' WHERE (`entry` = '7673');
+        -- STAT_VALUE4 from 0 to 4
+        UPDATE `item_template` SET `stat_value4` = '4' WHERE (`entry` = '7673');
+
+
+        -- Item: Charged Gear
+        -- Entry: 9461
+
+        -- NATURE_RES
+        -- Current date:     2005-09-08 11:54:00
+        -- New date:         2004-10-01 02:27:06
+        -- Days diff: 342
+
+        -- ARCANE_RES
+        -- Current date:     2005-09-08 11:54:00
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 384
+
+        -- NATURE_RES from 5 to 0
+        UPDATE `item_template` SET `nature_res` = '0' WHERE (`entry` = '9461');
+        -- ARCANE_RES from 5 to 0
+        UPDATE `item_template` SET `arcane_res` = '0' WHERE (`entry` = '9461');
+
+
+        -- Item: Tracker's Leggings
+        -- Entry: 9922
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- ARMOR from 108 to 156
+        UPDATE `item_template` SET `armor` = '156' WHERE (`entry` = '9922');
+
+
+        -- Item: Scroll of Intellect II
+        -- Entry: 2290
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 06:01:29
+        -- New date:         2004-11-08 06:01:29
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 2616 to 1096
+        UPDATE `item_template` SET `display_id` = '1096' WHERE (`entry` = '2290');
+
+
+        -- Item: Chieftain's Cloak
+        -- Entry: 9951
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-22 21:27:24
+        -- New date:         2004-09-22 21:27:24
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-10-01 02:27:20
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-09-22 21:27:24
+        -- Days diff: 46
+
+        -- DISPLAY_ID from 23018 to 18948
+        UPDATE `item_template` SET `display_id` = '18948' WHERE (`entry` = '9951');
+        -- SUBCLASS from 1 to 2
+        UPDATE `item_template` SET `subclass` = '2' WHERE (`entry` = '9951');
+        -- ARMOR from 31 to 130
+        UPDATE `item_template` SET `armor` = '130' WHERE (`entry` = '9951');
+
+
+        -- Item: Lucky Fishing Hat
+        -- Entry: 7996
+
+        -- SUBCLASS
+        -- Current date:     2004-09-22 21:27:14
+        -- New date:         2004-09-22 21:27:14
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-05-28 08:16:33
+        -- New date:         2004-09-22 21:27:14
+        -- Days diff: 247
+
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '7996');
+        -- ARMOR from 42 to 0
+        UPDATE `item_template` SET `armor` = '0' WHERE (`entry` = '7996');
+
+
+        -- Item: Grimlok's Tribal Vestments
+        -- Entry: 9415
+
+        -- ARMOR
+        -- Current date:     2005-09-08 11:54:01
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 384
+
+        -- ARMOR from 68 to 34
+        UPDATE `item_template` SET `armor` = '34' WHERE (`entry` = '9415');
+
+
+        -- Item: Dried Bat Blood
+        -- Entry: 6293
+
+        -- NAME
+        -- Current date:     2004-09-05 21:02:44
+        -- New date:         2004-09-05 21:02:44
+        -- Days diff: Unknown
+
+        -- NAME from Dried Bat Blood to Bat Blood
+        UPDATE `item_template` SET `name` = 'Bat Blood' WHERE (`entry` = '6293');
+
+
+        -- Item: Bronze Warhammer
+        -- Entry: 7956
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:33:44
+        -- New date:         2004-07-08 16:56:42
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:33:44
+        -- New date:         2004-07-08 16:56:42
+        -- Days diff: 84
+
+        -- DMG_MIN1 from 37 to 29
+        UPDATE `item_template` SET `dmg_min1` = '29' WHERE (`entry` = '7956');
+        -- DMG_MAX1 from 57 to 56
+        UPDATE `item_template` SET `dmg_max1` = '56' WHERE (`entry` = '7956');
+
+
+        -- Item: Clara's Fresh Apple
+        -- Entry: 8683
+
+        -- STACKABLE
+        -- Current date:     2005-09-08 12:04:30
+        -- New date:         2005-09-08 12:04:30
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 5
+        UPDATE `item_template` SET `stackable` = '5' WHERE (`entry` = '8683');
+
+
+        -- Item: Red Linen Vest
+        -- Entry: 6239
+
+        -- ARMOR
+        -- Current date:     2004-04-19 11:36:42
+        -- New date:         2004-04-19 11:36:42
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-04-19 11:36:42
+        -- New date:         2004-04-19 11:36:42
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-04-19 11:36:42
+        -- New date:         2004-04-19 11:36:42
+        -- Days diff: Unknown
+
+        -- STAT_TYPE1
+        -- Current date:     2004-04-19 11:36:42
+        -- New date:         2004-04-19 11:36:42
+        -- Days diff: Unknown
+
+        -- ARMOR from 14 to 13
+        UPDATE `item_template` SET `armor` = '13' WHERE (`entry` = '6239');
+        -- REQUIRED_LEVEL from 7 to 2
+        UPDATE `item_template` SET `required_level` = '2' WHERE (`entry` = '6239');
+        -- ITEM_LEVEL from 7 to 2
+        UPDATE `item_template` SET `item_level` = '2' WHERE (`entry` = '6239');
+        -- STAT_TYPE1 from 0 to 6
+        UPDATE `item_template` SET `stat_type1` = '6' WHERE (`entry` = '6239');
+
+
+        -- Item: Heavy Silken Thread
+        -- Entry: 8343
+
+        -- NAME
+        -- Current date:     2004-07-15 16:01:54
+        -- New date:         2004-07-15 16:01:54
+        -- Days diff: Unknown
+
+        -- NAME from Heavy Silken Thread to Mage Thread
+        UPDATE `item_template` SET `name` = 'Mage Thread' WHERE (`entry` = '8343');
+
+
+        -- Item: Pattern: Moonglow Vest
+        -- Entry: 6710
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 23:10:09
+        -- New date:         2005-03-22 23:10:09
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '6710');
+
+
+        -- Item: Field Plate Gauntlets
+        -- Entry: 9287
+
+        -- NAME
+        -- Current date:     2005-09-06 01:00:48
+        -- New date:         2004-07-08 15:42:34
+        -- Days diff: 424
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-11-08 04:19:36
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-12-19 19:07:21
+        -- New date:         2004-07-08 15:42:34
+        -- Days diff: 164
+
+        -- NAME from Field Plate Gauntlets to Gothic Plate Gauntlets
+        UPDATE `item_template` SET `name` = 'Gothic Plate Gauntlets' WHERE (`entry` = '9287');
+        -- DISPLAY_ID from 27358 to 11626
+        UPDATE `item_template` SET `display_id` = '11626' WHERE (`entry` = '9287');
+        -- ARMOR from 188 to 70
+        UPDATE `item_template` SET `armor` = '70' WHERE (`entry` = '9287');
+
+
+        -- Item: Dazzling Longsword
+        -- Entry: 869
+
+        -- DMG_MIN1
+        -- Current date:     2005-10-19 11:50:43
+        -- New date:         2004-07-08 15:42:34
+        -- Days diff: 467
+
+        -- DMG_MAX1
+        -- Current date:     2005-10-19 11:50:43
+        -- New date:         2004-07-08 15:42:34
+        -- Days diff: 467
+
+        -- DMG_MIN1 from 37 to 32
+        UPDATE `item_template` SET `dmg_min1` = '32' WHERE (`entry` = '869');
+        -- DMG_MAX1 from 70 to 60
+        UPDATE `item_template` SET `dmg_max1` = '60' WHERE (`entry` = '869');
+
+
+        -- Item: Warden Staff
+        -- Entry: 943
+
+        -- ARMOR
+        -- Current date:     2005-09-04 12:42:05
+        -- New date:         2004-08-23 15:02:37
+        -- Days diff: 376
+
+        -- SPELLID_1
+        -- Current date:     2005-09-04 12:42:05
+        -- New date:         2004-10-01 02:27:15
+        -- Days diff: 338
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 02:27:15
+        -- New date:         2004-10-01 02:27:15
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:15
+        -- New date:         2004-10-01 02:27:15
+        -- Days diff: Unknown
+
+        -- ARMOR from 260 to 65
+        UPDATE `item_template` SET `armor` = '65' WHERE (`entry` = '943');
+        -- SPELLID_1 from 13390 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '943');
+        -- STAT_TYPE1 from 7 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '943');
+        -- STAT_VALUE1 from 11 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '943');
+
+
+        -- Item: Obsidian Cleaver
+        -- Entry: 9383
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-07 21:49:39
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-07 21:49:39
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: 84
+
+        -- DMG_MIN1 from 94 to 82
+        UPDATE `item_template` SET `dmg_min1` = '82' WHERE (`entry` = '9383');
+        -- DMG_MAX1 from 141 to 123
+        UPDATE `item_template` SET `dmg_max1` = '123' WHERE (`entry` = '9383');
+
+
+        -- Item: Spirewind Fetter
+        -- Entry: 9406
+
+        -- ARMOR
+        -- Current date:     2005-06-16 11:06:08
+        -- New date:         2004-08-20 18:08:42
+        -- Days diff: 299
+
+        -- ARMOR from 112 to 60
+        UPDATE `item_template` SET `armor` = '60' WHERE (`entry` = '9406');
+
+
+        -- Item: Solid Weightstone
+        -- Entry: 7965
+
+        -- DISPLAY_ID
+        -- Current date:     2004-10-13 10:11:20
+        -- New date:         2004-10-13 10:11:20
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 24686 to 4720
+        UPDATE `item_template` SET `display_id` = '4720' WHERE (`entry` = '7965');
+
+
+        -- Item: Essence of Earth
+        -- Entry: 7076
+
+        -- DISPLAY_ID
+        -- Current date:     2004-10-08 08:32:15
+        -- New date:         2004-10-08 08:32:15
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 23754 to 13686
+        UPDATE `item_template` SET `display_id` = '13686' WHERE (`entry` = '7076');
+
+
+        -- Item: Rock Maul
+        -- Entry: 1826
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-19 15:13:00
+        -- New date:         2004-07-19 15:13:00
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 8587 to 5531
+        UPDATE `item_template` SET `display_id` = '5531' WHERE (`entry` = '1826');
+
+
+        -- Item: Alabaster Plate Leggings
+        -- Entry: 8318
+
+        -- NAME
+        -- Current date:     2004-12-23 21:09:37
+        -- New date:         2004-11-08 03:30:02
+        -- Days diff: 45
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:02
+        -- New date:         2004-10-01 02:27:08
+        -- Days diff: 38
+
+        -- NAME from Alabaster Plate Leggings to Spectral Plate Leggings
+        UPDATE `item_template` SET `name` = 'Spectral Plate Leggings' WHERE (`entry` = '8318');
+        -- ARMOR from 467 to 445
+        UPDATE `item_template` SET `armor` = '445' WHERE (`entry` = '8318');
+
+
+        -- Item: Banded Girdle
+        -- Entry: 9840
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-11-08 07:05:05
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 27777 to 12493
+        UPDATE `item_template` SET `display_id` = '12493' WHERE (`entry` = '9840');
+
+
+        -- Item: Lumbering Ogre Axe
+        -- Entry: 1521
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-07-19 15:13:01
+        -- Days diff: 73
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-07-19 15:13:01
+        -- Days diff: 73
+
+        -- DMG_MIN1 from 105 to 109
+        UPDATE `item_template` SET `dmg_min1` = '109' WHERE (`entry` = '1521');
+        -- DMG_MAX1 from 158 to 164
+        UPDATE `item_template` SET `dmg_max1` = '164' WHERE (`entry` = '1521');
+
+
+        -- Item: Tiny Crimson Whelpling
+        -- Entry: 8499
+
+        -- NAME
+        -- Current date:     2004-08-20 11:50:32
+        -- New date:         2004-08-20 11:50:32
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:32
+        -- New date:         2004-08-20 11:50:32
+        -- Days diff: Unknown
+
+        -- CLASS
+        -- Current date:     2004-08-20 11:50:32
+        -- New date:         2004-08-20 11:50:32
+        -- Days diff: Unknown
+
+        -- NAME from Tiny Crimson Whelpling to Tiny Crimson Whelping
+        UPDATE `item_template` SET `name` = 'Tiny Crimson Whelping' WHERE (`entry` = '8499');
+        -- DISPLAY_ID from 20655 to 18051
+        UPDATE `item_template` SET `display_id` = '18051' WHERE (`entry` = '8499');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8499');
+
+
+        -- Item: Manual Crowd Pummeler
+        -- Entry: 9449
+
+        -- DISPLAY_ID
+        -- Current date:     2005-12-29 03:16:43
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: 538
+
+        -- DMG_MIN1
+        -- Current date:     2005-12-29 03:16:43
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: 538
+
+        -- DMG_MAX1
+        -- Current date:     2005-12-29 03:16:43
+        -- New date:         2004-07-08 16:09:20
+        -- Days diff: 538
+
+        -- SPELLID_1
+        -- Current date:     2005-12-29 03:16:43
+        -- New date:         2004-08-20 11:50:19
+        -- Days diff: 495
+
+        -- STAT_TYPE2
+        -- Current date:     2005-12-29 03:16:43
+        -- New date:         2004-10-01 18:50:45
+        -- Days diff: 453
+
+        -- STAT_VALUE2
+        -- Current date:     2005-12-29 03:16:43
+        -- New date:         2004-10-01 18:50:45
+        -- Days diff: 453
+
+        -- DISPLAY_ID from 19645 to 3151
+        UPDATE `item_template` SET `display_id` = '3151' WHERE (`entry` = '9449');
+        -- DMG_MIN1 from 46 to 36
+        UPDATE `item_template` SET `dmg_min1` = '36' WHERE (`entry` = '9449');
+        -- DMG_MAX1 from 70 to 55
+        UPDATE `item_template` SET `dmg_max1` = '55' WHERE (`entry` = '9449');
+        -- SPELLID_1 from 13494 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '9449');
+        -- STAT_TYPE2 from 3 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '9449');
+        -- STAT_VALUE2 from 5 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '9449');
+
+
+        -- Item: Dirt-stained Map
+        -- Entry: 4851
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-07 23:59:41
+        -- New date:         2004-07-07 23:59:41
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-07-07 23:59:41
+        -- New date:         2004-07-07 23:59:41
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL from 1 to 0
+        UPDATE `item_template` SET `required_level` = '0' WHERE (`entry` = '4851');
+        -- ITEM_LEVEL from 1 to 0
+        UPDATE `item_template` SET `item_level` = '0' WHERE (`entry` = '4851');
+
+
+        -- Item: Pattern: Robes of Arcana
+        -- Entry: 5773
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:15:44
+        -- New date:         2005-03-22 21:15:44
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 2 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '5773');
+
+
+        -- Item: Gaze Dreamer Pants
+        -- Entry: 6903
+
+        -- ARMOR
+        -- Current date:     2005-10-08 14:00:51
+        -- New date:         2004-06-25 14:07:43
+        -- Days diff: 469
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2005-08-05 10:21:18
+        -- New date:         2004-06-25 14:07:43
+        -- Days diff: 405
+
+        -- ITEM_LEVEL
+        -- Current date:     2005-08-05 10:21:18
+        -- New date:         2004-06-25 14:07:43
+        -- Days diff: 405
+
+        -- STAT_TYPE2
+        -- Current date:     2005-08-05 10:21:18
+        -- New date:         2004-08-21 11:18:25
+        -- Days diff: 348
+
+        -- STAT_VALUE2
+        -- Current date:     2005-08-05 10:21:18
+        -- New date:         2004-08-21 11:18:25
+        -- Days diff: 348
+
+        -- ARMOR from 36 to 19
+        UPDATE `item_template` SET `armor` = '19' WHERE (`entry` = '6903');
+        -- REQUIRED_LEVEL from 23 to 22
+        UPDATE `item_template` SET `required_level` = '22' WHERE (`entry` = '6903');
+        -- ITEM_LEVEL from 23 to 22
+        UPDATE `item_template` SET `item_level` = '22' WHERE (`entry` = '6903');
+        -- STAT_TYPE2 from 6 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '6903');
+        -- STAT_VALUE2 from 6 to 10
+        UPDATE `item_template` SET `stat_value2` = '10' WHERE (`entry` = '6903');
+
+
+        -- Item: Mechanical Squirrel Box
+        -- Entry: 4401
+
+        -- NAME
+        -- Current date:     2004-06-21 11:55:34
+        -- New date:         2004-06-21 11:55:34
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-08-20 10:23:56
+        -- New date:         2004-08-20 10:23:56
+        -- Days diff: Unknown
+
+        -- STACKABLE
+        -- Current date:     2004-06-21 11:55:34
+        -- New date:         2004-06-21 11:55:34
+        -- Days diff: Unknown
+
+        -- NAME from Mechanical Squirrel Box to Mechanical Squirrel
+        UPDATE `item_template` SET `name` = 'Mechanical Squirrel' WHERE (`entry` = '4401');
+        -- SUBCLASS from 3 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4401');
+        -- STACKABLE from 1 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4401');
+
+
+        -- Item: Runed Ring
+        -- Entry: 862
+
+        -- SPELLID_1
+        -- Current date:     2004-10-01 18:41:20
+        -- New date:         2004-10-01 18:41:20
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 9397 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '862');
+
+
+        -- Item: Stonevault Shiv
+        -- Entry: 9384
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 03:58:18
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: 41
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 03:58:18
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: 77
+
+        -- DMG_MIN1 from 25 to 18
+        UPDATE `item_template` SET `dmg_min1` = '18' WHERE (`entry` = '9384');
+        -- DMG_MAX1 from 47 to 35
+        UPDATE `item_template` SET `dmg_max1` = '35' WHERE (`entry` = '9384');
+
+
+        -- Item: Gromsblood
+        -- Entry: 8846
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-20 23:23:38
+        -- New date:         2004-07-20 23:23:38
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 19494 to 18087
+        UPDATE `item_template` SET `display_id` = '18087' WHERE (`entry` = '8846');
+
+
+        -- Item: Barbaric Iron Gloves
+        -- Entry: 7917
+
+        -- ARMOR
+        -- Current date:     2004-11-10 18:04:43
+        -- New date:         2004-09-29 03:56:06
+        -- Days diff: 42
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-29 03:56:06
+        -- New date:         2004-09-29 03:56:06
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-09-29 03:56:06
+        -- New date:         2004-09-29 03:56:06
+        -- Days diff: Unknown
+
+        -- ARMOR from 137 to 38
+        UPDATE `item_template` SET `armor` = '38' WHERE (`entry` = '7917');
+        -- REQUIRED_LEVEL from 32 to 25
+        UPDATE `item_template` SET `required_level` = '25' WHERE (`entry` = '7917');
+        -- ITEM_LEVEL from 32 to 25
+        UPDATE `item_template` SET `item_level` = '25' WHERE (`entry` = '7917');
+
+
+        -- Item: Heirloom Dagger
+        -- Entry: 7116
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-04 02:08:23
+        -- New date:         2004-09-04 02:08:23
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 03:58:18
+        -- New date:         2004-09-29 17:20:10
+        -- Days diff: 1
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 03:58:18
+        -- New date:         2004-07-19 15:54:42
+        -- Days diff: 73
+
+        -- STAT_TYPE1
+        -- Current date:     2004-10-01 03:58:18
+        -- New date:         2004-10-01 03:58:18
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 03:58:18
+        -- New date:         2004-10-01 03:58:18
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20602 to 6460
+        UPDATE `item_template` SET `display_id` = '6460' WHERE (`entry` = '7116');
+        -- DMG_MIN1 from 9 to 7
+        UPDATE `item_template` SET `dmg_min1` = '7' WHERE (`entry` = '7116');
+        -- DMG_MAX1 from 17 to 15
+        UPDATE `item_template` SET `dmg_max1` = '15' WHERE (`entry` = '7116');
+        -- STAT_TYPE1 from 7 to 0
+        UPDATE `item_template` SET `stat_type1` = '0' WHERE (`entry` = '7116');
+        -- STAT_VALUE1 from 1 to 0
+        UPDATE `item_template` SET `stat_value1` = '0' WHERE (`entry` = '7116');
+
+
+        -- Item: Herbalist's Gloves
+        -- Entry: 7349
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-19 15:13:00
+        -- New date:         2004-07-19 15:13:00
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 17230 to 14312
+        UPDATE `item_template` SET `display_id` = '14312' WHERE (`entry` = '7349');
+
+
+        -- Item: Blue Glittering Axe
+        -- Entry: 7942
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-30 20:57:24
+        -- New date:         2004-07-12 15:16:40
+        -- Days diff: 80
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-30 20:57:24
+        -- New date:         2004-07-12 15:16:40
+        -- Days diff: 80
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:50:42
+        -- New date:         2004-08-20 11:50:42
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:50:42
+        -- New date:         2004-08-20 11:50:42
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 32 to 31
+        UPDATE `item_template` SET `dmg_min1` = '31' WHERE (`entry` = '7942');
+        -- DMG_MAX1 from 61 to 58
+        UPDATE `item_template` SET `dmg_max1` = '58' WHERE (`entry` = '7942');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '7942');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '7942');
+
+
+        -- Item: Destiny
+        -- Entry: 647
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-24 03:05:57
+        -- New date:         2004-10-24 03:05:57
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-24 03:05:57
+        -- New date:         2004-10-24 03:05:57
+        -- Days diff: Unknown
+
+        -- STAT_TYPE1
+        -- Current date:     2005-08-20 23:58:42
+        -- New date:         2004-10-24 03:05:57
+        -- Days diff: 300
+
+        -- STAT_VALUE1
+        -- Current date:     2005-08-20 23:58:42
+        -- New date:         2004-10-24 03:05:57
+        -- Days diff: 300
+
+        -- STAT_TYPE2
+        -- Current date:     2005-08-20 23:59:35
+        -- New date:         2004-10-24 03:05:57
+        -- Days diff: 300
+
+        -- STAT_VALUE2
+        -- Current date:     2005-08-20 23:59:35
+        -- New date:         2004-10-24 03:05:57
+        -- Days diff: 300
+
+        -- DMG_MIN1 from 112 to 157
+        UPDATE `item_template` SET `dmg_min1` = '157' WHERE (`entry` = '647');
+        -- DMG_MAX1 from 168 to 236
+        UPDATE `item_template` SET `dmg_max1` = '236' WHERE (`entry` = '647');
+        -- STAT_TYPE1 from 0 to 3
+        UPDATE `item_template` SET `stat_type1` = '3' WHERE (`entry` = '647');
+        -- STAT_VALUE1 from 0 to 25
+        UPDATE `item_template` SET `stat_value1` = '25' WHERE (`entry` = '647');
+        -- STAT_TYPE2 from 0 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '647');
+        -- STAT_VALUE2 from 0 to 25
+        UPDATE `item_template` SET `stat_value2` = '25' WHERE (`entry` = '647');
+
+
+        -- Item: Bastion of Stormwind
+        -- Entry: 9607
+
+        -- ARMOR
+        -- Current date:     2004-09-30 19:57:27
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 41
+        -- Overrides WDB:                   3925
+
+        -- BLOCK
+        -- Current date:     2004-09-21 11:31:54
+        -- New date:         2004-07-08 10:19:55
+        -- Days diff: 75
+        -- Overrides WDB:                   3925
+
+        -- SPELLID_1
+        -- Current date:     2004-09-21 11:31:54
+        -- New date:         2004-08-20 10:24:00
+        -- Days diff: 32
+        -- Overrides WDB:                   3925
+
+        -- ARMOR from 375 to 114
+        UPDATE `item_template` SET `armor` = '114' WHERE (`entry` = '9607');
+        -- BLOCK from 9 to 28
+        UPDATE `item_template` SET `block` = '28' WHERE (`entry` = '9607');
+        -- SPELLID_1 from 7516 to 7514
+        UPDATE `item_template` SET `spellid_1` = '7514' WHERE (`entry` = '9607');
+
+
+        -- Item: Stonesplinter Axe
+        -- Entry: 2265
+
+        -- DMG_MIN1
+        -- Current date:     2004-05-28 12:19:48
+        -- New date:         2004-05-28 12:19:48
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-08-22 12:15:53
+        -- New date:         2004-05-28 12:19:48
+        -- Days diff: 85
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-05-28 12:19:48
+        -- New date:         2004-05-28 12:19:48
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 9 to 19
+        UPDATE `item_template` SET `dmg_min1` = '19' WHERE (`entry` = '2265');
+        -- DMG_MAX1 from 17 to 29
+        UPDATE `item_template` SET `dmg_max1` = '29' WHERE (`entry` = '2265');
+        -- REQUIRED_LEVEL from 8 to 3
+        UPDATE `item_template` SET `required_level` = '3' WHERE (`entry` = '2265');
+
+
+        -- Item: Kaldorei Spider Kabob
+        -- Entry: 5472
+
+        -- NAME
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-02 19:03:38
+        -- Days diff: 26
+        -- Overrides WDB:                   3925
+
+        -- NAME from Kaldorei Spider Kabob to Kaldorei Caviar
+        UPDATE `item_template` SET `name` = 'Kaldorei Caviar' WHERE (`entry` = '5472');
+
+
+        -- Item: Tough Cloak
+        -- Entry: 1806
+
+        -- NAME
+        -- Current date:     2004-11-08 21:27:54
+        -- New date:         2004-05-05 04:16:26
+        -- Days diff: 187
+        -- Overrides WDB:                   4149
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-25 00:00:00
+        -- New date:         2004-05-05 04:16:26
+        -- Days diff: 50
+        -- Overrides WDB:                   4149
+
+        -- NAME from Tough Cloak to Hardened Leather Cloak
+        UPDATE `item_template` SET `name` = 'Hardened Leather Cloak' WHERE (`entry` = '1806');
+        -- REQUIRED_LEVEL from 23 to 18
+        UPDATE `item_template` SET `required_level` = '18' WHERE (`entry` = '1806');
+
+
+        -- Item: Balanced Long Bow
+        -- Entry: 4025
+
+        -- DMG_MIN1
+        -- Current date:     2004-09-22 21:26:19
+        -- New date:         2004-07-13 21:45:18
+        -- Days diff: 70
+
+        -- DMG_MAX1
+        -- Current date:     2004-09-30 22:09:17
+        -- New date:         2004-07-13 21:45:18
+        -- Days diff: 79
+
+        -- DMG_MIN1 from 15 to 26
+        UPDATE `item_template` SET `dmg_min1` = '26' WHERE (`entry` = '4025');
+        -- DMG_MAX1 from 29 to 49
+        UPDATE `item_template` SET `dmg_max1` = '49' WHERE (`entry` = '4025');
+
+
+        -- Item: Ginn-su Sword
+        -- Entry: 9424
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: 81
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: 81
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:50:20
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:50:20
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-10-05 11:03:24
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-05 11:03:24
+        -- New date:         2004-10-05 11:03:24
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 33 to 39
+        UPDATE `item_template` SET `dmg_min1` = '39' WHERE (`entry` = '9424');
+        -- DMG_MAX1 from 62 to 49
+        UPDATE `item_template` SET `dmg_max1` = '49' WHERE (`entry` = '9424');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '9424');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '9424');
+        -- STAT_TYPE2 from 4 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '9424');
+        -- STAT_VALUE2 from 4 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '9424');
+
+
+        -- Item: Hands of Darkness
+        -- Entry: 7047
+
+        -- DISPLAY_ID
+        -- Current date:     2004-06-21 11:55:26
+        -- New date:         2004-06-21 11:55:26
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-10 05:18:18
+        -- New date:         2004-11-10 05:18:18
+        -- Days diff: Unknown
+
+        -- SPELLID_1
+        -- Current date:     2004-11-10 05:18:18
+        -- New date:         2004-06-21 11:55:26
+        -- Days diff: 141
+
+        -- STAT_TYPE1
+        -- Current date:     2004-11-10 05:18:18
+        -- New date:         2004-11-10 05:18:18
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-11-10 05:18:18
+        -- New date:         2004-11-10 05:18:18
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 17146 to 13653
+        UPDATE `item_template` SET `display_id` = '13653' WHERE (`entry` = '7047');
+        -- ARMOR from 26 to 13
+        UPDATE `item_template` SET `armor` = '13' WHERE (`entry` = '7047');
+        -- SPELLID_1 from 7710 to 8470
+        UPDATE `item_template` SET `spellid_1` = '8470' WHERE (`entry` = '7047');
+        -- STAT_TYPE1 from 6 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '7047');
+        -- STAT_VALUE1 from 5 to 1
+        UPDATE `item_template` SET `stat_value1` = '1' WHERE (`entry` = '7047');
+
+
+        -- Item: Spellforce Rod
+        -- Entry: 1664
+
+        -- NAME
+        -- Current date:     2004-07-08 16:56:41
+        -- New date:         2004-07-08 16:56:41
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-07-08 16:56:41
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-07-08 16:56:41
+        -- Days diff: 84
+
+        -- SPELLID_1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-08-24 09:02:57
+        -- Days diff: 37
+
+        -- STAT_TYPE1
+        -- Current date:     2005-09-25 05:22:56
+        -- New date:         2004-08-24 09:02:57
+        -- Days diff: 396
+
+        -- STAT_VALUE1
+        -- Current date:     2005-09-25 05:22:56
+        -- New date:         2004-08-24 09:02:57
+        -- Days diff: 396
+
+        -- STAT_TYPE2
+        -- Current date:     2005-08-22 00:41:38
+        -- New date:         2004-08-24 09:02:57
+        -- Days diff: 362
+
+        -- STAT_VALUE2
+        -- Current date:     2005-08-22 00:41:38
+        -- New date:         2004-08-24 09:02:57
+        -- Days diff: 362
+
+        -- NAME from Spellforce Rod to Spellbinding Rod
+        UPDATE `item_template` SET `name` = 'Spellbinding Rod' WHERE (`entry` = '1664');
+        -- DMG_MIN1 from 77 to 79
+        UPDATE `item_template` SET `dmg_min1` = '79' WHERE (`entry` = '1664');
+        -- DMG_MAX1 from 116 to 120
+        UPDATE `item_template` SET `dmg_max1` = '120' WHERE (`entry` = '1664');
+        -- SPELLID_1 from 14799 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '1664');
+        -- STAT_TYPE1 from 0 to 5
+        UPDATE `item_template` SET `stat_type1` = '5' WHERE (`entry` = '1664');
+        -- STAT_VALUE1 from 0 to 8
+        UPDATE `item_template` SET `stat_value1` = '8' WHERE (`entry` = '1664');
+        -- STAT_TYPE2 from 0 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '1664');
+        -- STAT_VALUE2 from 0 to 25
+        UPDATE `item_template` SET `stat_value2` = '25' WHERE (`entry` = '1664');
+
+
+        -- Item: Pattern: Wild Leather Boots
+        -- Entry: 8406
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:37:00
+        -- New date:         2005-03-22 21:37:00
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '8406');
+
+
+        -- Item: Brigade Bracers
+        -- Entry: 9927
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-11-08 07:05:05
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-09-23 15:40:50
+        -- Days diff: 45
+
+        -- DISPLAY_ID from 25931 to 11603
+        UPDATE `item_template` SET `display_id` = '11603' WHERE (`entry` = '9927');
+        -- ARMOR from 104 to 131
+        UPDATE `item_template` SET `armor` = '131' WHERE (`entry` = '9927');
+
+
+        -- Item: Root Sample
+        -- Entry: 5056
+
+        -- STACKABLE
+        -- Current date:     2004-06-22 17:08:06
+        -- New date:         2004-06-22 17:08:06
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '5056');
+
+
+        -- Item: Raider's Legguards
+        -- Entry: 9789
+
+        -- ARMOR
+        -- Current date:     2004-12-21 19:20:44
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 81
+
+        -- ARMOR from 144 to 116
+        UPDATE `item_template` SET `armor` = '116' WHERE (`entry` = '9789');
+
+
+        -- Item: Dragonmaw War Banner
+        -- Entry: 3337
+
+        -- STACKABLE
+        -- Current date:     2004-07-14 17:12:25
+        -- New date:         2004-07-14 17:12:25
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '3337');
+
+
+        -- Item: Huntsman's Leggings
+        -- Entry: 9893
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-11-08 15:00:23
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-11-08 15:00:23
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 27807 to 18913
+        UPDATE `item_template` SET `display_id` = '18913' WHERE (`entry` = '9893');
+        -- ARMOR from 101 to 145
+        UPDATE `item_template` SET `armor` = '145' WHERE (`entry` = '9893');
+
+
+        -- Item: Bronze Battle Axe
+        -- Entry: 7958
+
+        -- NAME
+        -- Current date:     2004-12-23 21:09:37
+        -- New date:         2004-09-03 16:27:51
+        -- Days diff: 111
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-12 17:48:12
+        -- New date:         2004-07-12 17:48:12
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-07-12 17:48:12
+        -- Days diff: 80
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:10
+        -- New date:         2004-07-12 17:48:12
+        -- Days diff: 80
+
+        -- NAME from Bronze Battle Axe to Bronze Battleaxe
+        UPDATE `item_template` SET `name` = 'Bronze Battleaxe' WHERE (`entry` = '7958');
+        -- DISPLAY_ID from 19272 to 16148
+        UPDATE `item_template` SET `display_id` = '16148' WHERE (`entry` = '7958');
+        -- DMG_MIN1 from 39 to 30
+        UPDATE `item_template` SET `dmg_min1` = '30' WHERE (`entry` = '7958');
+        -- DMG_MAX1 from 59 to 57
+        UPDATE `item_template` SET `dmg_max1` = '57' WHERE (`entry` = '7958');
+
+
+        -- Item: Jazeraint Bracers
+        -- Entry: 9896
+
+        -- NAME
+        -- Current date:     2004-11-08 07:05:03
+        -- New date:         2004-11-08 07:05:03
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:03
+        -- New date:         2004-11-08 07:05:03
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:03
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- NAME from Jazeraint Bracers to Berserker Bracers
+        UPDATE `item_template` SET `name` = 'Berserker Bracers' WHERE (`entry` = '9896');
+        -- DISPLAY_ID from 27788 to 11569
+        UPDATE `item_template` SET `display_id` = '11569' WHERE (`entry` = '9896');
+        -- ARMOR from 99 to 131
+        UPDATE `item_template` SET `armor` = '131' WHERE (`entry` = '9896');
+
+
+        -- Item: Hillborne Axe
+        -- Entry: 2080
+
+        -- NAME
+        -- Current date:     2004-09-28 17:19:56
+        -- New date:         2004-09-28 17:19:56
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:51:01
+        -- New date:         2004-08-20 11:51:01
+        -- Days diff: Unknown
+
+        -- INVENTORY_TYPE
+        -- Current date:     2004-08-20 11:51:01
+        -- New date:         2004-08-20 11:51:01
+        -- Days diff: Unknown
+
+        -- NAME from Hillborne Axe to Axe of the Hills
+        UPDATE `item_template` SET `name` = 'Axe of the Hills' WHERE (`entry` = '2080');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '2080');
+        -- INVENTORY_TYPE from 13 to 21
+        UPDATE `item_template` SET `inventory_type` = '21' WHERE (`entry` = '2080');
+
+
+        -- Item: Force of the Hippogryph
+        -- Entry: 9684
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-15 11:07:12
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 19130 to 18606
+        UPDATE `item_template` SET `display_id` = '18606' WHERE (`entry` = '9684');
+
+
+        -- Item: Stone War Axe
+        -- Entry: 1828
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-28 15:59:15
+        -- New date:         2004-05-28 12:19:46
+        -- Days diff: 31
+
+        -- REQUIRED_LEVEL from 22 to 17
+        UPDATE `item_template` SET `required_level` = '17' WHERE (`entry` = '1828');
+
+
+        -- Item: Renegade Pauldrons
+        -- Entry: 9872
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 02:27:37
+        -- New date:         2004-11-08 02:27:37
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 02:27:37
+        -- New date:         2004-09-23 15:40:50
+        -- Days diff: 45
+
+        -- DISPLAY_ID from 25790 to 11526
+        UPDATE `item_template` SET `display_id` = '11526' WHERE (`entry` = '9872');
+        -- ARMOR from 164 to 195
+        UPDATE `item_template` SET `armor` = '195' WHERE (`entry` = '9872');
+
+
+        -- Item: Chieftain's Shoulders
+        -- Entry: 9955
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:00:23
+        -- New date:         2004-09-23 15:40:49
+        -- Days diff: 45
+
+        -- ARMOR from 99 to 148
+        UPDATE `item_template` SET `armor` = '148' WHERE (`entry` = '9955');
+
+
+        -- Item: Elemental Fire
+        -- Entry: 7068
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:42
+        -- New date:         2004-08-20 11:50:42
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20874 to 13688
+        UPDATE `item_template` SET `display_id` = '13688' WHERE (`entry` = '7068');
+
+
+        -- Item: Dwarven Hand Cannon
+        -- Entry: 2099
+
+        -- DMG_MIN1
+        -- Current date:     2005-08-17 16:11:19
+        -- New date:         2004-10-01 02:33:42
+        -- Days diff: 320
+
+        -- DMG_MAX1
+        -- Current date:     2005-08-17 16:11:19
+        -- New date:         2004-09-26 10:26:34
+        -- Days diff: 325
+
+        -- DMG_MIN1 from 66 to 67
+        UPDATE `item_template` SET `dmg_min1` = '67' WHERE (`entry` = '2099');
+        -- DMG_MAX1 from 124 to 125
+        UPDATE `item_template` SET `dmg_max1` = '125' WHERE (`entry` = '2099');
+
+
+        -- Item: Hatecrest Naga Scale
+        -- Entry: 9247
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-15 11:07:12
+        -- New date:         2004-07-15 11:07:12
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 3668 to 3347
+        UPDATE `item_template` SET `display_id` = '3347' WHERE (`entry` = '9247');
+
+
+        -- Item: Shoni's Disarming Tool
+        -- Entry: 9608
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:05
+        -- New date:         2004-07-09 10:27:00
+        -- Days diff: 83
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:05
+        -- New date:         2004-07-09 10:27:00
+        -- Days diff: 83
+
+        -- DMG_MIN1 from 21 to 23
+        UPDATE `item_template` SET `dmg_min1` = '23' WHERE (`entry` = '9608');
+        -- DMG_MAX1 from 40 to 29
+        UPDATE `item_template` SET `dmg_max1` = '29' WHERE (`entry` = '9608');
+
+
+        -- Item: Cat Carrier (Bombay)
+        -- Entry: 8485
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-03 16:27:51
+        -- New date:         2004-09-03 16:27:51
+        -- Days diff: Unknown
+
+        -- CLASS
+        -- Current date:     2004-09-03 16:27:51
+        -- New date:         2004-09-03 16:27:51
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20629 to 17284
+        UPDATE `item_template` SET `display_id` = '17284' WHERE (`entry` = '8485');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8485');
+
+
+        -- Item: Iron Rivet
+        -- Entry: 1013
+
+        -- STACKABLE
+        -- Current date:     2004-06-21 11:51:48
+        -- New date:         2004-06-21 11:51:48
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '1013');
+
+
+        -- Item: Training Sword
+        -- Entry: 8178
+
+        -- DISPLAY_ID
+        -- Current date:     2005-04-18 05:19:17
+        -- New date:         2005-04-18 05:19:17
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2005-12-30 17:21:26
+        -- New date:         2004-07-18 13:06:25
+        -- Days diff: 530
+
+        -- DMG_MAX1
+        -- Current date:     2005-12-30 17:21:26
+        -- New date:         2004-07-18 13:06:25
+        -- Days diff: 530
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-18 13:06:25
+        -- New date:         2004-07-18 13:06:25
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-07-18 13:06:25
+        -- New date:         2004-07-18 13:06:25
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 26591 to 18354
+        UPDATE `item_template` SET `display_id` = '18354' WHERE (`entry` = '8178');
+        -- DMG_MIN1 from 20 to 16
+        UPDATE `item_template` SET `dmg_min1` = '16' WHERE (`entry` = '8178');
+        -- DMG_MAX1 from 30 to 25
+        UPDATE `item_template` SET `dmg_max1` = '25' WHERE (`entry` = '8178');
+        -- REQUIRED_LEVEL from 5 to 4
+        UPDATE `item_template` SET `required_level` = '4' WHERE (`entry` = '8178');
+        -- ITEM_LEVEL from 5 to 4
+        UPDATE `item_template` SET `item_level` = '4' WHERE (`entry` = '8178');
+
+
+        -- Item: Truesilver Gauntlets
+        -- Entry: 7938
+
+        -- SUBCLASS
+        -- Current date:     2004-07-08 15:50:26
+        -- New date:         2004-07-08 15:50:26
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:11
+        -- New date:         2004-07-08 15:50:26
+        -- Days diff: 122
+
+        -- SPELLID_1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 4 to 3
+        UPDATE `item_template` SET `subclass` = '3' WHERE (`entry` = '7938');
+        -- ARMOR from 300 to 55
+        UPDATE `item_template` SET `armor` = '55' WHERE (`entry` = '7938');
+        -- SPELLID_1 from 0 to 9163
+        UPDATE `item_template` SET `spellid_1` = '9163' WHERE (`entry` = '7938');
+        -- STAT_TYPE2 from 7 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '7938');
+        -- STAT_VALUE2 from 7 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '7938');
+
+
+        -- Item: Recipe: Rage Potion
+        -- Entry: 5640
+
+        -- SUBCLASS
+        -- Current date:     2005-04-19 03:56:47
+        -- New date:         2005-04-19 03:56:47
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 6 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '5640');
+
+
+        -- Item: Renegade Belt
+        -- Entry: 9869
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-11-08 07:05:06
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-08-26 07:13:56
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 329
+
+        -- DISPLAY_ID from 25784 to 11523
+        UPDATE `item_template` SET `display_id` = '11523' WHERE (`entry` = '9869');
+        -- ARMOR from 120 to 106
+        UPDATE `item_template` SET `armor` = '106' WHERE (`entry` = '9869');
+
+
+        -- Item: Heavy Mithril Gauntlet
+        -- Entry: 7919
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:12
+        -- New date:         2004-08-20 11:14:44
+        -- Days diff: 79
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-07-08 15:42:36
+        -- New date:         2004-07-08 15:42:36
+        -- Days diff: Unknown
+
+        -- ARMOR from 268 to 59
+        UPDATE `item_template` SET `armor` = '59' WHERE (`entry` = '7919');
+        -- REQUIRED_LEVEL from 40 to 36
+        UPDATE `item_template` SET `required_level` = '36' WHERE (`entry` = '7919');
+
+
+        -- Item: Warmonger's Leggings
+        -- Entry: 9964
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-11-08 07:05:05
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-10-01 02:27:20
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 26191 to 11631
+        UPDATE `item_template` SET `display_id` = '11631' WHERE (`entry` = '9964');
+        -- ARMOR from 235 to 272
+        UPDATE `item_template` SET `armor` = '272' WHERE (`entry` = '9964');
+
+
+        -- Item: Ebonhold Cloak
+        -- Entry: 8266
+
+        -- NAME
+        -- Current date:     2004-09-22 21:27:13
+        -- New date:         2004-09-22 21:27:13
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-11-08 03:30:04
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-09-02 17:22:09
+        -- New date:         2004-08-21 10:31:17
+        -- Days diff: 377
+
+        -- NAME from Ebonhold Cloak to Ebon Chain Cloak
+        UPDATE `item_template` SET `name` = 'Ebon Chain Cloak' WHERE (`entry` = '8266');
+        -- DISPLAY_ID from 26228 to 15059
+        UPDATE `item_template` SET `display_id` = '15059' WHERE (`entry` = '8266');
+        -- SUBCLASS from 1 to 3
+        UPDATE `item_template` SET `subclass` = '3' WHERE (`entry` = '8266');
+        -- ARMOR from 33 to 76
+        UPDATE `item_template` SET `armor` = '76' WHERE (`entry` = '8266');
+
+
+        -- Item: Whistle of the Mottled Red Raptor
+        -- Entry: 8586
+
+        -- NAME
+        -- Current date:     2004-09-29 03:56:06
+        -- New date:         2004-09-29 03:56:06
+        -- Days diff: Unknown
+
+        -- CLASS
+        -- Current date:     2004-09-13 07:17:54
+        -- New date:         2004-09-13 07:17:54
+        -- Days diff: Unknown
+
+        -- SPELLID_1
+        -- Current date:     2004-10-06 01:16:56
+        -- New date:         2004-10-06 01:16:56
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-29 03:56:06
+        -- New date:         2004-09-29 03:56:06
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-09-29 03:56:06
+        -- New date:         2004-09-29 03:56:06
+        -- Days diff: Unknown
+
+        -- NAME from Whistle of the Mottled Red Raptor to Whistle of the Crimson Raptor
+        UPDATE `item_template` SET `name` = 'Whistle of the Crimson Raptor' WHERE (`entry` = '8586');
+        -- CLASS from 15 to 14
+        UPDATE `item_template` SET `class` = '14' WHERE (`entry` = '8586');
+        -- SPELLID_1 from 16084 to 10797
+        UPDATE `item_template` SET `spellid_1` = '10797' WHERE (`entry` = '8586');
+        -- REQUIRED_LEVEL from 60 to 40
+        UPDATE `item_template` SET `required_level` = '40' WHERE (`entry` = '8586');
+        -- ITEM_LEVEL from 60 to 40
+        UPDATE `item_template` SET `item_level` = '40' WHERE (`entry` = '8586');
+
+
+        -- Item: Stoneslayer
+        -- Entry: 9418
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:20
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-07-08 15:42:34
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:06
+        -- New date:         2004-07-08 15:42:34
+        -- Days diff: 84
+
+        -- SPELLID_1
+        -- Current date:     2004-07-08 15:42:34
+        -- New date:         2004-07-08 15:42:34
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 20193 to 18309
+        UPDATE `item_template` SET `display_id` = '18309' WHERE (`entry` = '9418');
+        -- DMG_MIN1 from 133 to 115
+        UPDATE `item_template` SET `dmg_min1` = '115' WHERE (`entry` = '9418');
+        -- DMG_MAX1 from 200 to 174
+        UPDATE `item_template` SET `dmg_max1` = '174' WHERE (`entry` = '9418');
+        -- SPELLID_1 from 12731 to 6864
+        UPDATE `item_template` SET `spellid_1` = '6864' WHERE (`entry` = '9418');
+
+
+        -- Item: Piercing Axe
+        -- Entry: 6094
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-07 20:58:08
+        -- New date:         2004-09-09 19:45:39
+        -- Days diff: 28
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-07 20:58:08
+        -- New date:         2004-09-09 19:45:39
+        -- Days diff: 28
+
+        -- DMG_MIN1 from 31 to 28
+        UPDATE `item_template` SET `dmg_min1` = '28' WHERE (`entry` = '6094');
+        -- DMG_MAX1 from 47 to 43
+        UPDATE `item_template` SET `dmg_max1` = '43' WHERE (`entry` = '6094');
+
+
+        -- Item: Fortified Chain
+        -- Entry: 9818
+
+        -- ARMOR
+        -- Current date:     2004-12-21 20:41:52
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 81
+
+        -- ARMOR from 183 to 178
+        UPDATE `item_template` SET `armor` = '178' WHERE (`entry` = '9818');
+
+
+        -- Item: Short Cutlass
+        -- Entry: 1829
+
+        -- NAME
+        -- Current date:     2004-05-24 21:57:51
+        -- New date:         2004-05-24 21:57:51
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-05-24 21:57:51
+        -- Days diff: 129
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 02:27:14
+        -- New date:         2004-05-24 21:57:51
+        -- Days diff: 129
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-17 17:32:06
+        -- New date:         2004-05-24 21:57:51
+        -- Days diff: 23
+
+        -- NAME from Short Cutlass to Rebel Shortsword
+        UPDATE `item_template` SET `name` = 'Rebel Shortsword' WHERE (`entry` = '1829');
+        -- DMG_MIN1 from 17 to 25
+        UPDATE `item_template` SET `dmg_min1` = '25' WHERE (`entry` = '1829');
+        -- DMG_MAX1 from 32 to 38
+        UPDATE `item_template` SET `dmg_max1` = '38' WHERE (`entry` = '1829');
+        -- REQUIRED_LEVEL from 24 to 19
+        UPDATE `item_template` SET `required_level` = '19' WHERE (`entry` = '1829');
+
+
+        -- Item: Frostmane Sceptre
+        -- Entry: 3223
+
+        -- DMG_MIN1
+        -- Current date:     2004-06-10 15:35:45
+        -- New date:         2004-06-10 15:35:45
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-08-24 15:15:51
+        -- New date:         2004-06-10 15:35:45
+        -- Days diff: 74
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-06-10 15:35:45
+        -- New date:         2004-06-10 15:35:45
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 8 to 16
+        UPDATE `item_template` SET `dmg_min1` = '16' WHERE (`entry` = '3223');
+        -- DMG_MAX1 from 15 to 24
+        UPDATE `item_template` SET `dmg_max1` = '24' WHERE (`entry` = '3223');
+        -- REQUIRED_LEVEL from 6 to 1
+        UPDATE `item_template` SET `required_level` = '1' WHERE (`entry` = '3223');
+
+
+        -- Item: Valorous Legguards
+        -- Entry: 8280
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-11-08 03:30:04
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-08-20 10:26:36
+        -- Days diff: 79
+
+        -- DISPLAY_ID from 27377 to 19708
+        UPDATE `item_template` SET `display_id` = '19708' WHERE (`entry` = '8280');
+        -- ARMOR from 413 to 115
+        UPDATE `item_template` SET `armor` = '115' WHERE (`entry` = '8280');
+
+
+        -- Item: Bronze Greatsword
+        -- Entry: 7957
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 03:58:17
+        -- New date:         2004-07-08 15:50:25
+        -- Days diff: 84
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 03:58:17
+        -- New date:         2004-07-08 15:50:25
+        -- Days diff: 84
+
+        -- DMG_MIN1 from 38 to 30
+        UPDATE `item_template` SET `dmg_min1` = '30' WHERE (`entry` = '7957');
+        -- DMG_MAX1 from 58 to 56
+        UPDATE `item_template` SET `dmg_max1` = '56' WHERE (`entry` = '7957');
+
+
+        -- Item: Mistscape Armor
+        -- Entry: 7113
+
+        -- ARMOR
+        -- Current date:     2004-11-08 19:19:59
+        -- New date:         2004-08-20 11:50:59
+        -- Days diff: 80
+
+        -- ARMOR from 60 to 32
+        UPDATE `item_template` SET `armor` = '32' WHERE (`entry` = '7113');
+
+
+        -- Item: Recipe: Clam Chowder
+        -- Entry: 5528
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:18:14
+        -- New date:         2005-03-22 21:18:14
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 5 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '5528');
+
+
+        -- Item: Crafted Solid Shot
+        -- Entry: 8069
+
+        -- DMG_MIN1
+        -- Current date:     2004-12-21 20:41:46
+        -- New date:         2004-07-13 20:51:11
+        -- Days diff: 160
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 08:28:04
+        -- New date:         2004-07-13 20:51:11
+        -- Days diff: 79
+
+        -- STACKABLE
+        -- Current date:     2004-09-04 02:08:23
+        -- New date:         2004-09-04 02:08:23
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-09-04 02:08:23
+        -- New date:         2004-09-04 02:08:23
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 8 to 12
+        UPDATE `item_template` SET `dmg_min1` = '12' WHERE (`entry` = '8069');
+        -- DMG_MAX1 from 9 to 12
+        UPDATE `item_template` SET `dmg_max1` = '12' WHERE (`entry` = '8069');
+        -- STACKABLE from 200 to 100
+        UPDATE `item_template` SET `stackable` = '100' WHERE (`entry` = '8069');
+        -- REQUIRED_LEVEL from 30 to 25
+        UPDATE `item_template` SET `required_level` = '25' WHERE (`entry` = '8069');
+
+
+        -- Item: Warmonger's Circlet
+        -- Entry: 9963
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-11-08 07:05:05
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:05
+        -- New date:         2004-10-01 02:33:51
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 26200 to 15503
+        UPDATE `item_template` SET `display_id` = '15503' WHERE (`entry` = '9963');
+        -- ARMOR from 214 to 191
+        UPDATE `item_template` SET `armor` = '191' WHERE (`entry` = '9963');
+
+
+        -- Item: Frostmane Hand Axe
+        -- Entry: 2260
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-05 09:27:39
+        -- New date:         2004-05-28 12:19:40
+        -- Days diff: 129
+
+        -- DMG_MAX1
+        -- Current date:     2004-05-28 12:19:40
+        -- New date:         2004-05-28 12:19:40
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-05-28 12:19:40
+        -- New date:         2004-05-28 12:19:40
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 5 to 11
+        UPDATE `item_template` SET `dmg_min1` = '11' WHERE (`entry` = '2260');
+        -- DMG_MAX1 from 11 to 17
+        UPDATE `item_template` SET `dmg_max1` = '17' WHERE (`entry` = '2260');
+        -- REQUIRED_LEVEL from 6 to 1
+        UPDATE `item_template` SET `required_level` = '1' WHERE (`entry` = '2260');
+
+
+        -- Item: Stargazer Cloak
+        -- Entry: 9660
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-11-08 03:29:57
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-10-01 02:33:51
+        -- New date:         2004-10-01 02:33:51
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:57
+        -- New date:         2004-08-20 11:51:09
+        -- Days diff: 79
+
+        -- DISPLAY_ID from 28299 to 15246
+        UPDATE `item_template` SET `display_id` = '15246' WHERE (`entry` = '9660');
+        -- SUBCLASS from 1 to 3
+        UPDATE `item_template` SET `subclass` = '3' WHERE (`entry` = '9660');
+        -- ARMOR from 28 to 67
+        UPDATE `item_template` SET `armor` = '67' WHERE (`entry` = '9660');
+
+
+        -- Item: Heart of Fire
+        -- Entry: 7077
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:51:00
+        -- New date:         2004-08-20 11:51:00
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 21583 to 13688
+        UPDATE `item_template` SET `display_id` = '13688' WHERE (`entry` = '7077');
+
+
+        -- Item: Essence of Fire
+        -- Entry: 7078
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-25 21:26:58
+        -- New date:         2004-09-25 21:26:58
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 23287 to 13688
+        UPDATE `item_template` SET `display_id` = '13688' WHERE (`entry` = '7078');
+
+
+        -- Item: Conjurer's Vest
+        -- Entry: 9844
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-09 07:03:18
+        -- New date:         2004-11-09 07:03:18
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-03-04 10:06:39
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 154
+
+        -- DISPLAY_ID from 28424 to 16599
+        UPDATE `item_template` SET `display_id` = '16599' WHERE (`entry` = '9844');
+        -- ARMOR from 50 to 82
+        UPDATE `item_template` SET `armor` = '82' WHERE (`entry` = '9844');
+
+
+        -- Item: Kodo Liver
+        -- Entry: 4896
+
+        -- STACKABLE
+        -- Current date:     2004-09-15 14:04:04
+        -- New date:         2004-09-15 14:04:04
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '4896');
+
+
+        -- Item: Thick Leather Hat
+        -- Entry: 8750
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 18:08:42
+        -- New date:         2004-08-20 18:08:42
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-09 01:10:12
+        -- New date:         2004-08-20 18:08:42
+        -- Days diff: 80
+
+        -- DISPLAY_ID from 21312 to 18420
+        UPDATE `item_template` SET `display_id` = '18420' WHERE (`entry` = '8750');
+        -- ARMOR from 84 to 23
+        UPDATE `item_template` SET `armor` = '23' WHERE (`entry` = '8750');
+
+
+        -- Item: Fortified Belt
+        -- Entry: 9814
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:04:36
+        -- New date:         2004-11-08 03:04:36
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-12-21 20:41:52
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 81
+
+        -- DISPLAY_ID from 25771 to 12488
+        UPDATE `item_template` SET `display_id` = '12488' WHERE (`entry` = '9814');
+        -- ARMOR from 101 to 75
+        UPDATE `item_template` SET `armor` = '75' WHERE (`entry` = '9814');
+
+
+        -- Item: Cracked Dragon Molting
+        -- Entry: 3179
+
+        -- NAME
+        -- Current date:     2004-11-09 16:09:22
+        -- New date:         2004-11-09 16:09:22
+        -- Days diff: Unknown
+
+        -- NAME from Cracked Dragon Molting to Lesser Moonstone Shards
+        UPDATE `item_template` SET `name` = 'Lesser Moonstone Shards' WHERE (`entry` = '3179');
+
+
+        -- Item: Sentinel Buckler
+        -- Entry: 7463
+
+        -- ARMOR
+        -- Current date:     2004-11-10 11:43:45
+        -- New date:         2004-07-15 00:04:17
+        -- Days diff: 118
+
+        -- BLOCK
+        -- Current date:     2004-11-10 11:43:45
+        -- New date:         2004-07-15 00:04:17
+        -- Days diff: 118
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-11-10 11:43:45
+        -- New date:         2004-08-23 11:35:38
+        -- Days diff: 79
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-11-10 11:43:45
+        -- New date:         2004-08-23 11:35:38
+        -- Days diff: 79
+
+        -- ARMOR from 711 to 74
+        UPDATE `item_template` SET `armor` = '74' WHERE (`entry` = '7463');
+        -- BLOCK from 15 to 37
+        UPDATE `item_template` SET `block` = '37' WHERE (`entry` = '7463');
+        -- REQUIRED_LEVEL from 33 to 30
+        UPDATE `item_template` SET `required_level` = '30' WHERE (`entry` = '7463');
+        -- ITEM_LEVEL from 33 to 30
+        UPDATE `item_template` SET `item_level` = '30' WHERE (`entry` = '7463');
+
+
+        -- Item: Vial of Spider Venom
+        -- Entry: 1130
+
+        -- STACKABLE
+        -- Current date:     2004-06-23 13:32:15
+        -- New date:         2004-06-23 13:32:15
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '1130');
+
+
+        -- Item: Gypsy Buckler
+        -- Entry: 9753
+
+        -- ARMOR
+        -- Current date:     2004-11-08 02:46:30
+        -- New date:         2004-10-01 01:09:03
+        -- Days diff: 38
+
+        -- ARMOR from 239 to 243
+        UPDATE `item_template` SET `armor` = '243' WHERE (`entry` = '9753');
+
+
+        -- Item: Recipe: Philosopher's Stone
+        -- Entry: 9303
+
+        -- SUBCLASS
+        -- Current date:     2005-09-08 11:59:31
+        -- New date:         2005-09-08 11:59:31
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 6 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '9303');
+
+
+        -- Item: Spider Marrow
+        -- Entry: 3254
+
+        -- STACKABLE
+        -- Current date:     2004-07-19 15:54:39
+        -- New date:         2004-07-19 15:54:39
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '3254');
+
+
+        -- Item: Conjurer's Gloves
+        -- Entry: 9848
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-11-08 07:05:06
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 28422 to 16601
+        UPDATE `item_template` SET `display_id` = '16601' WHERE (`entry` = '9848');
+        -- ARMOR from 30 to 44
+        UPDATE `item_template` SET `armor` = '44' WHERE (`entry` = '9848');
+
+
+        -- Item: Pattern: Rich Purple Silk Shirt
+        -- Entry: 4354
+
+        -- SUBCLASS
+        -- Current date:     2005-03-23 00:08:59
+        -- New date:         2005-03-23 00:08:59
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 2 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4354');
+
+
+        -- Item: Schematic: EZ-Thro Dynamite
+        -- Entry: 6716
+
+        -- NAME
+        -- Current date:     2004-07-08 10:19:54
+        -- New date:         2004-07-08 10:19:54
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:01:27
+        -- New date:         2005-03-22 21:01:27
+        -- Days diff: Unknown
+
+        -- NAME from Schematic: EZ-Thro Dynamite to Plans: EZ-Thro Dynamite
+        UPDATE `item_template` SET `name` = 'Plans: EZ-Thro Dynamite' WHERE (`entry` = '6716');
+        -- SUBCLASS from 3 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '6716');
+
+
+        -- Item: Jazeraint Helm
+        -- Entry: 9902
+
+        -- NAME
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-11-08 07:05:06
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-09-21 11:31:29
+        -- Days diff: 47
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:06
+        -- New date:         2004-10-01 02:33:51
+        -- Days diff: 38
+
+        -- NAME from Jazeraint Helm to Berserker Skullcap
+        UPDATE `item_template` SET `name` = 'Berserker Skullcap' WHERE (`entry` = '9902');
+        -- DISPLAY_ID from 27789 to 15513
+        UPDATE `item_template` SET `display_id` = '15513' WHERE (`entry` = '9902');
+        -- ARMOR from 190 to 169
+        UPDATE `item_template` SET `armor` = '169' WHERE (`entry` = '9902');
+
+
+        -- Item: Recipe: Lean Venison
+        -- Entry: 5489
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 21:20:41
+        -- New date:         2005-03-22 21:20:41
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 5 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '5489');
+
+
+        -- Item: Sul'thraze the Lasher
+        -- Entry: 9372
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-15 00:25:04
+        -- New date:         2004-10-15 00:25:04
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-15 00:25:04
+        -- New date:         2004-10-15 00:25:04
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 108 to 125
+        UPDATE `item_template` SET `dmg_min1` = '125' WHERE (`entry` = '9372');
+        -- DMG_MAX1 from 163 to 188
+        UPDATE `item_template` SET `dmg_max1` = '188' WHERE (`entry` = '9372');
+
+
+        -- Item: Hotshot Pilot's Gloves
+        -- Entry: 9491
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-08-20 11:50:18
+        -- Days diff: 79
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-08-20 11:50:18
+        -- New date:         2004-08-20 11:50:18
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-08-20 11:50:18
+        -- New date:         2004-08-20 11:50:18
+        -- Days diff: Unknown
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 20:08:16
+        -- New date:         2004-10-01 20:08:16
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 20:08:16
+        -- New date:         2004-10-01 20:08:16
+        -- Days diff: Unknown
+
+        -- STAT_TYPE3
+        -- Current date:     2004-10-01 20:08:16
+        -- New date:         2004-10-01 20:08:16
+        -- Days diff: Unknown
+
+        -- STAT_VALUE3
+        -- Current date:     2004-10-01 20:08:16
+        -- New date:         2004-10-01 20:08:16
+        -- Days diff: Unknown
+
+        -- STAT_TYPE4
+        -- Current date:     2004-10-01 20:08:16
+        -- New date:         2004-10-01 20:08:16
+        -- Days diff: Unknown
+
+        -- STAT_VALUE4
+        -- Current date:     2004-10-01 20:08:16
+        -- New date:         2004-10-01 20:08:16
+        -- Days diff: Unknown
+
+        -- ARMOR from 31 to 13
+        UPDATE `item_template` SET `armor` = '13' WHERE (`entry` = '9491');
+        -- REQUIRED_LEVEL from 27 to 23
+        UPDATE `item_template` SET `required_level` = '23' WHERE (`entry` = '9491');
+        -- ITEM_LEVEL from 27 to 23
+        UPDATE `item_template` SET `item_level` = '23' WHERE (`entry` = '9491');
+        -- STAT_TYPE2 from 6 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '9491');
+        -- STAT_VALUE2 from 5 to 20
+        UPDATE `item_template` SET `stat_value2` = '20' WHERE (`entry` = '9491');
+        -- STAT_TYPE3 from 7 to 0
+        UPDATE `item_template` SET `stat_type3` = '0' WHERE (`entry` = '9491');
+        -- STAT_VALUE3 from 5 to 0
+        UPDATE `item_template` SET `stat_value3` = '0' WHERE (`entry` = '9491');
+        -- STAT_TYPE4 from 3 to 0
+        UPDATE `item_template` SET `stat_type4` = '0' WHERE (`entry` = '9491');
+        -- STAT_VALUE4 from 3 to 0
+        UPDATE `item_template` SET `stat_value4` = '0' WHERE (`entry` = '9491');
+
+
+        -- Item: Rockslicer
+        -- Entry: 872
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-14 14:31:47
+        -- New date:         2004-07-14 17:44:21
+        -- Days diff: 91
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-14 14:31:47
+        -- New date:         2004-07-14 17:44:21
+        -- Days diff: 91
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-08-24 09:02:51
+        -- New date:         2004-08-24 09:02:51
+        -- Days diff: Unknown
+
+        -- ITEM_LEVEL
+        -- Current date:     2004-08-24 09:02:51
+        -- New date:         2004-08-24 09:02:51
+        -- Days diff: Unknown
+
+        -- DMG_MIN1 from 36 to 31
+        UPDATE `item_template` SET `dmg_min1` = '31' WHERE (`entry` = '872');
+        -- DMG_MAX1 from 55 to 47
+        UPDATE `item_template` SET `dmg_max1` = '47' WHERE (`entry` = '872');
+        -- REQUIRED_LEVEL from 16 to 15
+        UPDATE `item_template` SET `required_level` = '15' WHERE (`entry` = '872');
+        -- ITEM_LEVEL from 16 to 15
+        UPDATE `item_template` SET `item_level` = '15' WHERE (`entry` = '872');
+
+
+        -- Item: Archer's Jerkin
+        -- Entry: 9854
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:08:00
+        -- New date:         2004-10-01 02:27:21
+        -- Days diff: 38
+
+        -- ARMOR from 106 to 153
+        UPDATE `item_template` SET `armor` = '153' WHERE (`entry` = '9854');
+
+
+        -- Item: Archaic Defender
+        -- Entry: 9385
+
+        -- NAME
+        -- Current date:     2004-11-08 03:29:59
+        -- New date:         2004-11-08 03:29:59
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID
+        -- Current date:     2004-08-20 11:50:20
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2005-02-06 06:47:00
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: 169
+
+        -- DMG_MIN1
+        -- Current date:     2005-02-06 06:47:00
+        -- New date:         2004-07-08 16:56:42
+        -- Days diff: 212
+
+        -- DMG_MAX1
+        -- Current date:     2005-02-06 06:47:00
+        -- New date:         2004-07-08 16:56:42
+        -- Days diff: 212
+
+        -- SPELLID_1
+        -- Current date:     2005-02-06 06:47:00
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: 169
+
+        -- NAME from Archaic Defender to Ancient Defender
+        UPDATE `item_template` SET `name` = 'Ancient Defender' WHERE (`entry` = '9385');
+        -- DISPLAY_ID from 20249 to 18267
+        UPDATE `item_template` SET `display_id` = '18267' WHERE (`entry` = '9385');
+        -- ARMOR from 100 to 35
+        UPDATE `item_template` SET `armor` = '35' WHERE (`entry` = '9385');
+        -- DMG_MIN1 from 77 to 73
+        UPDATE `item_template` SET `dmg_min1` = '73' WHERE (`entry` = '9385');
+        -- DMG_MAX1 from 117 to 110
+        UPDATE `item_template` SET `dmg_max1` = '110' WHERE (`entry` = '9385');
+        -- SPELLID_1 from 13390 to 0
+        UPDATE `item_template` SET `spellid_1` = '0' WHERE (`entry` = '9385');
+
+
+        -- Item: Cadet Shield
+        -- Entry: 9764
+
+        -- ARMOR
+        -- Current date:     2004-10-01 02:27:21
+        -- New date:         2004-09-24 14:12:48
+        -- Days diff: 6
+        -- Overrides WDB:                   3925
+
+        -- BLOCK
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-24 14:12:48
+        -- Days diff: 4
+        -- Overrides WDB:                   3925
+
+        -- ARMOR from 225 to 204
+        UPDATE `item_template` SET `armor` = '204' WHERE (`entry` = '9764');
+        -- BLOCK from 5 to 4
+        UPDATE `item_template` SET `block` = '4' WHERE (`entry` = '9764');
+
+
+        -- Item: Cairnstone Sliver
+        -- Entry: 9654
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-08-20 11:50:15
+        -- Days diff: 79
+
+        -- DMG_MIN1
+        -- Current date:     2005-07-26 14:14:01
+        -- New date:         2004-07-08 15:42:34
+        -- Days diff: 382
+
+        -- DMG_MAX1
+        -- Current date:     2005-07-26 14:14:01
+        -- New date:         2004-07-08 15:42:34
+        -- Days diff: 382
+
+        -- DISPLAY_ID from 28307 to 6138
+        UPDATE `item_template` SET `display_id` = '6138' WHERE (`entry` = '9654');
+        -- DMG_MIN1 from 52 to 32
+        UPDATE `item_template` SET `dmg_min1` = '32' WHERE (`entry` = '9654');
+        -- DMG_MAX1 from 97 to 60
+        UPDATE `item_template` SET `dmg_max1` = '60' WHERE (`entry` = '9654');
+
+
+        -- Item: Failed Flying Experiment
+        -- Entry: 9647
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: 79
+
+        -- STAT_TYPE2
+        -- Current date:     2004-09-30 20:57:23
+        -- New date:         2004-09-30 20:57:23
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-08-20 10:26:39
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: Unknown
+
+        -- STAT_TYPE3
+        -- Current date:     2004-08-20 10:26:39
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: Unknown
+
+        -- STAT_VALUE3
+        -- Current date:     2004-08-20 10:26:39
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: Unknown
+
+        -- ARMOR from 96 to 53
+        UPDATE `item_template` SET `armor` = '53' WHERE (`entry` = '9647');
+        -- STAT_TYPE2 from 3 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '9647');
+        -- STAT_VALUE2 from 10 to 2
+        UPDATE `item_template` SET `stat_value2` = '2' WHERE (`entry` = '9647');
+        -- STAT_TYPE3 from 0 to 1
+        UPDATE `item_template` SET `stat_type3` = '1' WHERE (`entry` = '9647');
+        -- STAT_VALUE3 from 0 to 10
+        UPDATE `item_template` SET `stat_value3` = '10' WHERE (`entry` = '9647');
+
+
+        -- Item: Rot Blossom
+        -- Entry: 1598
+
+        -- STACKABLE
+        -- Current date:     2004-06-23 13:32:15
+        -- New date:         2004-06-23 13:32:15
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '1598');
+
+
+        -- Item: Rattlecage Skull
+        -- Entry: 6281
+
+        -- STACKABLE
+        -- Current date:     2004-09-07 22:09:09
+        -- New date:         2004-09-07 22:09:09
+        -- Days diff: Unknown
+
+        -- STACKABLE from 20 to 10
+        UPDATE `item_template` SET `stackable` = '10' WHERE (`entry` = '6281');
+
+
+        -- Item: Plans: Mithril Spurs
+        -- Entry: 7989
+
+        -- SUBCLASS
+        -- Current date:     2005-04-11 18:40:00
+        -- New date:         2005-04-11 18:40:00
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 4 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '7989');
+
+
+        -- Item: Pattern: Green Leather Armor
+        -- Entry: 7613
+
+        -- SUBCLASS
+        -- Current date:     2005-04-19 04:10:25
+        -- New date:         2005-04-19 04:10:25
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 1 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '7613');
+
+
+        -- Item: Thicket Hammer
+        -- Entry: 5595
+
+        -- DMG_MIN1
+        -- Current date:     2004-10-01 20:25:50
+        -- New date:         2004-04-19 09:46:13
+        -- Days diff: 165
+        -- Overrides WDB:                   3925
+
+        -- DMG_MAX1
+        -- Current date:     2004-10-01 20:25:50
+        -- New date:         2004-04-19 09:46:13
+        -- Days diff: 165
+        -- Overrides WDB:                   3925
+
+        -- DMG_MIN1 from 16 to 23
+        UPDATE `item_template` SET `dmg_min1` = '23' WHERE (`entry` = '5595');
+        -- DMG_MAX1 from 24 to 32
+        UPDATE `item_template` SET `dmg_max1` = '32' WHERE (`entry` = '5595');
+
+
+        -- Item: Energized Stone Circle
+        -- Entry: 9522
+
+        -- SUBCLASS
+        -- Current date:     2004-07-15 11:07:13
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-11 22:45:21
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: 119
+
+        -- BLOCK
+        -- Current date:     2004-10-04 11:26:11
+        -- New date:         2004-07-15 11:07:13
+        -- Days diff: 81
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-04 11:26:11
+        -- New date:         2004-09-03 10:47:29
+        -- Days diff: 31
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-04 11:26:11
+        -- New date:         2004-09-03 10:47:29
+        -- Days diff: 31
+
+        -- SUBCLASS from 6 to 5
+        UPDATE `item_template` SET `subclass` = '5' WHERE (`entry` = '9522');
+        -- ARMOR from 678 to 75
+        UPDATE `item_template` SET `armor` = '75' WHERE (`entry` = '9522');
+        -- BLOCK from 14 to 38
+        UPDATE `item_template` SET `block` = '38' WHERE (`entry` = '9522');
+        -- STAT_TYPE2 from 6 to 0
+        UPDATE `item_template` SET `stat_type2` = '0' WHERE (`entry` = '9522');
+        -- STAT_VALUE2 from 7 to 0
+        UPDATE `item_template` SET `stat_value2` = '0' WHERE (`entry` = '9522');
+
+
+        -- Item: Battlefield Destroyer
+        -- Entry: 8199
+
+        -- DMG_MIN1
+        -- Current date:     2004-11-08 03:30:03
+        -- New date:         2004-07-08 15:50:26
+        -- Days diff: 122
+
+        -- DMG_MAX1
+        -- Current date:     2004-11-08 03:30:03
+        -- New date:         2004-07-08 15:50:26
+        -- Days diff: 122
+
+        -- DMG_MIN1 from 90 to 98
+        UPDATE `item_template` SET `dmg_min1` = '98' WHERE (`entry` = '8199');
+        -- DMG_MAX1 from 136 to 147
+        UPDATE `item_template` SET `dmg_max1` = '147' WHERE (`entry` = '8199');
+
+
+        -- Item: Revelosh's Spaulders
+        -- Entry: 9389
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: 79
+
+        -- ARMOR from 84 to 47
+        UPDATE `item_template` SET `armor` = '47' WHERE (`entry` = '9389');
+
+
+        -- Item: Six Demon Bag
+        -- Entry: 7734
+
+        -- SPELLID_1
+        -- Current date:     2004-08-20 10:26:39
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: Unknown
+
+        -- SPELLID_1 from 14537 to 9587
+        UPDATE `item_template` SET `spellid_1` = '9587' WHERE (`entry` = '7734');
+
+
+        -- Item: Recipe: Crispy Lizard Tail
+        -- Entry: 5488
+
+        -- SUBCLASS
+        -- Current date:     2005-03-22 23:35:15
+        -- New date:         2005-03-22 23:35:15
+        -- Days diff: Unknown
+
+        -- SUBCLASS from 5 to 0
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '5488');
+
+
+        -- Item: Light Plate Gloves
+        -- Entry: 8084
+
+        -- ARMOR
+        -- Current date:     2004-11-12 20:49:01
+        -- New date:         2004-10-04 11:26:11
+        -- Days diff: 39
+
+        -- ARMOR from 300 to 258
+        UPDATE `item_template` SET `armor` = '258' WHERE (`entry` = '8084');
+
+
+        -- Item: Green Hills of Stranglethorn - Page 25
+        -- Entry: 2749
+
+        -- CLASS
+        -- Current date:     2005-10-12 00:27:20
+        -- New date:         2005-10-12 00:27:20
+        -- Days diff: Unknown
+
+        -- CLASS from 15 to 12
+        UPDATE `item_template` SET `class` = '12' WHERE (`entry` = '2749');
+
+
+        -- Item: Jouster's Visor
+        -- Entry: 8161
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 15:07:57
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- ARMOR
+        -- Current date:     2004-11-08 15:07:57
+        -- New date:         2004-07-08 15:42:35
+        -- Days diff: 122
+
+        -- STAT_VALUE1
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 41
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 41
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-08-20 10:26:37
+        -- Days diff: 41
+
+        -- DISPLAY_ID from 27347 to 15512
+        UPDATE `item_template` SET `display_id` = '15512' WHERE (`entry` = '8161');
+        -- ARMOR from 215 to 79
+        UPDATE `item_template` SET `armor` = '79' WHERE (`entry` = '8161');
+        -- STAT_VALUE1 from 11 to 6
+        UPDATE `item_template` SET `stat_value1` = '6' WHERE (`entry` = '8161');
+        -- STAT_TYPE2 from 3 to 4
+        UPDATE `item_template` SET `stat_type2` = '4' WHERE (`entry` = '8161');
+        -- STAT_VALUE2 from 10 to 6
+        UPDATE `item_template` SET `stat_value2` = '6' WHERE (`entry` = '8161');
+
+
+        -- Item: Jinxed Hoodoo Kilt
+        -- Entry: 9474
+
+        -- ARMOR
+        -- Current date:     2004-11-08 04:19:36
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 79
+
+        -- STAT_TYPE1
+        -- Current date:     2004-08-20 11:14:42
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: Unknown
+
+        -- STAT_VALUE1
+        -- Current date:     2004-08-20 11:14:42
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: Unknown
+
+        -- ARMOR from 126 to 60
+        UPDATE `item_template` SET `armor` = '60' WHERE (`entry` = '9474');
+        -- STAT_TYPE1 from 6 to 3
+        UPDATE `item_template` SET `stat_type1` = '3' WHERE (`entry` = '9474');
+        -- STAT_VALUE1 from 24 to 6
+        UPDATE `item_template` SET `stat_value1` = '6' WHERE (`entry` = '9474');
+
+
+        -- Item: Revelosh's Gloves
+        -- Entry: 9390
+
+        -- DISPLAY_ID
+        -- Current date:     2004-07-08 15:50:25
+        -- New date:         2004-07-08 15:50:25
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:29:59
+        -- New date:         2004-08-20 11:50:20
+        -- Days diff: 79
+
+        -- DISPLAY_ID from 19056 to 18423
+        UPDATE `item_template` SET `display_id` = '18423' WHERE (`entry` = '9390');
+        -- ARMOR from 33 to 16
+        UPDATE `item_template` SET `armor` = '16' WHERE (`entry` = '9390');
+
+
+        -- Item: Archer's Bracers
+        -- Entry: 9857
+
+        -- ARMOR
+        -- Current date:     2004-12-21 20:41:52
+        -- New date:         2004-09-27 21:31:47
+        -- Days diff: 84
+
+        -- ARMOR from 44 to 66
+        UPDATE `item_template` SET `armor` = '66' WHERE (`entry` = '9857');
+
+
+        -- Item: Green Hills of Stranglethorn - Page 4
+        -- Entry: 2728
+
+        -- CLASS
+        -- Current date:     2005-10-12 00:27:22
+        -- New date:         2005-10-12 00:27:22
+        -- Days diff: Unknown
+
+        -- CLASS from 15 to 12
+        UPDATE `item_template` SET `class` = '12' WHERE (`entry` = '2728');
+
+
+        -- Item: Warmonger's Cloak
+        -- Entry: 9959
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 02:27:39
+        -- New date:         2004-11-08 02:27:39
+        -- Days diff: Unknown
+
+        -- SUBCLASS
+        -- Current date:     2004-10-01 02:27:16
+        -- New date:         2004-10-01 02:27:16
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 02:27:39
+        -- New date:         2004-10-01 02:27:16
+        -- Days diff: 38
+
+        -- DISPLAY_ID from 26202 to 15059
+        UPDATE `item_template` SET `display_id` = '15059' WHERE (`entry` = '9959');
+        -- SUBCLASS from 1 to 3
+        UPDATE `item_template` SET `subclass` = '3' WHERE (`entry` = '9959');
+        -- ARMOR from 30 to 217
+        UPDATE `item_template` SET `armor` = '217' WHERE (`entry` = '9959');
+
+
+        -- Item: Cadet Belt
+        -- Entry: 9758
+
+        -- DISPLAY_ID
+        -- Current date:     2004-09-29 00:00:00
+        -- New date:         2004-09-22 21:27:13
+        -- Days diff: 6
+        -- Overrides WDB:                   3925
+
+        -- DISPLAY_ID from 22683 to 12298
+        UPDATE `item_template` SET `display_id` = '12298' WHERE (`entry` = '9758');
+
+
+        -- Item: Umbral Mace
+        -- Entry: 6982
+
+        -- NAME
+        -- Current date:     2004-05-28 12:19:44
+        -- New date:         2004-05-28 12:19:44
+        -- Days diff: Unknown
+
+        -- DMG_MIN1
+        -- Current date:     2004-05-28 12:19:44
+        -- New date:         2004-05-28 12:19:44
+        -- Days diff: Unknown
+
+        -- DMG_MAX1
+        -- Current date:     2004-05-28 12:19:44
+        -- New date:         2004-05-28 12:19:44
+        -- Days diff: Unknown
+
+        -- REQUIRED_LEVEL
+        -- Current date:     2004-05-28 12:19:44
+        -- New date:         2004-05-28 12:19:44
+        -- Days diff: Unknown
+
+        -- NAME from Umbral Mace to Grey Iron Mace
+        UPDATE `item_template` SET `name` = 'Grey Iron Mace' WHERE (`entry` = '6982');
+        -- DMG_MIN1 from 10 to 22
+        UPDATE `item_template` SET `dmg_min1` = '22' WHERE (`entry` = '6982');
+        -- DMG_MAX1 from 20 to 33
+        UPDATE `item_template` SET `dmg_max1` = '33' WHERE (`entry` = '6982');
+        -- REQUIRED_LEVEL from 10 to 5
+        UPDATE `item_template` SET `required_level` = '5' WHERE (`entry` = '6982');
+
+
+        -- Item: Razzeric's Racing Grips
+        -- Entry: 6727
+
+        -- ARMOR
+        -- Current date:     2004-11-08 07:05:03
+        -- New date:         2004-08-20 10:26:39
+        -- Days diff: 79
+
+        -- ARMOR from 70 to 33
+        UPDATE `item_template` SET `armor` = '33' WHERE (`entry` = '6727');
+
+
+        -- Item: Glyphed Buckler
+        -- Entry: 4067
+
+        -- NAME
+        -- Current date:     2004-06-25 00:00:00
+        -- New date:         2004-06-17 17:32:06
+        -- Days diff: 7
+        -- Overrides WDB:                   4149
+
+        -- NAME from Glyphed Buckler to Chief Brigadier Buckler
+        UPDATE `item_template` SET `name` = 'Chief Brigadier Buckler' WHERE (`entry` = '4067');
+
+
+        -- Item: Gahz'rilla Scale Armor
+        -- Entry: 9469
+
+        -- ARMOR
+        -- Current date:     2005-07-30 21:52:21
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 344
+
+        -- STAT_TYPE3
+        -- Current date:     2005-10-01 14:15:41
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 407
+
+        -- STAT_VALUE3
+        -- Current date:     2005-10-01 14:15:41
+        -- New date:         2004-08-20 11:14:42
+        -- Days diff: 407
+
+        -- ARMOR from 290 to 102
+        UPDATE `item_template` SET `armor` = '102' WHERE (`entry` = '9469');
+        -- STAT_TYPE3 from 0 to 7
+        UPDATE `item_template` SET `stat_type3` = '7' WHERE (`entry` = '9469');
+        -- STAT_VALUE3 from 0 to 9
+        UPDATE `item_template` SET `stat_value3` = '9' WHERE (`entry` = '9469');
+
+
+        -- Item: Valorous Girdle
+        -- Entry: 8277
+
+        -- DISPLAY_ID
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-11-08 03:30:04
+        -- Days diff: Unknown
+
+        -- ARMOR
+        -- Current date:     2004-11-08 03:30:04
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: 38
+
+        -- STAT_TYPE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- STAT_VALUE2
+        -- Current date:     2004-10-01 02:27:09
+        -- New date:         2004-10-01 02:27:09
+        -- Days diff: Unknown
+
+        -- DISPLAY_ID from 27375 to 19870
+        UPDATE `item_template` SET `display_id` = '19870' WHERE (`entry` = '8277');
+        -- ARMOR from 251 to 185
+        UPDATE `item_template` SET `armor` = '185' WHERE (`entry` = '8277');
+        -- STAT_TYPE2 from 7 to 1
+        UPDATE `item_template` SET `stat_type2` = '1' WHERE (`entry` = '8277');
+        -- STAT_VALUE2 from 3 to 20
+        UPDATE `item_template` SET `stat_value2` = '20' WHERE (`entry` = '8277');
+
+        insert into applied_updates values ('171220251');
+    end if;
+
+    -- 23/12/2025 1
+    if (select count(*) from applied_updates where id='231220251') = 0 then
+        -- Fix Engineering items.
+        UPDATE `item_template` SET `display_id` = '7435' WHERE (`entry` = '4358');
+        UPDATE `item_template` SET `display_id` = '7435' WHERE (`entry` = '4378');
+        UPDATE `item_template` SET `display_id` = '7435' WHERE (`entry` = '10507');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4358');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4378');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4367');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4398');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4370');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4406');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4375');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4376');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4381');
+        UPDATE `item_template` SET `subclass` = '0' WHERE (`entry` = '4388');
+
+        -- Burning War Axe.
+        UPDATE `item_template` SET `spellid_1` = '7711', `spellcharges_1` = '-1' WHERE (`entry` = '2299');
+
+        -- Deviate Thundersnout.
+        UPDATE `creature_template` SET `rank` = '1' WHERE (`entry` = '5055');
+        UPDATE `creature_template` SET `damage_multiplier` = '1.7', `health_multiplier` = '3', `armor_multiplier` = '1' WHERE (`entry` = '5055');
+        UPDATE `creature_template` SET `detection_range` = '20' WHERE (`entry` = '5055');
+
+        -- Deviate Crocolisks.
+        UPDATE `creature_template` SET `rank` = '1' WHERE (`entry` = '5053');
+        UPDATE `creature_template` SET `damage_multiplier` = '1.7', `health_multiplier` = '3', `armor_multiplier` = '1' WHERE (`entry` = '5053');
+        UPDATE `creature_template` SET `detection_range` = '20' WHERE (`entry` = '5053');
+
+        -- New creature spell lists.
+        REPLACE INTO `creature_spells` (`entry`, `name`, `spellId_1`, `probability_1`, `castTarget_1`, `targetParam1_1`, `targetParam2_1`, `castFlags_1`, `delayInitialMin_1`, `delayInitialMax_1`, `delayRepeatMin_1`, `delayRepeatMax_1`, `scriptId_1`, `spellId_2`, `probability_2`, `castTarget_2`, `targetParam1_2`, `targetParam2_2`, `castFlags_2`, `delayInitialMin_2`, `delayInitialMax_2`, `delayRepeatMin_2`, `delayRepeatMax_2`, `scriptId_2`, `spellId_3`, `probability_3`, `castTarget_3`, `targetParam1_3`, `targetParam2_3`, `castFlags_3`, `delayInitialMin_3`, `delayInitialMax_3`, `delayRepeatMin_3`, `delayRepeatMax_3`, `scriptId_3`, `spellId_4`, `probability_4`, `castTarget_4`, `targetParam1_4`, `targetParam2_4`, `castFlags_4`, `delayInitialMin_4`, `delayInitialMax_4`, `delayRepeatMin_4`, `delayRepeatMax_4`, `scriptId_4`, `spellId_5`, `probability_5`, `castTarget_5`, `targetParam1_5`, `targetParam2_5`, `castFlags_5`, `delayInitialMin_5`, `delayInitialMax_5`, `delayRepeatMin_5`, `delayRepeatMax_5`, `scriptId_5`, `spellId_6`, `probability_6`, `castTarget_6`, `targetParam1_6`, `targetParam2_6`, `castFlags_6`, `delayInitialMin_6`, `delayInitialMax_6`, `delayRepeatMin_6`, `delayRepeatMax_6`, `scriptId_6`, `spellId_7`, `probability_7`, `castTarget_7`, `targetParam1_7`, `targetParam2_7`, `castFlags_7`, `delayInitialMin_7`, `delayInitialMax_7`, `delayRepeatMin_7`, `delayRepeatMax_7`, `scriptId_7`, `spellId_8`, `probability_8`, `castTarget_8`, `targetParam1_8`, `targetParam2_8`, `castFlags_8`, `delayInitialMin_8`, `delayInitialMax_8`, `delayRepeatMin_8`, `delayRepeatMax_8`, `scriptId_8`) VALUES (5055, 'Deviate Lasher', 6255, 80, 1, 0, 0, 0, 5, 10, 12, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '18684');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '18685');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '18686');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '18681');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '18680');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '33980');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '33981');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '38126');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '38132');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '38127');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '48752');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '45721');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '85912');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '85918');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '85916');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87111');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '85989');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87112');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '85994');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '85995');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '85996');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '86325');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '86415');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '86105');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87098');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87101');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87102');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87103');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87106');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87110');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87119');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87120');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87135');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87137');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87136');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87148');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87152');
+        UPDATE `spawns_creatures` SET `ignored` = '1' WHERE (`spawn_id` = '87151');
+        
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1614
+        UPDATE `areatrigger_teleport` SET `target_position_x` = '7200', `target_position_y` = '-838', `target_position_z` = '-2', `target_orientation` = '1.69' WHERE (`id` = '259');
+        UPDATE `worldports` SET `x` = '7200', `y` = '-838', `z` = '-2', `o` = '4.60' WHERE (`entry` = '116');
+        UPDATE `worldports` SET `x` = '7200', `y` = '-838', `z` = '-2', `o` = '4.60' WHERE (`entry` = '115');
+
+        -- https://github.com/The-Alpha-Project/alpha-core/issues/1615
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4803', `position_x` = '7329.976', `position_y` = '-926.581', `position_z` = '26.886', `ignored` = '0' WHERE (`spawn_id` = '33285');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4803', `position_x` = '7330.661', `position_y` = '-956.526', `position_z` = '21.355', `ignored` = '0' WHERE (`spawn_id` = '33286');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4803', `position_x` = '7361.977', `position_y` = '-956.526', `position_z` = '15.8', `ignored` = '0' WHERE (`spawn_id` = '33287');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4803', `position_x` = '7360.347', `position_y` = '-924.597', `position_z` = '10.244', `ignored` = '0' WHERE (`spawn_id` = '33288');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4803', `position_x` = '7331.168', `position_y` = '-969.052', `position_z` = '1.274', `ignored` = '0' WHERE (`spawn_id` = '33289');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4803', `position_x` = '7345.075', `position_y` = '-956.467', `position_z` = '-2.549', `ignored` = '0' WHERE (`spawn_id` = '33290');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4803', `position_x` = '7335.171', `position_y` = '-994.75', `position_z` = '4.594', `ignored` = '0' WHERE (`spawn_id` = '33291');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4803', `position_x` = '7337.593', `position_y` = '-1014.914', `position_z` = '5.07', `ignored` = '0' WHERE (`spawn_id` = '33292');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4803', `position_x` = '7324.585', `position_y` = '-1006.85', `position_z` = '7.31', `ignored` = '0' WHERE (`spawn_id` = '33293');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7307.925', `position_y` = '-998.504', `position_z` = '10.407', `ignored` = '0' WHERE (`spawn_id` = '33294');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7291.623', `position_y` = '-1003.646', `position_z` = '13.72', `ignored` = '0' WHERE (`spawn_id` = '33295');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7264.027', `position_y` = '-985.447', `position_z` = '14.062', `ignored` = '0' WHERE (`spawn_id` = '33296');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7242.308', `position_y` = '-986.236', `position_z` = '12.419', `ignored` = '0' WHERE (`spawn_id` = '33297');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7215.997', `position_y` = '-1001.37', `position_z` = '8.272', `ignored` = '0' WHERE (`spawn_id` = '33298');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7218.884', `position_y` = '-1023.406', `position_z` = '5.734', `ignored` = '0' WHERE (`spawn_id` = '33299');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7186.713', `position_y` = '-1018.934', `position_z` = '6.373', `ignored` = '0' WHERE (`spawn_id` = '33300');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7172.797', `position_y` = '-976.058', `position_z` = '7.43', `ignored` = '0' WHERE (`spawn_id` = '33302');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7220.33', `position_y` = '-1024.405', `position_z` = '5.534', `ignored` = '0' WHERE (`spawn_id` = '33303');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7181.906', `position_y` = '-966.99', `position_z` = '8.068', `ignored` = '0' WHERE (`spawn_id` = '33304');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7198.093', `position_y` = '-952.203', `position_z` = '13.206', `ignored` = '0' WHERE (`spawn_id` = '33305');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7210.375', `position_y` = '-933.342', `position_z` = '19.135', `ignored` = '0' WHERE (`spawn_id` = '33306');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7215.71', `position_y` = '-903.382', `position_z` = '13.826', `ignored` = '0' WHERE (`spawn_id` = '33307');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7234.793', `position_y` = '-876.929', `position_z` = '5.612', `ignored` = '0' WHERE (`spawn_id` = '33308');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7226.869', `position_y` = '-847.338', `position_z` = '1.036', `ignored` = '0' WHERE (`spawn_id` = '33309');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7238.033', `position_y` = '-830.053', `position_z` = '-0.934', `ignored` = '0' WHERE (`spawn_id` = '33310');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7261.411', `position_y` = '-822.074', `position_z` = '-6.646', `ignored` = '0' WHERE (`spawn_id` = '33311');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7228.346', `position_y` = '-817.803', `position_z` = '-2.083', `ignored` = '0' WHERE (`spawn_id` = '33312');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7200.409', `position_y` = '-832.39', `position_z` = '-3.295', `ignored` = '0' WHERE (`spawn_id` = '38665');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7197.827', `position_y` = '-809.274', `position_z` = '-5.784', `ignored` = '0' WHERE (`spawn_id` = '38666');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7234.529', `position_y` = '-853.076', `position_z` = '1.142', `ignored` = '0' WHERE (`spawn_id` = '38808');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7225.653', `position_y` = '-869.667', `position_z` = '3.192', `ignored` = '0' WHERE (`spawn_id` = '38974');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7162.353', `position_y` = '-987.953', `position_z` = '5.219', `ignored` = '0' WHERE (`spawn_id` = '38976');
+        UPDATE `spawns_creatures` SET `spawn_entry2` = '4802', `position_x` = '7154.26', `position_y` = '-976.811', `position_z` = '5.219', `ignored` = '0' WHERE (`spawn_id` = '38977');
+
+        -- Sapphire of Aku'Mai.
+        UPDATE `gameobject_template` SET `displayId` = '219' WHERE (`entry` = '178184');
+        UPDATE `gameobject_template` SET `displayId` = '219' WHERE (`entry` = '178186');
+
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7170.637', `spawn_positionY` = '-835.637', `spawn_positionZ` = '-4.33', `ignored` = '0' WHERE (`spawn_id` = '47700');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7207.226', `spawn_positionY` = '-820.836', `spawn_positionZ` = '-4.359', `ignored` = '0' WHERE (`spawn_id` = '47701');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7194.21', `spawn_positionY` = '-822.588', `spawn_positionZ` = '-2.327', `ignored` = '0' WHERE (`spawn_id` = '47702');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7240.419', `spawn_positionY` = '-801.943', `spawn_positionZ` = '-0.804', `ignored` = '0' WHERE (`spawn_id` = '47703');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7242.694', `spawn_positionY` = '-796.015', `spawn_positionZ` = '-0.703', `ignored` = '0' WHERE (`spawn_id` = '12597');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7218.879', `spawn_positionY` = '-856.85', `spawn_positionZ` = '1.475', `ignored` = '0' WHERE (`spawn_id` = '12680');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7230.974', `spawn_positionY` = '-889.777', `spawn_positionZ` = '8.922', `ignored` = '0' WHERE (`spawn_id` = '12737');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7207.672', `spawn_positionY` = '-922.717', `spawn_positionZ` = '19.06', `ignored` = '0' WHERE (`spawn_id` = '12971');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7188.083', `spawn_positionY` = '-969.881', `spawn_positionZ` = '9.085', `ignored` = '0' WHERE (`spawn_id` = '12974');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7143.786', `spawn_positionY` = '-1009.911', `spawn_positionZ` = '1.745', `ignored` = '0' WHERE (`spawn_id` = '12975');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7150.199', `spawn_positionY` = '-978.224', `spawn_positionZ` = '1.997', `ignored` = '0' WHERE (`spawn_id` = '12976');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7134.333', `spawn_positionY` = '-972.33', `spawn_positionZ` = '1.834', `ignored` = '0' WHERE (`spawn_id` = '47704');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7172.979', `spawn_positionY` = '-1008.211', `spawn_positionZ` = '8.581', `ignored` = '0' WHERE (`spawn_id` = '47705');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7215.15', `spawn_positionY` = '-1031.327', `spawn_positionZ` = '5.573', `ignored` = '0' WHERE (`spawn_id` = '47706');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7204.904', `spawn_positionY` = '-990.651', `spawn_positionZ` = '12.862', `ignored` = '0' WHERE (`spawn_id` = '48527');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7258.449', `spawn_positionY` = '-992.256', `spawn_positionZ` = '15.103', `ignored` = '0' WHERE (`spawn_id` = '66114');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7290.677', `spawn_positionY` = '-987.456', `spawn_positionZ` = '12.206', `ignored` = '0' WHERE (`spawn_id` = '66117');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7323.686', `spawn_positionY` = '-1011.742', `spawn_positionZ` = '8.448', `ignored` = '0' WHERE (`spawn_id` = '12607');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7353.294', `spawn_positionY` = '-1004.24', `spawn_positionZ` = '4.619', `ignored` = '0' WHERE (`spawn_id` = '12608');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7344.894', `spawn_positionY` = '-979.081', `spawn_positionZ` = '5.518', `ignored` = '0' WHERE (`spawn_id` = '12633');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7339.358', `spawn_positionY` = '-936.26', `spawn_positionZ` = '-5.943', `ignored` = '0' WHERE (`spawn_id` = '12970');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7361.472', `spawn_positionY` = '-946.255', `spawn_positionZ` = '-2.422', `ignored` = '0' WHERE (`spawn_id` = '12973');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7232.584', `spawn_positionY` = '-1088.886', `spawn_positionZ` = '-2.906', `ignored` = '0' WHERE (`spawn_id` = '12977');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7236.339', `spawn_positionY` = '-1071.187', `spawn_positionZ` = '-1.655', `ignored` = '0' WHERE (`spawn_id` = '47708');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7231.96', `spawn_positionY` = '-1029.418', `spawn_positionZ` = '5.442', `ignored` = '0' WHERE (`spawn_id` = '47709');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7202.164', `spawn_positionY` = '-1047.757', `spawn_positionZ` = '0.243', `ignored` = '0' WHERE (`spawn_id` = '47710');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7206.83', `spawn_positionY` = '-1054.763', `spawn_positionZ` = '3.452', `ignored` = '0' WHERE (`spawn_id` = '47711');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7187.108', `spawn_positionY` = '-1056.761', `spawn_positionZ` = '3.699', `ignored` = '0' WHERE (`spawn_id` = '55103');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7221.238', `spawn_positionY` = '-873.562', `spawn_positionZ` = '4.657', `ignored` = '0' WHERE (`spawn_id` = '55104');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7228.259', `spawn_positionY` = '-806.796', `spawn_positionZ` = '-2.275', `ignored` = '0' WHERE (`spawn_id` = '55105');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7269.82', `spawn_positionY` = '-816.293', `spawn_positionZ` = '-6.59', `ignored` = '0' WHERE (`spawn_id` = '55106');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7254.73', `spawn_positionY` = '-829.8', `spawn_positionZ` = '-1.72', `ignored` = '0' WHERE (`spawn_id` = '55191');
+
+        -- Bruiseweed.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7232.22', `spawn_positionY` = '-912.841', `spawn_positionZ` = '15.0677' WHERE (`spawn_id` = '68490');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7227', `spawn_positionY` = '-813.303', `spawn_positionZ` = '-2.444' WHERE (`spawn_id` = '24253');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7293.99', `spawn_positionY` = '-1007.82', `spawn_positionZ` = '14.1899' WHERE (`spawn_id` = '68491');
+
+        -- Clams.
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7190.36', `spawn_positionY` = '-801.884', `spawn_positionZ` = '-6.08355' WHERE (`spawn_id` = '48046');
+        UPDATE `spawns_gameobjects` SET `spawn_positionX` = '7168.23', `spawn_positionY` = '-770.48', `spawn_positionZ` = '-5.91007' WHERE (`spawn_id` = '48047');
+
+        -- Fallenroot Satyr.
+        UPDATE `spawns_creatures` SET `position_x` = '7213.932', `position_y` = '-832.024', `position_z` = '-2.712', `ignored` = '0' WHERE (`spawn_id` = '33166');
+        UPDATE `spawns_creatures` SET `position_x` = '7227.299', `position_y` = '-861.059', `position_z` = '1.865', `ignored` = '0' WHERE (`spawn_id` = '33167');
+        UPDATE `spawns_creatures` SET `position_x` = '7225.854', `position_y` = '-912.134', `position_z` = '15.323', `ignored` = '0' WHERE (`spawn_id` = '33168');
+        UPDATE `spawns_creatures` SET `position_x` = '7172.837', `position_y` = '-1001.29', `position_z` = '9.511', `ignored` = '0' WHERE (`spawn_id` = '33169');
+        UPDATE `spawns_creatures` SET `position_x` = '7198.722', `position_y` = '-1010.773', `position_z` = '7.385', `ignored` = '0' WHERE (`spawn_id` = '33170');
+        UPDATE `spawns_creatures` SET `position_x` = '7282.656', `position_y` = '-991.871', `position_z` = '13.75', `ignored` = '0' WHERE (`spawn_id` = '33171');
+        UPDATE `spawns_creatures` SET `position_x` = '7340.932', `position_y` = '-1004.148', `position_z` = '3.857', `ignored` = '0' WHERE (`spawn_id` = '33172');
+
+        -- Whaldak Spider Trainer placement.
+        UPDATE `spawns_creatures` SET `position_x` = '-4833.676', `position_y` = '-2706.077', `orientation` = '3.731' WHERE (`spawn_id` = '400071');
+        -- Olthran Craghelm placement.
+        UPDATE `spawns_creatures` SET `position_x` = '-5037.026', `position_y` = '-1149.393', `position_z` = '530.177', `orientation` = '0.340' WHERE (`spawn_id` = '92');
+
+        -- Hammerhead Sharks - Theramore.
+        UPDATE `creature_template` SET `display_id1` = '2851', `display_id2` = '0', `display_id3` = '0', `level_min` = '10', `level_max` = '30' WHERE (`entry` = '5185');
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400474', '5185', '0', '0', '0', '1', '-3937.427', '-4650.228', '-6.616', '0.317', '300', '300', '0', '100', '0', '2', '0', '0', '0');
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400475', '5185', '0', '0', '0', '1', '-4026.160', '-4566.016', '-11.210', '3.257', '300', '300', '0', '100', '0', '2', '0', '0', '0');
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400476', '5185', '0', '0', '0', '1', '-3871.077', '-4715.082', '-11.359', '2.328', '300', '300', '0', '100', '0', '2', '0', '0', '0');
+
+        DELETE FROM creature_movement WHERE id = 400476;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (400476, 0, -3871.08, -4715.08, -11.359, 0, 0, 0, 0),
+        (400476, 1, -3937.43, -4650.23, -6.616, 0, 0, 0, 0);
+
+        DELETE FROM creature_movement WHERE id = 400474;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (400474, 0, -3937.43, -4650.23, -6.616, 0, 0, 0, 0),
+        (400474, 1, -4019.872, -4570.601, -10.032, 0, 0, 0, 0);
+
+        DELETE FROM creature_movement WHERE id = 400475;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (400475, 0, -4026.16, -4566.02, -11.21, 0, 0, 0, 0),
+        (400475, 1, -3852.411, -4695.709, -8.891, 0, 0, 0, 0);
+
+        -- Hammerhead Sharks - Wetlands.
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400477', '5185', '0', '0', '0', '0', '-3619.912', '-667.062', '-5.495', '2.847', '300', '300', '0', '100', '0', '2', '0', '0', '0');
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400478', '5185', '0', '0', '0', '0', '-3860.069', '-970.231', '-9.424', '1.893', '300', '300', '0', '100', '0', '2', '0', '0', '0');
+        INSERT INTO `spawns_creatures` (`spawn_id`, `spawn_entry1`, `spawn_entry2`, `spawn_entry3`, `spawn_entry4`, `map`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecsmin`, `spawntimesecsmax`, `wander_distance`, `health_percent`, `mana_percent`, `movement_type`, `spawn_flags`, `visibility_mod`, `ignored`) VALUES ('400479', '5185', '0', '0', '0', '0', '-3086.198', '-878.560', '-8.186', '6.281', '300', '300', '0', '100', '0', '2', '0', '0', '0');
+
+        DELETE FROM creature_movement WHERE id = 400477;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (400477, 0, -3619.912, -667.062, -6.0, 0, 0, 0, 0),
+        (400477, 1, -3679.512, -654.877, -5.768, 0, 0, 0, 0),
+        (400477, 2, -3754.543, -660.885, -6.968, 0, 0, 0, 0),
+        (400477, 3, -3840.858, -725.926, -4.462, 0, 0, 0, 0),
+        (400477, 4, -3895.266, -798.169, -3.192, 0, 0, 0, 0),
+        (400477, 5, -3888.073, -871.998, -4.459, 0, 0, 0, 0),
+        (400477, 6, -3886.798, -925.889, -5.656, 0, 0, 0, 0),
+        (400477, 7, -3926.045, -899.105, -3.271, 0, 0, 0, 0),
+        (400477, 8, -3944.383, -846.207, -7.741, 0, 0, 0, 0),
+        (400477, 9, -3916.853, -764.062, -6.979, 0, 0, 0, 0),
+        (400477, 10, -3789.159, -667.851, -6.656, 0, 0, 0, 0),
+        (400477, 11, -3643.234, -665.627, -3.28, 0, 0, 0, 0);
+
+        DELETE FROM creature_movement WHERE id = 400479;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (400479, 0, -3086.198, -878.56, -8.186, 0, 0, 0, 0),
+        (400479, 1, -2994.042, -890.377, -5.982, 0, 0, 0, 0),
+        (400479, 2, -2949.162, -914.763, -5.667, 0, 0, 0, 0),
+        (400479, 3, -2911.086, -967.312, -5.657, 0, 0, 0, 0),
+        (400479, 4, -2860.667, -1015.364, -7.212, 0, 0, 0, 0),
+        (400479, 5, -2763.598, -1087.138, -4.957, 0, 0, 0, 0),
+        (400479, 6, -2757.104, -1009.766, -6.123, 0, 0, 0, 0),
+        (400479, 7, -2805.729, -952.217, -6.572, 0, 0, 0, 0),
+        (400479, 8, -2943.019, -953.778, -2.742, 0, 0, 0, 0),
+        (400479, 9, -2977.853, -888.88, -3.793, 0, 0, 0, 0),
+        (400479, 10, -3063.256, -876.323, -6.928, 0, 0, 0, 0);
+
+        DELETE FROM creature_movement WHERE id = 400478;
+        INSERT INTO creature_movement (id, point, position_x, position_y, position_z, orientation, waittime, wander_distance, script_id) VALUES
+        (400478, 0, -3860.07, -970.231, -9.424, 0, 0, 0, 0),
+        (400478, 1, -3847.447, -1041.32, -6.086, 0, 0, 0, 0),
+        (400478, 2, -3818.298, -1131.86, -5.075, 0, 0, 0, 0),
+        (400478, 3, -3765.189, -1227.954, -3.878, 0, 0, 0, 0),
+        (400478, 4, -3670.321, -1173.761, -6.452, 0, 0, 0, 0),
+        (400478, 5, -3577.506, -1101.181, -6.452, 0, 0, 0, 0),
+        (400478, 6, -3535.464, -1039.792, -6.452, 0, 0, 0, 0),
+        (400478, 7, -3601.396, -975.107, -6.452, 0, 0, 0, 0),
+        (400478, 8, -3580.904, -907.404, -6.452, 0, 0, 0, 0),
+        (400478, 9, -3553.939, -839.087, -6.452, 0, 0, 0, 0),
+        (400478, 10, -3589.421, -832.031, -6.452, 0, 0, 0, 0),
+        (400478, 11, -3623.885, -909.151, -6.452, 0, 0, 0, 0),
+        (400478, 12, -3665.608, -962.974, -6.452, 0, 0, 0, 0),
+        (400478, 13, -3740.933, -964.078, -6.452, 0, 0, 0, 0),
+        (400478, 14, -3818.444, -943.057, -6.452, 0, 0, 0, 0),
+        (400478, 15, -3874.734, -902.968, -6.452, 0, 0, 0, 0),
+        (400478, 16, -3893.729, -846.193, -6.452, 0, 0, 0, 0),
+        (400478, 17, -3884.289, -777.849, -6.452, 0, 0, 0, 0),
+        (400478, 18, -3836.793, -736.491, -6.452, 0, 0, 0, 0),
+        (400478, 19, -3857.304, -679.108, -6.452, 0, 0, 0, 0),
+        (400478, 20, -3943.348, -631.051, -6.452, 0, 0, 0, 0),
+        (400478, 21, -4076.014, -691.217, -6.452, 0, 0, 0, 0),
+        (400478, 22, -4120.404, -774.243, -6.452, 0, 0, 0, 0),
+        (400478, 23, -4071.049, -793.069, -6.452, 0, 0, 0, 0),
+        (400478, 24, -3991.929, -826.605, -6.452, 0, 0, 0, 0),
+        (400478, 25, -3904.568, -865.126, -6.452, 0, 0, 0, 0),
+        (400478, 26, -3851.88, -948.064, -6.452, 0, 0, 0, 0);
+
+        -- Wharfmaster Lozgil.
+        UPDATE `spawns_creatures` SET `position_x` = '-14303.7', `position_y` = '527.608', `position_z` = '8.83', `orientation` = '4.86', `ignored` = '0', `map` = '0' WHERE (`spawn_id` = '184');
+
+        -- Frostmaw.
+        UPDATE `creature_template` SET `display_id1` = '934' WHERE (`entry` = '4504');
+        DELETE FROM `event_scripts` WHERE `id`=727;
+        INSERT INTO `event_scripts` (`id`, `delay`, `priority`, `command`, `datalong`, `datalong2`, `datalong3`, `datalong4`, `target_param1`, `target_param2`, `target_type`, `data_flags`, `dataint`, `dataint2`, `dataint3`, `dataint4`, `x`, `y`, `z`, `o`, `condition_id`, `comments`) VALUES
+        (727, 0, 0, 10, 4504, 0, 1, 0, 0, 0, 0, 0, 8, 0, -1, 7, 234.227, -239.227, 141.325, 2.84489, 0, 'Frostmaw: Summon Creature Frostmaw');
+
+        insert into applied_updates values ('231220251');
+    end if;
+
 end $
 delimiter ;

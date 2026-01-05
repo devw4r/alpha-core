@@ -1,7 +1,7 @@
 import random
 from enum import IntEnum
 from struct import pack
-from typing import NamedTuple, Optional
+from typing import Optional
 
 from database.dbc.DbcDatabaseManager import DbcDatabaseManager
 from database.realm.RealmDatabaseManager import RealmDatabaseManager
@@ -15,7 +15,7 @@ from utils.ConfigManager import config
 from utils.Formulas import PlayerFormulas
 from utils.Logger import Logger
 from utils.constants.ItemCodes import ItemClasses, ItemSubClasses, InventoryError
-from utils.constants.MiscCodes import SkillCategories, Languages, AttackTypes, LockTypes
+from utils.constants.MiscCodes import SkillCategories, AttackTypes, LockTypes
 from utils.constants.OpCodes import OpCode
 from utils.constants.SpellCodes import SpellCheckCastResult, SpellEffects
 from utils.constants.UpdateFields import PlayerFields
@@ -173,29 +173,6 @@ class SkillLineType(IntEnum):
     SECONDARY = 4
 
 
-class LanguageDesc(NamedTuple):
-    lang_id: int
-    spell_id: int
-    skill_id: int
-
-
-LANG_DESCRIPTION = {
-    Languages.LANG_UNIVERSAL: LanguageDesc(Languages.LANG_UNIVERSAL, 0, SkillTypes.NONE),
-    Languages.LANG_ORCISH: LanguageDesc(Languages.LANG_ORCISH, 669, SkillTypes.LANGUAGE_ORCISH.value),
-    Languages.LANG_DARNASSIAN: LanguageDesc(Languages.LANG_DARNASSIAN, 671, SkillTypes.LANGUAGE_DARNASSIAN.value),
-    Languages.LANG_TAURAHE: LanguageDesc(Languages.LANG_TAURAHE, 670, SkillTypes.LANGUAGE_TAURAHE.value),
-    Languages.LANG_DWARVISH: LanguageDesc(Languages.LANG_DWARVISH, 672, SkillTypes.LANGUAGE_DWARVEN.value),
-    Languages.LANG_COMMON: LanguageDesc(Languages.LANG_COMMON, 668, SkillTypes.LANGUAGE_COMMON.value),
-    Languages.LANG_DEMONIC: LanguageDesc(Languages.LANG_DEMONIC, 815, SkillTypes.DEMONTONGUE.value),
-    Languages.LANG_TITAN: LanguageDesc(Languages.LANG_TITAN, 816, SkillTypes.TITAN.value),
-    Languages.LANG_THALASSIAN: LanguageDesc(Languages.LANG_THALASSIAN, 813, SkillTypes.THALASSIAN.value),
-    Languages.LANG_DRACONIC: LanguageDesc(Languages.LANG_DRACONIC, 814, SkillTypes.DRACONIC.value),
-    Languages.LANG_KALIMAG: LanguageDesc(Languages.LANG_KALIMAG, 817, SkillTypes.OLDTONGUE.value),
-    Languages.LANG_GNOMISH: LanguageDesc(Languages.LANG_GNOMISH, 7340, SkillTypes.LANGUAGE_GNOMISH.value),
-    Languages.LANG_TROLL: LanguageDesc(Languages.LANG_TROLL, 7341, SkillTypes.LANGUAGE_TROLL.value)
-}
-
-
 class ProficiencyAcquireMethod(IntEnum):
     ON_TRAINER_LEARN = 0
     ON_CHAR_CREATE = 1
@@ -223,7 +200,7 @@ class Proficiency:
         return self.related_skill_ids.get(1 << item_subclass, -1)
 
 
-class SkillManager(object):
+class SkillManager:
     MAX_PROFESSION_SKILL = 225
     MAX_SKILLS = 64
 
@@ -233,7 +210,7 @@ class SkillManager(object):
         self.proficiencies = {}
 
         # Dictionary for all equipment proficiencies the player can learn.
-        # Used to determine which talents should be excluded from the player (ie. 2H talents from rogues).
+        # Used to determine which talents should be excluded from the player (e.g. 2H talents from rogues).
         self.full_proficiency_masks = {}
 
     def load_skills(self):
@@ -312,6 +289,19 @@ class SkillManager(object):
         skill = DbcDatabaseManager.SkillHolder.skill_get_by_id(skill_id)
         if not skill:
             return False
+
+        # Get skill lines abilities related to skill.
+        skill_line_abilities = DbcDatabaseManager.SkillLineAbilityHolder.skill_line_abilities_get_by_skill_id(skill_id)
+        if not skill_line_abilities:
+            return False
+
+        # Validate the given skill can actually be used by requester given its race and class.
+        if not DbcDatabaseManager.SkillLineAbilityHolder.get_skill_line_ability_for_race_and_class(skill_line_abilities,
+                                                                                                   self.player_mgr.race,
+                                                                                                   self.player_mgr.class_,
+                                                                                                   self.player_mgr.is_gm):
+            return False
+
 
         start_rank_value = 1
         if skill.CategoryID == SkillCategories.MAX_SKILL and skill.ID != SkillTypes.LOCKPICKING_TEMP:
@@ -392,12 +382,12 @@ class SkillManager(object):
     def handle_weapon_skill_gain_chance(self, attack_type: AttackTypes):
         skill_id = self._get_skill_id_for_current_weapon(attack_type)
         if skill_id == -1:
-            return False
+            return
 
         skill = DbcDatabaseManager.SkillHolder.skill_get_by_id(skill_id)
         # Skip Professions.
         if skill.SkillType == SkillLineType.SECONDARY and skill.CategoryID == SkillCategories.CLASS_SKILL:
-            return False
+            return
 
         self.handle_offense_skill_gain_chance(skill_id)
 
@@ -520,18 +510,18 @@ class SkillManager(object):
                                                 bonus_points=bonus_points)
 
         if target.is_gameobject():
-            # Handle unique skill gain per herb node.
-            if lock_result.skill_type == SkillTypes.HERBALISM and self.player_mgr.guid in target.unlocked_by:
+            # Prevent gaining more than 1 point per player per gather attempt. Only relevant for Mining Nodes.
+            if self.player_mgr.guid in target.unlocked_by:
                 return
             target.unlocked_by.add(self.player_mgr.guid)
 
         gather_skill_gain_factor = 1  # TODO: configurable.
         if lock_result.skill_type not in self.skills:
-            return False
+            return
 
         skill = self.skills[lock_result.skill_type]
         if skill.value >= skill.max:
-            return False
+            return
 
         chance = SkillManager._get_skill_gain_chance(skill.value,
                                                      lock_result.required_skill_value + 100,
@@ -545,9 +535,9 @@ class SkillManager(object):
         self._roll_profession_skill_gain_chance(lock_result.skill_type, chance, gather_skill_gain_factor)
 
     @staticmethod
-    def get_skill_and_skill_line_for_spell_id(spell_id, race, class_):
+    def get_skill_and_skill_line_for_spell_id(spell_id, race, class_, gm=False):
         skill_line_ability = DbcDatabaseManager.SkillLineAbilityHolder.skill_line_ability_get_by_spell_race_and_class(
-            spell_id, race, class_)
+            spell_id, race, class_, gm=gm)
 
         if not skill_line_ability:
             return 0, None
@@ -558,7 +548,8 @@ class SkillManager(object):
     def get_skill_info_for_spell_id(self, spell_id):
         race = self.player_mgr.race
         class_ = self.player_mgr.class_
-        skill, skill_line_ability = SkillManager.get_skill_and_skill_line_for_spell_id(spell_id, race, class_)
+        skill, skill_line_ability = SkillManager.get_skill_and_skill_line_for_spell_id(
+            spell_id, race, class_, self.player_mgr.is_gm)
 
         if not skill:
             return None, None, None
@@ -585,11 +576,11 @@ class SkillManager(object):
 
     def _roll_profession_skill_gain_chance(self, skill_type, chance, step):
         if not skill_type or chance <= 0:
-            return False
+            return
 
         skill = self.skills.get(skill_type, None)
         if not skill:
-            return False
+            return
 
         roll = random.randint(1, 1000)
         if roll < chance:
@@ -598,7 +589,7 @@ class SkillManager(object):
 
     def handle_fishing_attempt_chance(self):
         skill = self.skills.get(SkillTypes.FISHING, None)
-        if not skill:
+        if not isinstance(skill, CharacterSkill):
             return False
 
         # Search the skill zone by parent zone id.
@@ -744,16 +735,6 @@ class SkillManager(object):
         return prof.get_skill_id_for_subclass(item_template.subclass)
 
     @staticmethod
-    def get_all_languages():
-        return LANG_DESCRIPTION.items()
-
-    @staticmethod
-    def get_skill_by_language(language_id):
-        if language_id in LANG_DESCRIPTION:
-            return LANG_DESCRIPTION[language_id].skill_id
-        return -1
-
-    @staticmethod
     def get_cast_ui_spells_for_skill_id(skill_id) -> set[int]:
         skill_line_spells = DbcDatabaseManager.SkillLineAbilityHolder.spells_get_by_skill_id(skill_id)
         spells = set()
@@ -767,7 +748,7 @@ class SkillManager(object):
 
     def get_skill_for_spell_id(self, spell_id):
         skill_line_ability = DbcDatabaseManager.SkillLineAbilityHolder.skill_line_ability_get_by_spell_race_and_class(
-            spell_id, self.player_mgr.race, self.player_mgr.class_)
+            spell_id, self.player_mgr.race, self.player_mgr.class_, self.player_mgr.is_gm)
         if not skill_line_ability or not skill_line_ability.SkillLine:
             return None
         return DbcDatabaseManager.SkillHolder.skill_get_by_id(skill_line_ability.SkillLine)
@@ -795,16 +776,9 @@ class SkillManager(object):
         return SkillTypes.DUALWIELD in self.skills
 
     def build_update(self):
-        count = 0
-        for skill_id, skill in self.skills.items():
-            total_value = self.get_total_skill_value(skill_id)
-            self.player_mgr.set_uint32(PlayerFields.PLAYER_SKILL_INFO_1_1 + (count * 3),
-                                       # skill value, skill id
-                                       ByteUtils.shorts_to_int(skill.value, skill_id))
-            self.player_mgr.set_uint32(PlayerFields.PLAYER_SKILL_INFO_1_1 + (count * 3) + 1,
-                                       # skill mod, max rank
-                                       ByteUtils.shorts_to_int(total_value - skill.value, skill.max))
-            self.player_mgr.set_uint32(PlayerFields.PLAYER_SKILL_INFO_1_1 + (count * 3) + 2,
-                                       # padding, skill step
-                                       ByteUtils.shorts_to_int(0, 0))
-            count += 1
+        for count, (skill_id, skill) in enumerate(self.skills.items()):
+            base_field = PlayerFields.PLAYER_SKILL_INFO_1_1 + (count * 3)
+            # skill value, skill id | skill mod, max rank | padding, skill step
+            values = [(skill.value, skill_id), (self.get_total_skill_value(skill_id) - skill.value, skill.max), (0, 0)]
+            for offset, (val1, val2) in enumerate(values):
+                self.player_mgr.set_uint32(base_field + offset, ByteUtils.shorts_to_int(val1, val2))

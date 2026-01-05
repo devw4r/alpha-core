@@ -1,12 +1,22 @@
-import multiprocessing
 import os
+import multiprocessing
+from sys import platform
+from utils.PathManager import PathManager
+
+# Set multiprocessing context and initialize path FIRST, before any other imports are called.
+if __name__ == '__main__':
+    # Semaphore objects are leaked on shutdown in macOS if using spawn for some reason.
+    if platform == 'darwin':
+        multiprocessing.set_start_method('fork')
+    else:
+        multiprocessing.set_start_method('spawn')
+
+    root_path = os.path.dirname(os.path.realpath(__file__))
+    PathManager.set_root_path(root_path)
+
 import argparse
 import signal
-import sys
-from sys import platform
 from time import sleep
-
-
 from game.login.LoginManager import LoginManager
 from game.realm.RealmManager import RealmManager
 from game.update.UpdateManager import UpdateManager
@@ -17,7 +27,6 @@ from game.world.managers.maps.MapTile import MapTile
 from tools.extractors.Extractor import Extractor
 from utils.ConfigManager import config, ConfigManager
 from utils.Logger import Logger
-from utils.PathManager import PathManager
 from utils.constants import EnvVars
 
 
@@ -30,6 +39,7 @@ parser.add_argument(
     action='store',
     default=None
 )
+
 parser.add_argument(
     '-e', '--extract',
     help='-e in order to extract .map files',
@@ -64,6 +74,7 @@ def release_process(active_process):
             active_process.join(timeout=2)
             if active_process.is_alive():
                 active_process.terminate()
+                active_process.join()
                 break
         except (ValueError, KeyboardInterrupt):
             sleep(0.1)
@@ -87,13 +98,13 @@ def handle_console_commands():
     except:
         pass
     Logger.info(f'Command listener released.')
-    RUNNING.value = 0
+    SHARED_STATE.RUNNING = False
 
 
 def handler_stop_signals(signum, frame):
-    RUNNING.value = 0
+    SHARED_STATE.RUNNING = False
     # Console mode, we need to kill stdin input() listener.
-    if CONSOLE_LISTENING:
+    if SHARED_STATE.CONSOLE_LISTENING:
         raise KeyboardInterrupt
 
 
@@ -101,48 +112,37 @@ def wait_world_server():
     if not launch_world:
         return
     # Wait for world start before starting realm/proxy sockets if needed.
-    while not WORLD_SERVER_READY.value and RUNNING.value:
+    while not SHARED_STATE.WORLD_SERVER_READY and SHARED_STATE.RUNNING:
         sleep(0.1)
 
 
 def wait_realm_server():
     if not launch_realm:
         return
-    while not REALM_SERVER_READY.value and RUNNING.value:
+    while not SHARED_STATE.REALM_SERVER_READY and SHARED_STATE.RUNNING:
         sleep(0.1)
 
 
 def wait_proxy_server():
     if not launch_realm:
         return
-    while not PROXY_SERVER_READY.value and RUNNING.value:
+    while not SHARED_STATE.PROXY_SERVER_READY and SHARED_STATE.RUNNING:
         sleep(0.1)
 
 
 def wait_login_server():
-    while not LOGIN_SERVER_READY.value and RUNNING.value:
+    while not SHARED_STATE.LOGIN_SERVER_READY and SHARED_STATE.RUNNING:
         sleep(0.1)
 
 
 def wait_update_server():
-    while not UPDATE_SERVER_READY.value and RUNNING.value:
+    while not SHARED_STATE.UPDATE_SERVER_READY and SHARED_STATE.RUNNING:
         sleep(0.1)
 
-
-CONSOLE_LISTENING = False
-RUNNING = None
-WORLD_SERVER_READY = None
-REALM_SERVER_READY = None
-PROXY_SERVER_READY = None
-LOGIN_SERVER_READY = None
-UPDATE_SERVER_READY = None
+SHARED_STATE = None
 ACTIVE_PROCESSES = []
 
-
 if __name__ == '__main__':
-    # Initialize path.
-    PathManager.set_root_path(os.path.dirname(os.path.realpath(__file__)))
-
     # Validate configuration file version.
     # (Not using Logger since it can fail due to missing config options too).
     try:
@@ -154,10 +154,20 @@ if __name__ == '__main__':
         print(f'Invalid config.yml version. Expected {ConfigManager.EXPECTED_VERSION}, none found.')
         exit()
 
+    # Semaphore objects are leaked on shutdown in macOS if using spawn for some reason.
+    if platform == 'darwin':
+        context = multiprocessing.get_context('fork')
+    else:
+        context = multiprocessing.get_context('spawn')
+
+    if not MapManager.validate_namigator_bindings():
+        Logger.error(f'Invalid namigator bindings.')
+        exit()
+
     if args.extract:
         adt_x = args.adt_x if args.adt_x else -1
         adt_y = args.adt_y if args.adt_y else -1
-        Extractor.run(adt_x, adt_y)
+        Extractor.run(context, adt_x, adt_y)
         exit()
 
     # Validate if maps available and if version match.
@@ -165,22 +175,16 @@ if __name__ == '__main__':
         Logger.error(f'Invalid maps version or maps missing, expected version {MapTile.EXPECTED_VERSION}')
         exit()
 
-    if not MapManager.validate_namigator_bindings():
-        Logger.error(f'Invalid namigator bindings.')
-        exit()
-
-    # Semaphore objects are leaked on shutdown in macOS if using spawn for some reason.
-    if platform == 'darwin':
-        context = multiprocessing.get_context('fork')
-    else:
-        context = multiprocessing.get_context('spawn')
-
-    RUNNING = context.Value('i', 1)
-    WORLD_SERVER_READY = context.Value('i', 0)
-    REALM_SERVER_READY = context.Value('i', 0)
-    PROXY_SERVER_READY = context.Value('i', 0)
-    LOGIN_SERVER_READY = context.Value('i', 0)
-    UPDATE_SERVER_READY = context.Value('i', 0)
+    manager = context.Manager()
+    # Shared variables inside a namespace.
+    SHARED_STATE = manager.Namespace()
+    SHARED_STATE.RUNNING = True
+    SHARED_STATE.CONSOLE_LISTENING = False
+    SHARED_STATE.WORLD_SERVER_READY = False
+    SHARED_STATE.REALM_SERVER_READY = False
+    SHARED_STATE.PROXY_SERVER_READY = False
+    SHARED_STATE.LOGIN_SERVER_READY = False
+    SHARED_STATE.UPDATE_SERVER_READY = False
 
     launch_realm = not args.launch or args.launch == 'realm'
     launch_world = not args.launch or args.launch == 'world'
@@ -200,26 +204,35 @@ if __name__ == '__main__':
         ACTIVE_PROCESSES.append((context.Process(
             name='World process',
             target=WorldManager.WorldServerSessionHandler.start_world,
-            args=(RUNNING, WORLD_SERVER_READY)), wait_world_server))
+            args=(SHARED_STATE,)), wait_world_server))
     else:
-        WORLD_SERVER_READY.value = 1
+        SHARED_STATE.WORLD_SERVER_READY = True
 
     # Update server.
-    ACTIVE_PROCESSES.append((context.Process(name='Update process', target=UpdateManager.start_update,
-                                             args=(RUNNING, UPDATE_SERVER_READY)), wait_update_server))
+    ACTIVE_PROCESSES.append((context.Process(
+        name='Update process',
+        target=UpdateManager.start_update,
+        args=(SHARED_STATE,)), wait_update_server))
 
     # SRP login server.
-    ACTIVE_PROCESSES.append((context.Process(name='Login process', target=LoginManager.start_login,
-                                             args=(RUNNING, LOGIN_SERVER_READY)), wait_login_server))
+    ACTIVE_PROCESSES.append((context.Process(
+        name='Login process',
+        target=LoginManager.start_login,
+        args=(SHARED_STATE,)), wait_login_server))
 
     if launch_realm:
-        ACTIVE_PROCESSES.append((context.Process(name='Realm process', target=RealmManager.start_realm,
-                                                 args=(RUNNING, REALM_SERVER_READY)), wait_realm_server))
-        ACTIVE_PROCESSES.append((context.Process(name='Proxy process', target=RealmManager.start_proxy,
-                                                 args=(RUNNING, PROXY_SERVER_READY)), wait_proxy_server))
+        ACTIVE_PROCESSES.append((context.Process(
+            name='Realm process',
+            target=RealmManager.start_realm,
+            args=(SHARED_STATE,)), wait_realm_server))
+
+        ACTIVE_PROCESSES.append((context.Process(
+            name='Proxy process',
+            target=RealmManager.start_proxy,
+            args=(SHARED_STATE,)), wait_proxy_server))
     else:
-        REALM_SERVER_READY.value = 1
-        PROXY_SERVER_READY.value = 1
+        SHARED_STATE.REALM_SERVER_READY = True
+        SHARED_STATE.PROXY_SERVER_READY = True
 
     Logger.info('Booting Alpha Core, please wait...')
     # Start processes.
@@ -237,24 +250,21 @@ if __name__ == '__main__':
     Logger.info('Alpha Core is now running.\a')
 
     # Handle console mode.
-    if console_mode and RUNNING.value:
-        CONSOLE_LISTENING = True
+    if console_mode and SHARED_STATE.RUNNING:
+        SHARED_STATE.CONSOLE_LISTENING = True
         handle_console_commands()
     else:
         # Wait on main thread for stop signal or 'exit' command.
-        while RUNNING.value:
+        while SHARED_STATE.RUNNING:
             sleep(2)
 
     # Exit.
     Logger.info('Shutting down the core, please wait...')
 
-    if launch_world:
-        # Make sure we disconnect current players and save their characters.
-        CommandManager.worldoff(None, args='confirm')
-
     # Make sure all process finish gracefully (Exit their listening loops).
     [release_process(process) for process, wait_call in ACTIVE_PROCESSES]
 
     ACTIVE_PROCESSES.clear()
+    manager.shutdown()
     Logger.success('Core gracefully shut down.')
     exit()

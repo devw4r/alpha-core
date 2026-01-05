@@ -1,7 +1,6 @@
-import os
 from collections import defaultdict
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Dict
 
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -13,11 +12,11 @@ from utils.ConfigManager import *
 from utils.constants.SpellCodes import SpellImplicitTargets
 
 
-DB_USER = os.getenv('MYSQL_USERNAME', config.Database.Connection.username)
-DB_PASSWORD = os.getenv('MYSQL_PASSWORD', config.Database.Connection.password)
-DB_HOST = os.getenv('MYSQL_HOST', config.Database.Connection.host)
-DB_PORT = os.getenv('MYSQL_TCP_PORT', config.Database.Connection.port)
-DB_DBC_NAME = config.Database.DBNames.dbc_db
+DB_USER = os.getenv('MYSQL_USERNAME', config.Database.DBC.username)
+DB_PASSWORD = os.getenv('MYSQL_PASSWORD', config.Database.DBC.password)
+DB_HOST = os.getenv('MYSQL_HOST', config.Database.DBC.host)
+DB_PORT = os.getenv('MYSQL_TCP_PORT', config.Database.DBC.port)
+DB_DBC_NAME = config.Database.DBC.db_name
 
 dbc_db_engine = create_engine(f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_DBC_NAME}?charset=utf8mb4',
                               pool_pre_ping=True)
@@ -340,14 +339,13 @@ class DbcDatabaseManager:
 
         @staticmethod
         def skill_line_abilities_get_by_spell(spell_id) -> list:
-            return DbcDatabaseManager.SkillLineAbilityHolder.SKILL_LINE_ABILITIES.get(spell_id, list())
+            return DbcDatabaseManager.SkillLineAbilityHolder.SKILL_LINE_ABILITIES.get(spell_id, [])
 
         @staticmethod
-        @lru_cache
-        def skill_line_ability_get_by_spell_race_and_class(spell_id, race, class_):
+        def get_skill_line_ability_for_race_and_class(skill_line_abilities, race, class_, gm=False):
             race_mask = 1 << (race - 1)
             class_mask = 1 << (class_ - 1)
-            skill_line_abilities = DbcDatabaseManager.SkillLineAbilityHolder.skill_line_abilities_get_by_spell(spell_id)
+
             for skill_line_ability in skill_line_abilities:
                 req_race_mask = skill_line_ability.RaceMask
                 req_class_mask = skill_line_ability.ClassMask
@@ -357,11 +355,50 @@ class DbcDatabaseManager:
                 if skill_line_ability.ExcludeClass:
                     req_class_mask = ~req_class_mask
 
+                # Skill line ability does not match race/class.
                 if (req_race_mask and req_race_mask & race_mask == 0) or \
                         (req_class_mask and req_class_mask & class_mask == 0):
                     continue
+
+                # Validate Skill Line.
+                # Some skill lines abilities do not have race/class requirements until you reach the actual skill.
+                # Also, some skill line abilities point to different skill lines with different requirements.
+                # e.g. Language: Orcish (Spell 669) which points to either Skill line 109 or 110.
+                # An Orc can learn 109 which is probably native tongue and a human can learn 110. (Temp Orcish).
+                skill_line = DbcDatabaseManager.SkillHolder.skill_get_by_id(skill_line_ability.SkillLine)
+                req_race_mask = skill_line.RaceMask
+                req_class_mask = skill_line.ClassMask
+
+                if skill_line.ExcludeRace:  # Always 0
+                    req_race_mask = ~req_race_mask
+                if skill_line.ExcludeClass:
+                    req_class_mask = ~req_class_mask
+
+                # Skill does not match race/class.
+                if (req_race_mask and req_race_mask & race_mask == 0) or \
+                        (req_class_mask and req_class_mask & class_mask == 0):
+                    continue
+
                 return skill_line_ability
+
+            # Nothing was found but requester is GM, return the first available.
+            if gm and skill_line_abilities:
+                return skill_line_abilities[0]
+
             return None
+
+        @staticmethod
+        def spell_has_skill_line_ability(spell_id) -> bool:
+            return len(DbcDatabaseManager.SkillLineAbilityHolder.skill_line_abilities_get_by_spell(spell_id)) > 0
+
+        @staticmethod
+        def skill_line_ability_get_by_spell_race_and_class(spell_id, race, class_, gm=False):
+            skill_line_abilities = DbcDatabaseManager.SkillLineAbilityHolder.skill_line_abilities_get_by_spell(spell_id)
+            if not skill_line_abilities:
+                return None
+
+            return DbcDatabaseManager.SkillLineAbilityHolder.get_skill_line_ability_for_race_and_class(
+                skill_line_abilities, race, class_, gm=gm)
 
     @staticmethod
     def skill_line_ability_get_by_skill_lines(skill_lines):
@@ -400,7 +437,7 @@ class DbcDatabaseManager:
     # MdxModelsData
 
     class MdxModelsDataHolder:
-        MDX_MODELS_INFOS: dict[int, t_mdx_models_data] = {}
+        MDX_MODELS_INFOS: Dict[int, t_mdx_models_data] = {}
 
         @staticmethod
         def load_mdx_model_info(mdx_model_info):
@@ -451,7 +488,7 @@ class DbcDatabaseManager:
     # CreatureFamily
 
     class CreatureFamilyHolder:
-        CREATURE_FAMILIES: [int, CreatureFamily] = {}
+        CREATURE_FAMILIES: Dict[int, CreatureFamily] = {}
 
         @staticmethod
         def load_creature_family(creature_family):
@@ -656,10 +693,16 @@ class DbcDatabaseManager:
 
     class FactionTemplateHolder:
         FACTION_TEMPLATES = {}
+        # TODO: This shouldn't be needed once all NPCs involved in escort quests have the proper EscortAI ai_name.
+        ESCORTEE_FACTIONS = {10, 33, 113, 231, 232, 250}
 
         @staticmethod
         def load_faction_template(faction_template):
             DbcDatabaseManager.FactionTemplateHolder.FACTION_TEMPLATES[faction_template.ID] = faction_template
+
+        @staticmethod
+        def is_escortee_faction(faction_id):
+            return faction_id in DbcDatabaseManager.FactionTemplateHolder.ESCORTEE_FACTIONS
 
         @staticmethod
         def faction_template_get_by_id(faction_template_id):

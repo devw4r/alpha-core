@@ -19,7 +19,6 @@ from utils.constants.SpellCodes import SpellCheckCastResult, SpellTargetMask, Sp
 from utils.constants.UnitCodes import UnitFlags, UnitStates, AIReactionStates, CreatureReactStates
 
 if TYPE_CHECKING:
-    from game.world.managers.objects.units.UnitManager import UnitManager
     from game.world.managers.objects.units.creature.CreatureManager import CreatureManager
 
 
@@ -74,6 +73,12 @@ class CreatureAI:
     def permissible(self, creature):
         pass
 
+    def attach_escort_link(self, player_mgr):
+        pass
+
+    def detach_escort_link(self, player_mgr=None):
+        pass
+
     # Distract creature, if player gets too close while stealth/prowling.
     # AIReactionStates.AI_REACT_ALERT
     def trigger_alert(self, unit):
@@ -91,8 +96,11 @@ class CreatureAI:
         data = pack('<QI', self.creature.guid, ai_reaction)
         packet = PacketWriter.get_packet(OpCode.SMSG_AI_REACTION, data)
         self.creature.movement_manager.face_target(victim)
-        victim.enqueue_packet(packet)
+        self.creature.get_map().send_surrounding(packet, self.creature, False)
         return True
+
+    def on_script_event(self, event_id, event_data, target):
+        self.ai_event_handler.on_script_event_happened(event_id, event_data, target)
 
     # Called when the creature is killed.
     def just_died(self, killer=None):
@@ -189,8 +197,6 @@ class CreatureAI:
     # Called when the creature is target of hostile action: swing, hostile spell landed, fear/etc).
     def attacked_by(self, attacker):
         self.creature.threat_manager.add_threat(attacker)
-        if attacker.is_player():
-            self.send_ai_reaction(attacker, AIReactionStates.AI_REACT_HOSTILE)
 
     # Called when creature attack is expected (if creature can and doesn't have current victim).
     # Note: for reaction at hostile action must be called AttackedBy function.
@@ -213,6 +219,9 @@ class CreatureAI:
 
     def update_spell_list(self, elapsed):
         if not self.has_spell_list():
+            return
+
+        if not self.creature.threat_manager.can_resolve_target():
             return
 
         if self.casting_delay <= 0:
@@ -345,7 +354,7 @@ class CreatureAI:
                 return SpellCheckCastResult.SPELL_FAILED_NOPATH
 
             # If the spell requires specific unit placement.
-            target_is_facing_caster = target.location.has_in_arc(self.creature.location, math.pi)
+            target_is_facing_caster = target.location.has_in_arc(self.creature.location)
             if not ExtendedSpellData.CastPositionRestrictions.is_position_correct(casting_spell.spell_entry.ID,
                                                                                   target_is_facing_caster):
                 if ExtendedSpellData.CastPositionRestrictions.is_from_behind(casting_spell.spell_entry.ID):
@@ -398,6 +407,7 @@ class CreatureAI:
     # Called for reaction on enter combat if not in combat yet (enemy can be None).
     def enter_combat(self, source=None):
         self.ai_event_handler.on_enter_combat(source)
+        self.ai_event_handler.update_target_range_events(source, 0)
 
     # Called when leaving combat.
     def on_combat_stop(self):
@@ -433,23 +443,22 @@ class CreatureAI:
         self.ai_event_handler.on_ooc_los(source=unit)
 
     # Called when a player interacts with this creature.
-    def player_interacted(self):
+    def player_interacted(self, pause_seconds=180):
         # From VMaNGOS NPC_MOVEMENT_PAUSE_TIME (Blizzlike time taken from Classic).
-        self.creature.movement_manager.try_pause_ooc_movement(duration_seconds=180)
+        self.creature.movement_manager.try_pause_ooc_movement(duration_seconds=pause_seconds)
 
     def is_ready_for_new_attack(self):
-        return self.creature.is_alive and self.creature.is_active_object() \
-               and self.creature.react_state == CreatureReactStates.REACT_AGGRESSIVE \
-               and not self.creature.is_evading \
-               and not self.creature.unit_state & UnitStates.STUNNED \
-               and not self.creature.unit_flags & UnitFlags.UNIT_FLAG_PACIFIED \
-               and not self.creature.combat_target
-
-    def on_scripted_event(self, event_id, data):
-        pass
+        return (self.creature.is_alive and not self.creature.is_evading
+                and not self.creature.unit_state & UnitStates.STUNNED
+                and not self.creature.unit_flags & UnitFlags.UNIT_FLAG_PACIFIED
+                and not self.creature.combat_target
+                and not self.get_react_state() == CreatureReactStates.REACT_PASSIVE)
 
     def assist_unit(self, target):
         if not self.creature.is_alive:
             return
 
         self.creature.attack(target.combat_target)
+
+    def get_react_state(self):
+        return self.creature.react_state

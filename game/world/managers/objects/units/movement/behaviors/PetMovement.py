@@ -8,14 +8,15 @@ from utils.constants.MiscCodes import MoveType, MoveFlags
 from game.world.managers.objects.units.movement.behaviors.BaseMovement import BaseMovement
 from utils.constants.PetCodes import PetMoveState
 
+PET_FOLLOW_DISTANCE = 2.0
+PET_FOLLOW_ANGLE = math.pi / 2
+
 
 class PetMovement(BaseMovement):
-    PET_FOLLOW_DISTANCE = 2.0
-    PET_FOLLOW_ANGLE = math.pi / 2
-
     def __init__(self, spline_callback, is_default):
         super().__init__(move_type=MoveType.PET, spline_callback=spline_callback, is_default=is_default)
         self.follow_state: PetMoveState = PetMoveState.AT_HOME
+        self.home_position = None
         self.stay_position = None
         self.pet_range_move = None
         self._is_lagging = False
@@ -24,12 +25,6 @@ class PetMovement(BaseMovement):
     def initialize(self, unit):
         if not super().initialize(unit):
             return False
-        charmer_or_summoner = self.unit.get_charmer_or_summoner()
-        if unit.is_guardian() and charmer_or_summoner:
-            guardian_count = charmer_or_summoner.pet_manager.get_guardian_count()
-            self.follow_angle = PetMovement.PET_FOLLOW_ANGLE + (math.pi / 6) * (guardian_count if guardian_count else 1)
-            while self.follow_angle > math.pi * 2:
-                self.follow_angle -= math.pi * 2
         return True
 
     # override
@@ -58,6 +53,8 @@ class PetMovement(BaseMovement):
         # Spline finished after reaching point and cast time ending.
         if self.follow_state == PetMoveState.AT_RANGE:
             self.pet_range_move = None
+        # Always update tmp home position.
+        self.unit.tmp_home_position = self.home_position
 
     def _check_facing(self):
         if self.follow_state != PetMoveState.AT_HOME or self.stay_position or self.spline:
@@ -89,6 +86,8 @@ class PetMovement(BaseMovement):
     # External call.
     def stay(self, state):
         self.reset()
+        if self.unit.object_ai:
+            self.unit.object_ai.set_combat_movement(enabled=not state)
         self.stay_position = None if not state else self.unit.location.copy()
 
     def get_move_state_for_position(self, new_position):
@@ -153,19 +152,19 @@ class PetMovement(BaseMovement):
             return True, self.stay_position
 
         # Return home.
-        if current_distance <= PetMovement.PET_FOLLOW_DISTANCE and not charmer_or_summoner.is_moving():
+        if current_distance <= PET_FOLLOW_DISTANCE and not charmer_or_summoner.is_moving():
             self._is_lagging = False
             return False, None
 
         orientation = self.unit.location.get_angle_towards_vector(target_location)
-        self.home_position = target_location.get_point_in_radius_and_angle(PetMovement.PET_FOLLOW_DISTANCE,
+        self.home_position = target_location.get_point_in_radius_and_angle(PET_FOLLOW_DISTANCE,
                                                                            self.follow_angle,
                                                                            final_orientation=orientation)
 
-        # Near teleport if lagging above cell size, this can probably be less or half cell.
-        if current_distance > CellUtils.CELL_SIZE:
+        # Near teleport if lagging above defined lag correction distance.
+        if current_distance > CellUtils.FOLLOW_LAG_CORRECTION_DISTANCE:
             self.unit.near_teleport(self.home_position)
             return False, None
 
-        self._is_lagging = current_distance > PetMovement.PET_FOLLOW_DISTANCE * 2
+        self._is_lagging = current_distance > PET_FOLLOW_DISTANCE * 2
         return True, self.home_position

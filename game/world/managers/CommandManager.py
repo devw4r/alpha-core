@@ -1,8 +1,11 @@
 import hashlib
+import operator
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from os import path
 from pathlib import Path
+
+from database.auth.AuthDatabaseManager import AuthDatabaseManager
 from database.dbc.DbcDatabaseManager import DbcDatabaseManager
 from database.realm.RealmDatabaseManager import RealmDatabaseManager
 from database.world.WorldDatabaseManager import WorldDatabaseManager
@@ -18,16 +21,17 @@ from utils.ConfigManager import config
 from utils.GitUtils import GitUtils
 from utils.Srp6 import Srp6
 from utils.TextUtils import GameTextFormatter
+from utils.constants import CustomCodes
 from utils.constants.MiscCodes import UnitDynamicTypes, MoveFlags
 from utils.constants.SpellCodes import SpellEffects, SpellTargetMask
-from utils.constants.UnitCodes import UnitFlags, WeaponMode
+from utils.constants.UnitCodes import UnitFlags, WeaponMode, CreatureStaticFlags
 from utils.constants.UpdateFields import PlayerFields
 
 import platform
 
 
 # noinspection SpellCheckingInspection,PyUnusedLocal
-class CommandManager(object):
+class CommandManager:
 
     DEV_LOG_PATH = config.Server.Logging.log_dev_path
     DEV_LOC_LOG_FILE_NAME = 'locations.log'
@@ -153,16 +157,19 @@ class CommandManager(object):
         player_o = player_mgr.location.o
         maps_z, z_locked = map_.calculate_z_for_object(player_mgr)
         maps_z_str = f'{maps_z:.3f}' if not z_locked else 'Invalid'
+        liq = map_.get_liquid_information(player_x, player_y, player_z)
+        liq_str = 'None'
+        if liq:
+            l_min, l_max = liq.get_bounds()
+            liq_str = f'{liq.get_type_str()} Min {l_min:.3f} Max {l_max:3f} '
         adt_tile = map_.get_tile(player_x, player_y)
         return 0, f'Map: {world_session.player_mgr.map_id}\n' \
                   f'InstanceID: {world_session.player_mgr.instance_id}\n' \
                   f'Zone: {world_session.player_mgr.zone}\n' \
-                  f'ADT: [{adt_tile[0]},{adt_tile[1]}]\n' \
-                  f'X: {player_x:.3f}, ' \
-                  f'Y: {player_y:.3f}, ' \
-                  f'Z: {player_z:.3f}, ' \
-                  f'MapZ: {maps_z_str}, ' \
-                  f'O: {player_o:.3f}'
+                  f'Adt X: {adt_tile[0]} Adt Y: {adt_tile[1]}\n' \
+                  f'X: {player_x:.3f} Y: {player_y:.3f} Z: {player_z:.3f} O: {player_o:.3f}\n' \
+                  f'MapZ: {maps_z_str}\n' \
+                  f'Liquid: {liq_str}'
 
     @staticmethod
     def activate_script_waypoints(world_session, args):
@@ -174,6 +181,87 @@ class CommandManager(object):
             return 0, ''
         except ValueError:
             return -1, 'invalid unit selection.'
+
+    @staticmethod
+    def _adjust_object_property(world_session, prop: str, op_symbol: str, step: float, label: str, rot=False):
+        game_object = world_session.player_mgr.last_debug_ai_state_object
+        if not game_object:
+            return -1, 'invalid object selection.'
+
+        if not game_object.is_gameobject():
+            return -1, 'invalid gameobject selection.'
+
+        # Allowed operators.
+        ops = {
+            '+': operator.iadd,
+            '-': operator.isub,
+            '*': operator.imul,
+            '/': operator.itruediv
+        }
+
+        if op_symbol not in ops:
+            return -1, f'invalid operator: {op_symbol}. expected one of {list(ops.keys())}.'
+
+        mod_property = game_object.location.copy()
+        if rot:
+            prop = f'rot{prop}'
+            mod_property = game_object
+
+        # Validate that the property exists on the location object.
+        if not hasattr(mod_property, prop):
+            return -1, f'invalid property: {prop}.'
+
+        old_value = getattr(mod_property, prop)
+        new_value = ops[op_symbol](old_value, step)
+        setattr(mod_property, prop, new_value)
+
+        from game.world.managers.objects.gameobjects.GameObjectBuilder import GameObjectBuilder
+        player_mgr = world_session.player_mgr
+        new_object = GameObjectBuilder.create(
+            entry_id=game_object.entry,
+            location=mod_property if not rot else game_object.location,
+            map_id=player_mgr.map_id,
+            instance_id=player_mgr.instance_id,
+            rot0=mod_property.rot0 if rot else game_object.rot0,
+            rot1=mod_property.rot1 if rot else game_object.rot1,
+            rot2=mod_property.rot2 if rot else game_object.rot2,
+            rot3=mod_property.rot3 if rot else game_object.rot3,
+            state=1,
+            ttl=0
+        )
+
+        game_map = world_session.player_mgr.get_map()
+        game_map.spawn_object(instance=new_object)
+        game_object.get_map().remove_object(game_object)
+
+        # Replace old selection.
+        world_session.player_mgr.last_debug_ai_state_object = new_object
+
+        return 0, f'{new_object.get_name()} {label}: {prop.upper()}={round(new_value, 3)}'
+
+    @staticmethod
+    def move_object(world_session, args):
+        try:
+            op_symbol, prop, step = args.split()
+            step = float(step)
+            # restrict to x, y, z, o for movement.
+            if prop not in {'x', 'y', 'z', 'o'}:
+                return -1, f'invalid property: {prop}. expected one of x, y, z.'
+            return CommandManager._adjust_object_property(world_session, prop, op_symbol, step, 'moved to')
+        except ValueError:
+            return -1, 'invalid arguments, e.g. .moveobject + z .1.'
+
+    @staticmethod
+    def rotate_object(world_session, args):
+        try:
+            op_symbol, prop, step = args.split()
+            step = float(step)
+            # restrict to 0, 1, 2, 3 for rotation.
+            if prop not in {'0', '1', '2', '3'}:
+                return -1, f'invalid property: {prop}. expected one of 0, 1, 2, 3'
+            return CommandManager._adjust_object_property(world_session, prop, op_symbol, step, 'rotated to', rot=True)
+        except ValueError:
+            return -1, 'invalid arguments, e.g. .rotobject + 0 .1. (Available rotations 0,1,2,3)'
 
     @staticmethod
     def distance_unit(world_session, args):
@@ -337,7 +425,7 @@ class CommandManager(object):
         if code == 0:
             spell_id = res
             if not world_session.player_mgr.spell_manager.learn_spell(spell_id):
-                return -1, 'unable to learn spell, already known or skill limit reached.'
+                return -1, 'unable to learn spell, already known, skill limit reached or not available to your race/class.'
             return 0, 'Spell learned.'
         return code, res
 
@@ -616,8 +704,7 @@ class CommandManager(object):
             return -1, 'please specify a creature name.'
 
         creature_name = args.strip()
-        creature = WorldDatabaseManager.\
-            CreatureTemplateHolder.creature_get_by_name(creature_name, remove_space=True)
+        creature = WorldDatabaseManager.CreatureTemplateHolder.creature_get_by_name(creature_name, remove_space=True)
 
         if not creature:
             return -1, f'"{creature_name}" not found.'
@@ -712,6 +799,21 @@ class CommandManager(object):
             return -1, 'please specify a valid display id.'
 
     @staticmethod
+    def set_faction(world_session, args):
+        try:
+            faction = int(args)
+            unit = CommandManager._target_or_self(world_session)
+            if not unit.is_unit():
+                return -1, 'please select a valid unit.'
+            if not faction:
+                unit.reset_faction()
+            else:
+                unit.set_faction(faction)
+            return 0, f'New faction set to "{faction} for {unit.get_name()}".'
+        except ValueError:
+            return -1, 'please specify a valid faction id.'
+
+    @staticmethod
     def morph(world_session, args):
         try:
             display_id = int(args)
@@ -743,7 +845,6 @@ class CommandManager(object):
         except:
             return -1, 'please specify a valid weapon mode.'
 
-    # TODO, implement event/script forcing.
     @staticmethod
     def fevent(world_session, args):
         try:
@@ -760,8 +861,13 @@ class CommandManager(object):
             if event.creature_id != creature.entry:
                 return -1, 'invalid creature for provided event.'
 
-            # creature.get_map().set_random_ooc_event(creature, event, forced=True)
-            return -1, 'NYI.'
+            if not creature.object_ai or not creature.object_ai.ai_event_handler.has_lock_for_event(event_id):
+                return -1, 'event was not found on creature event queue.'
+
+            unlock = creature.object_ai.ai_event_handler.unlock_event(event_id)
+            if unlock:
+                return 0, 'Event unlocked successfully.'
+            return -1, 'Unable to remove event lock.'
         except:
             return -1, 'invalid event id.'
 
@@ -775,19 +881,24 @@ class CommandManager(object):
             for flag in UnitFlags:
                 if unit.unit_flags & flag:
                     flag_count += 1
-                    result += f'|c0066FF00[SET]|r {UnitFlags(flag).name}\n'
+                    result += f'|c0066FF00[SET] UnitFlag|r {UnitFlags(flag).name}\n'
                 if flag == UnitFlags.UNIT_FLAG_SHEATHE:  # Last unit flag, prevent checking masks.
                     break
 
             for flag in UnitDynamicTypes:
                 if unit.dynamic_flags & flag:
                     flag_count += 1
-                    result += f'|c0066FF00[SET]|r {UnitDynamicTypes(flag).name}\n'
+                    result += f'|c0066FF00[SET] DynamicFlag|r {UnitDynamicTypes(flag).name}\n'
+
+            for flag in CreatureStaticFlags:
+                if unit.static_flags & flag:
+                    flag_count += 1
+                    result += f'|c0066FF00[SET] StaticFlag|r {CreatureStaticFlags(flag).name}\n'
 
             for flag in MoveFlags:
                 if unit.movement_flags & flag:
                     flag_count += 1
-                    result += f'|c0066FF00[SET]|r {MoveFlags(flag).name}\n'
+                    result += f'|c0066FF00[SET] MoveFlag|r {MoveFlags(flag).name}\n'
 
             result += f'{flag_count} active unit flags.'
         return 0, result
@@ -798,18 +909,21 @@ class CommandManager(object):
         creature = player_mgr.get_map().get_surrounding_unit_by_guid(player_mgr, player_mgr.current_selection)
         if creature:
             return 0, f'[{creature.get_name()}]\n' \
+                      f'Entry: {creature.creature_template.entry}\n' \
                       f'Spawn ID: {creature.spawn_id}\n' \
                       f'Guid: {creature.get_low_guid()}\n' \
-                      f'Entry: {creature.creature_template.entry}\n' \
                       f'Display ID: {creature.current_display_id}\n' \
                       f'Faction: {creature.faction}\n' \
-                      f'Unit Flags: {hex(creature.unit_flags)}\n' \
-                      f'Static Flags: {hex(creature.static_flags)}\n' \
+                      f'AI: {creature.get_ai_name()}\n' \
+                      f'Sheath: {WeaponMode(creature.sheath_state).name}\n' \
+                      f'Equipment: {", ".join(str(item) for item in creature.get_virtual_equipment_entries())}\n' \
+                      f'Movement: {creature.movement_manager.get_current_behavior_name()}\n' \
+                      f'Detection Range: {creature.get_detection_range(world_session.player_mgr)}\n' \
                       f'Alive: {creature.is_alive}\n' \
-                      f'X: {creature.location.x}, ' \
-                      f'Y: {creature.location.y}, ' \
-                      f'Z: {creature.location.z}, ' \
-                      f'O: {creature.location.o}\n' \
+                      f'X: {round(creature.location.x, 3)}, ' \
+                      f'Y: {round(creature.location.y, 3)}, ' \
+                      f'Z: {round(creature.location.z, 3)}, ' \
+                      f'O: {round(creature.location.o, 2)}\n' \
                       f'Map: {creature.map_id}'
         return -1, 'error retrieving creature info.'
 
@@ -990,22 +1104,53 @@ class CommandManager(object):
 
     @staticmethod
     def serverinfo(world_session, args):
-        os_platform = f'{platform.system()} {platform.release()} ({platform.version()})'
-        message = f'Platform: {os_platform}.\n'
+        commit_hash = GitUtils.get_current_commit_hash()
+        short_rev = commit_hash[:7] if commit_hash else 'unknown'
 
-        python_version = f'{platform.python_version()}'
-        message += f'Python Version: {python_version}.\n'
+        if commit_hash:
+            branch = GitUtils.get_current_branch() or 'unknown'
+            
+            commit_date = GitUtils.get_current_commit_date()
+            if commit_date:
+                try:
+                    dt = datetime.strptime(commit_date[:19], '%Y-%m-%d %H:%M:%S')
+                    date_str = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    timezone = commit_date[20:] if len(commit_date) > 20 else '+0000'
+                except (ValueError, IndexError):
+                    date_str = 'unknown'
+                    timezone = '+0000'
+            else:
+                date_str = 'unknown'
+                timezone = '+0000'
+        else:
+            branch = 'no git found'
+            date_str = '1970-01-01 00:00:00'
+            timezone = '+0000'
+        
+        platform_short = platform.system()
+        platform_full = platform.platform(terse=True)
+        python_ver = platform.python_version()
+        revision = (
+            f'alpha-core rev. {short_rev} {date_str} {timezone} '
+            f'({branch} branch) (Platform: {platform_short}, Python: {python_ver})'
+        )
 
-        current_commit_hash = GitUtils.get_current_commit_hash()
-        current_branch = GitUtils.get_current_branch()
-        message += f'Commit: [{current_branch}] {current_commit_hash}.\n'
+        uptime_seconds = int(WorldManager.get_seconds_since_startup())
+        hours, remainder = divmod(uptime_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        uptime_parts = []
+        if hours:
+            uptime_parts.append(f'{hours} hour(s)')
+        if minutes:
+            uptime_parts.append(f'{minutes} minute(s)')
+        if seconds or not uptime_parts:
+            uptime_parts.append(f'{seconds} second(s)')
+        server_uptime = ' '.join(uptime_parts)
 
-        server_time = f'{datetime.now()}'
-        message += f'Server Time: {server_time}.\n'
-
-        server_uptime = timedelta(seconds=WorldManager.get_seconds_since_startup())
-        message += f'Uptime: {server_uptime}.'
-
+        message = f'{revision}\nServer Uptime: {server_uptime}\n'
+        server_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        message += f'Server Current Time: {server_time}.\n'
+        message += f'Running on: {platform_full}'
         return 0, message
 
     @staticmethod
@@ -1017,12 +1162,13 @@ class CommandManager(object):
             faction = creature_template.faction if creature_template else player_mgr.faction
             creature_instance = CreatureBuilder.create(creature_entry, player_mgr.location.copy(),
                                                        player_mgr.map_id, player_mgr.instance_id,
+                                                       subtype=CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON,
                                                        faction=faction)
 
             if not creature_instance:
                 return -1, f'creature entry {creature_entry} not found'
             else:
-                player_mgr.get_map().spawn_object(world_object_instance=creature_instance)
+                player_mgr.get_map().spawn_object(instance=creature_instance)
         except (IndexError, ValueError):
             return -1, 'please specify a valid creature entry.'
 
@@ -1077,8 +1223,8 @@ class CommandManager(object):
             if new_password != confirmation_password:
                 return -1, 'please make sure the confirmation password matches the new password'
 
-            success = RealmDatabaseManager.account_try_update_password(world_session.account_mgr.account.name,
-                                                                       old_password, new_password)
+            success = AuthDatabaseManager.account_try_update_password(world_session.account_mgr.account.name,
+                                                                      old_password, new_password)
             if not success:
                 return -1, 'something went wrong, make sure the current password is correct and the new ' \
                            'password has 16 characters maximum'
@@ -1097,7 +1243,25 @@ class CommandManager(object):
             return 0, 'Location saved.'
         else:
             return -1, 'please use it like: .sloc comment'
-        
+
+    @staticmethod
+    def save_waypoint(world_session, args):
+        try:
+            entry = int(args)
+            Path(CommandManager.DEV_LOG_PATH).mkdir(parents=True, exist_ok=True)
+            f_name = path.join(CommandManager.DEV_LOG_PATH, f'{entry}_waypoints.log')
+            l = world_session.player_mgr.location
+
+            with open(f_name, 'a+') as f:
+                f.seek(0)  # Move to the start of the file
+                lines = f.readlines()
+                point_id = len(lines)
+                f.write(f'({entry}, {point_id}, {round(l.x, 3)}, {round(l.y, 3)}, {round(l.z, 3)}, 0, 0, 0, 0),\n')
+
+            return 0, f'Successfully created/updated waypoints in {f_name}'
+        except ValueError:
+            return -1, 'please use it like: .savewp <entry>'
+
     @staticmethod
     def gmtag(world_session, args):
         arg = str(args).strip().lower()
@@ -1117,7 +1281,7 @@ class CommandManager(object):
         username, password = args
         salt = os.urandom(32)
         verifier = Srp6.calculate_password_verifier(username, password, salt)
-        account = RealmDatabaseManager.account_create(username, hashlib.sha256(password.encode('utf-8')).hexdigest(),
+        account = AuthDatabaseManager.account_create(username, hashlib.sha256(password.encode('utf-8')).hexdigest(),
                                                       "127.0.0.1", salt.hex(), verifier.hex())
         if not account:
             return -1, 'unable to create account'
@@ -1140,7 +1304,6 @@ GM_COMMAND_DEFINITIONS = {
     'collision': [CommandManager.toggle_collision, 'toggle collision'],
     'speed': [CommandManager.speed, 'change your run speed'],
     'swimspeed': [CommandManager.swim_speed, 'change your swim speed'],
-    'scriptwp': [CommandManager.activate_script_waypoints, 'tries to activate the selected unit script waypoints'],
     'gps': [CommandManager.gps, 'display information about your location'],
     'tel': [CommandManager.tel, 'teleport you to a location'],
     'stel': [CommandManager.stel, 'search for a location where you can teleport'],
@@ -1150,7 +1313,6 @@ GM_COMMAND_DEFINITIONS = {
     'sitem': [CommandManager.sitem, 'search items'],
     'additem': [CommandManager.additem, 'add an item to your bag'],
     'additems': [CommandManager.additems, 'add items to your bag'],
-    'flushbags': [CommandManager.flushbags, 'flush all items from bags'],
     'sspell': [CommandManager.sspell, 'search spells'],
     'lspell': [CommandManager.lspell, 'learn a spell'],
     'lspells': [CommandManager.lspells, 'learn multiple spells'],
@@ -1175,6 +1337,7 @@ GM_COMMAND_DEFINITIONS = {
     'mount': [CommandManager.mount, 'mount'],
     'unmount': [CommandManager.unmount, 'dismount'],
     'morph': [CommandManager.morph, 'morph the targeted unit'],
+    'setfaction': [CommandManager.set_faction, 'modify target faction'],
     'demorph': [CommandManager.demorph, 'demorph the targeted unit'],
     'setvirtualitem': [CommandManager.setvirtualitem, 'equips virtual item on unit main hand'],
     'cinfo': [CommandManager.creature_info, 'get targeted creature info'],
@@ -1186,18 +1349,23 @@ GM_COMMAND_DEFINITIONS = {
     'petlevel': [CommandManager.petlevel, 'set your active pet level'],
     'money': [CommandManager.money, 'give yourself money'],
     'die': [CommandManager.die, 'kills target or yourself if no target is selected'],
-    'los': [CommandManager.los, 'check unit line of sight'],
     'kick': [CommandManager.kick, 'kick your target from the server'],
     'guildcreate': [CommandManager.guildcreate, 'create and join a guild'],
     'alltaxis': [CommandManager.alltaxis, 'discover all flight paths'],
     'squest': [CommandManager.squest, 'search quests'],
     'qadd': [CommandManager.qadd, 'adds a quest to your log'],
     'qdel': [CommandManager.qdel, 'delete active or completed quest'],
-    'fevent': [CommandManager.fevent, 'force the given event to execute'],
     'gmtag': [CommandManager.gmtag, 'enable or disable the <GM> tag']
 }
 
 DEV_COMMAND_DEFINITIONS = {
+    'scriptwp': [CommandManager.activate_script_waypoints, 'tries to activate the selected unit script waypoints'],
+    'flushbags': [CommandManager.flushbags, 'flush all items from bags'],
+    'los': [CommandManager.los, 'check unit line of sight'],
+    'fevent': [CommandManager.fevent, 'force a queued event to execute'],
+    'moveobject': [CommandManager.move_object, 'move last debug ai state mouse hovered object'],
+    'rotobject': [CommandManager.rotate_object, 'rotate last debug ai state mouse hovered object'],
+    'savewp': [CommandManager.save_waypoint, 'save your current location as creature_movement waypoint'],
     'mapstats': [CommandManager.mapstats, 'active maps, adts and cells'],
     'deactivatecells': [CommandManager.deactivate_cells, 'run cell deactivate process'],
     'destroymonster': [CommandManager.destroymonster, 'destroy the selected creature'],

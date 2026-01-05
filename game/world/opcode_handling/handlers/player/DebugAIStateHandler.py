@@ -11,7 +11,7 @@ from utils.constants.OpCodes import OpCode
 # CMSG_DEBUG_AISTATE is sent by the client if you have `SET debugTargetInfo` option set to "1".
 # You then can answer with SMSG_DEBUG_AISTATE including text messages that will be appended to the
 # object tooltip you are hovering.
-class DebugAIStateHandler(object):
+class DebugAIStateHandler:
 
     @staticmethod
     def handle(world_session, reader: PacketReader) -> int:
@@ -46,6 +46,10 @@ class DebugAIStateHandler(object):
                     f'<{len(message_bytes)}s',
                     message_bytes
                 )
+
+            # This is only useful for dev accounts in case they want to interact with objects through commands.
+            if world_session.account_mgr.is_dev():
+                player_mgr.last_debug_ai_state_object = world_object
 
             player_mgr.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_DEBUG_AISTATE, data))
 

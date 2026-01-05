@@ -1,21 +1,18 @@
-from game.world.managers.maps.helpers.CellUtils import VIEW_DISTANCE
-from game.world.managers.maps.helpers.MapUtils import MapUtils
+from game.world.managers.maps.helpers.CellUtils import  CellUtils
 from game.world.managers.objects.farsight.FarSightManager import FarSightManager
 from threading import RLock
 
+from utils.ConfigManager import config
+
 
 class Cell:
-    def __init__(self, min_x=0.0, min_y=0.0, max_x=0.0, max_y=0.0, map_id=0, instance_id=0, key=''):
-        self.min_x = min_x
-        self.min_y = min_y
-        self.max_x = max_x
-        self.max_y = max_y
-        self.mid_x = (min_x + max_x) / 2
-        self.mid_y = (min_y + max_y) / 2
+    def __init__(self, cell_x=0, cell_y=0, map_id=0, instance_id=0, key=''):
         self.map_id = map_id
         self.instance_id = instance_id
         self.key = key
-        self.adt_x, self.adt_y = MapUtils.get_tile(self.mid_x, self.mid_y)
+        self.cell_x = cell_x
+        self.cell_y = cell_y
+        self.adt_x, self.adt_y = CellUtils.cell_to_adt(cell_x, cell_y)
         self.adt_key = f'{self.adt_x},{self.adt_y}'
         # Cell lock.
         self.cell_lock = RLock()
@@ -31,55 +28,18 @@ class Cell:
         self.gameobject_spawns = dict()
 
         if not key:
-            self.key = (f'{round(self.min_x, 5)}:{round(self.min_y, 5)}:{round(self.max_x, 5)}:{round(self.max_y, 5)}:'
-                        f'{self.map_id}:{self.instance_id}')
+            self.key = f'{cell_x}:{cell_y}:{self.map_id}:{self.instance_id}'
 
         self.hash = hash(self.key)
 
     def __hash__(self):
         return self.hash
 
-    def get_players(self, caller, visibility_range=True):
-        return {k: v for k, v in list(self.players.items())
-                if (visibility_range and Cell._object_in_visible_range(caller, v)) or not visibility_range}
-
-    def get_creatures(self, caller, visibility_range=True):
-        return {k: v for k, v in list(self.creatures.items())
-                if (visibility_range and Cell._object_in_visible_range(caller, v)) or not visibility_range}
-
-    def get_gameobjects(self, caller, visibility_range=True):
-        return {k: v for k, v in list(self.gameobjects.items())
-                if (visibility_range and Cell._object_in_visible_range(caller, v)) or not visibility_range}
-
-    def get_dynamic_objects(self, caller, visibility_range=True):
-        return {k: v for k, v in list(self.dynamic_objects.items())
-                if (visibility_range and Cell._object_in_visible_range(caller, v)) or not visibility_range}
-
-    def get_corpses(self, caller, visibility_range=True):
-        return {k: v for k, v in list(self.corpses.items())
-                if (visibility_range and Cell._object_in_visible_range(caller, v)) or not visibility_range}
-
-    @staticmethod
-    def _object_in_visible_range(source, world_object):
-        return source.location.distance_2d(world_object.location) <= VIEW_DISTANCE
-
     def has_players(self):
         return len(self.players) > 0
 
     def has_cameras(self):
         return FarSightManager.has_camera_in_cell(self)
-
-    def contains(self, world_object=None, vector=None, map_id=None, instance_id=None):
-        if world_object:
-            vector = world_object.location
-            map_id = world_object.map_id
-            instance_id = world_object.instance_id
-
-        if vector and map_id:
-            return self.min_x <= round(vector.x, 5) <= self.max_x and \
-                   self.min_y <= round(vector.y, 5) <= self.max_y and \
-                   map_id == self.map_id and instance_id == self.instance_id
-        return False
 
     def add_world_object_spawn(self, world_object_spawn):
         from game.world.managers.objects.units.creature.CreatureSpawn import CreatureSpawn
@@ -222,26 +182,42 @@ class Cell:
             camera.broadcast_packet(packet, exclude=players_reached)
 
     def send_all_in_range(self, packet, range_, source, include_source=True, exclude=None, use_ignore=False):
+        # If range is non-positive, send to all players without filtering.
         if range_ <= 0:
             self.send_all(packet, source, exclude)
-        else:
-            players_reached = set()
-            for guid, player_mgr in list(self.players.items()):
-                if not player_mgr.online or not player_mgr.location.distance(source.location) <= range_:
-                    continue
-                if not include_source and player_mgr.guid == source.guid:
-                    continue
-                if use_ignore and player_mgr.friends_manager.has_ignore(source.guid):
-                    continue
-                # Never send messages to a player that does not know the source object.
-                if not player_mgr.guid == source.guid and source.guid not in player_mgr.known_objects:
-                    continue
-                players_reached.add(player_mgr.guid)
-                player_mgr.enqueue_packet(packet)
+            return
 
-            # If this cell has cameras, route packets.
-            for camera in FarSightManager.get_cell_cameras(self):
-                camera.broadcast_packet(packet, exclude=players_reached)
+        is_yell = int(range_) == int(config.World.Chat.ChatRange.yell_range)
+        is_say = int(range_) == int(config.World.Chat.ChatRange.say_range)
+
+        players_reached = set()
+        for guid, player_mgr in list(self.players.items()):
+            # Skip offline players.
+            if not player_mgr.online:
+                continue
+            # Check distance.
+            distance = player_mgr.location.distance(source.location)
+            if distance > range_:
+                continue
+            # Optionally exclude source.
+            if not include_source and player_mgr.guid == source.guid:
+                continue
+            # Skip players that have ignored the source.
+            if use_ignore and player_mgr.friends_manager.has_ignore(source.guid):
+                continue
+            # Ensure the player knows about the source object if this is not a chat message.
+            if not is_say and not is_yell:
+                if guid != source.guid and source.guid not in player_mgr.known_objects:
+                    continue
+
+            # Add to reached players.
+            players_reached.add(guid)
+            # Send packet.
+            player_mgr.enqueue_packet(packet)
+
+        # Route packets via cameras if applicable.
+        for camera in FarSightManager.get_cell_cameras(self):
+            camera.broadcast_packet(packet, exclude=players_reached)
 
     def can_deactivate(self):
         return not self.has_players() and not self.has_cameras()

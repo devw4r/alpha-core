@@ -12,7 +12,7 @@ from game.world.managers.objects.gameobjects.GameObjectBuilder import GameObject
 from game.world.managers.objects.spell import SpellEffectDummyHandler, ExtendedSpellData
 from game.world.managers.objects.spell.aura.AreaAuraHolder import AreaAuraHolder
 from game.world.managers.objects.units.creature.CreatureBuilder import CreatureBuilder
-from game.world.managers.objects.units.movement.behaviors.PetMovement import PetMovement
+from game.world.managers.objects.units.movement.behaviors.PetMovement import PET_FOLLOW_DISTANCE
 from game.world.managers.objects.units.pet.PetData import PetData
 from game.world.managers.objects.units.player.SkillManager import SkillManager
 from network.packet.PacketWriter import PacketWriter
@@ -21,7 +21,7 @@ from utils.Formulas import UnitFormulas
 from utils.Logger import Logger
 from utils.constants import CustomCodes
 from utils.constants.ItemCodes import EnchantmentSlots, InventoryError, ItemClasses
-from utils.constants.MiscCodes import AttackTypes, GameObjectStates, DynamicObjectTypes, ScriptTypes
+from utils.constants.MiscCodes import AttackTypes, GameObjectStates, DynamicObjectTypes, ScriptTypes, TempSummonType
 from utils.constants.OpCodes import OpCode
 from utils.constants.PetCodes import PetSlot
 from utils.constants.SpellCodes import AuraTypes, SpellEffects, SpellState, SpellTargetMask, DispelType
@@ -158,7 +158,7 @@ class SpellEffectHandler:
                                                 spell_id=casting_spell.spell_entry.ID,
                                                 faction=caster.faction, ttl=3600)
 
-        caster.get_map().spawn_object(world_object_instance=duel_arbiter)
+        caster.get_map().spawn_object(instance=duel_arbiter)
         duel_arbiter.request_duel(caster, target)
 
     @staticmethod
@@ -371,7 +371,8 @@ class SpellEffectHandler:
         creature_manager = CreatureBuilder.create(totem_entry, target, caster.map_id, caster.instance_id,
                                                   summoner=caster,
                                                   faction=caster.faction, ttl=duration,
-                                                  subtype=CustomCodes.CreatureSubtype.SUBTYPE_TOTEM)
+                                                  subtype=CustomCodes.CreatureSubtype.SUBTYPE_TOTEM,
+                                                  summon_type=TempSummonType.TEMP_SUMMON_TIMED_OR_DEAD_DESPAWN)
         if not creature_manager:
             Logger.error(f'Creature with entry {totem_entry} not found for spell {casting_spell.spell_entry.ID}.')
             return
@@ -380,7 +381,7 @@ class SpellEffectHandler:
         # Remove existing totem in this slot.
         caster.pet_manager.detach_totem(totem_slot)
         caster.pet_manager.add_totem_from_spell(creature_manager, casting_spell)
-        caster.get_map().spawn_object(world_object_instance=creature_manager)
+        caster.get_map().spawn_object(instance=creature_manager)
 
     @staticmethod
     def handle_summon_object_wild(casting_spell, effect, caster, target):
@@ -425,7 +426,7 @@ class SpellEffectHandler:
                                               summoner=caster,
                                               spell_id=casting_spell.spell_entry.ID,
                                               faction=faction, ttl=duration)
-        map_.spawn_object(world_object_instance=gameobject)
+        map_.spawn_object(instance=gameobject)
 
     @staticmethod
     def handle_summon_possessed(casting_spell, effect, caster, target):
@@ -437,12 +438,14 @@ class SpellEffectHandler:
         creature_manager = CreatureBuilder.create(creature_entry, target, caster.map_id, caster.instance_id,
                                                   summoner=caster,
                                                   spell_id=casting_spell.spell_entry.ID,
-                                                  faction=caster.faction, ttl=duration,
+                                                  faction=caster.faction,
+                                                  ttl=duration,
                                                   level=caster.level,
                                                   possessed=True,
-                                                  subtype=CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON)
+                                                  subtype=CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON,
+                                                  summon_type=TempSummonType.TEMP_SUMMON_TIMED_DEATH_AND_DEAD_DESPAWN)
 
-        caster.get_map().spawn_object(world_object_instance=creature_manager)
+        caster.get_map().spawn_object(instance=creature_manager)
         FarSightManager.add_camera(creature_manager, caster)
 
     @staticmethod
@@ -538,30 +541,23 @@ class SpellEffectHandler:
 
     @staticmethod
     def handle_leap(casting_spell, effect, caster, target):
-        # Leap targeting specifies both the leaping unit and their leap target.
-        # Since there are no leap spells with multiple targets,
-        # this method selects the first targets.
-
         leaper = effect.targets.resolved_targets_a
-        leap_target = effect.targets.resolved_targets_b
-
-        if len(leaper) != 1 or len(leap_target) != 1:
+        if not len(leaper):
             return
 
         leaper = leaper[0]
-        leap_target = leap_target[0]
 
-        # Terrain targeted leaps (ie. blink).
         if casting_spell.initial_target_is_terrain():
-            leap_target.set_orientation(leap_target.location.o)
+            leap_target = casting_spell.initial_target
+            leap_target.set_orientation(leaper.location.o)
             leaper.teleport(caster.map_id, leap_target)
             return
 
         # Unit-targeted leap (Charge/heroic leap).
         # Generate a point within combat reach and facing the target.
-        # It wasn't until Patch 0.6 that Charge speeded you along a path towards the target, it just teleported you
+        # It wasn't until Patch 0.6 that Charge sped you along a path towards the target, it just teleported you
         # next to the target (there's also video evidence of this behavior).
-        distance = caster.location.distance(target.location) - UnitFormulas.combat_distance(leaper, leap_target)
+        distance = caster.location.distance(target.location) - UnitFormulas.combat_distance(leaper, target)
         charge_location = caster.location.get_point_in_between(caster, distance, target.location, map_id=caster.map_id)
         charge_location.face_point(target.location)
 
@@ -610,7 +606,10 @@ class SpellEffectHandler:
         amount = effect.get_effect_simple_points()
 
         if not radius:
-            radius = PetMovement.PET_FOLLOW_DISTANCE
+            radius = PET_FOLLOW_DISTANCE
+
+        summon_type = TempSummonType.TEMP_SUMMON_TIMED_COMBAT_OR_CORPSE_DESPAWN if duration > 0 \
+            else TempSummonType.TEMP_SUMMON_DEAD_DESPAWN
 
         # Detach guardians with same entry if any.
         caster.pet_manager.detach_pets_by_entry(creature_entry)
@@ -634,9 +633,10 @@ class SpellEffectHandler:
                                                       faction=caster.faction, ttl=duration,
                                                       possessed=False,
                                                       subtype=CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON,
+                                                      summon_type=summon_type,
                                                       is_guardian=True)
 
-            caster.get_map().spawn_object(world_object_instance=creature_manager)
+            caster.get_map().spawn_object(instance=creature_manager)
             caster.pet_manager.add_guardian_from_spell(creature_manager, casting_spell)
             if caster.object_ai:
                 caster.object_ai.just_summoned(creature_manager)
@@ -665,20 +665,24 @@ class SpellEffectHandler:
                 else:
                     location = target if isinstance(target, Vector) else target.location
 
-                # Spawn the summoned unit.
-                creature_manager = CreatureBuilder.create(creature_entry, location, caster.map_id,
-                                                          caster.instance_id,
-                                                          summoner=caster, faction=caster.faction, ttl=duration,
-                                                          spell_id=casting_spell.spell_entry.ID,
-                                                          subtype=CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON)
+            summon_type = TempSummonType.TEMP_SUMMON_DEAD_DESPAWN if not duration \
+                else TempSummonType.TEMP_SUMMON_TIMED_DEATH_AND_DEAD_DESPAWN
 
-                if not creature_manager:
-                    Logger.error(f'Summon failed, creature with entry {creature_entry} '
+            # Spawn the summoned unit.
+            creature_manager = CreatureBuilder.create(creature_entry, location, caster.map_id,
+                                                      caster.instance_id,
+                                                      summoner=caster, faction=caster.faction, ttl=duration,
+                                                      spell_id=casting_spell.spell_entry.ID,
+                                                      subtype=CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON,
+                                                      summon_type=summon_type)
+
+            if not creature_manager:
+                Logger.error(f'Summon failed, creature with entry {creature_entry} '
                                  f'not found for spell {casting_spell.spell_entry.ID}, '
                                  f'caster entry {caster.get_entry()}')
-                    return
+                return
 
-                caster.get_map().spawn_object(world_object_instance=creature_manager)
+            caster.get_map().spawn_object(instance=creature_manager)
 
     @staticmethod
     def handle_resurrect(casting_spell, effect, caster, target):
@@ -794,7 +798,8 @@ class SpellEffectHandler:
         skill_id = effect.misc_value
         
         if not target.skill_manager.has_skill(skill_id):
-            target.skill_manager.add_skill(skill_id)
+            if not target.skill_manager.add_skill(skill_id):
+                return
 
         current_skill = target.skill_manager.get_total_skill_value(skill_id, no_bonus=True)
         target.skill_manager.set_skill(skill_id, max(1, current_skill),

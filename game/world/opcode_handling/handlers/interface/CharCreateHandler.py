@@ -17,7 +17,7 @@ from utils.constants.SpellCodes import SpellAttributes
 from utils.constants.UnitCodes import Classes
 
 
-class CharCreateHandler(object):
+class CharCreateHandler:
     LOCK = RLock()
 
     @staticmethod
@@ -50,7 +50,7 @@ class CharCreateHandler(object):
             if RealmDatabaseManager.character_does_name_exist(name):
                 result = CharCreate.CHAR_CREATE_NAME_IN_USE
             # Validate max allowed characters, client is unable to properly do it when flooded.
-            elif len(RealmDatabaseManager.account_get_characters(world_session.account_mgr.account.id)) >= 10:
+            elif len(RealmDatabaseManager.character_get_by_account(world_session.account_mgr.account.id)) >= 10:
                 result = CharCreate.CHAR_CREATE_FAILED
             elif not TextUtils.TextChecker.valid_text(name, is_name=True):
                 result = CharCreate.CHAR_CREATE_ERROR
@@ -135,77 +135,52 @@ class CharCreateHandler(object):
     @staticmethod
     def generate_starting_reputations(guid):
         for faction in DbcDatabaseManager.FactionHolder.FACTIONS.values():
-            if faction.ReputationIndex > -1:
-                reputation_entry = CharacterReputation()
-                reputation_entry.guid = guid
-                reputation_entry.faction = faction.ID
-                reputation_entry.standing = faction.ReputationBase_1
-                reputation_entry.index = faction.ReputationIndex
-                reputation_entry.flags = ReputationManager.reputation_flag_by_reaction(
-                    ReputationManager.reaction_by_standing(faction.ReputationBase_1))
+            if not faction.ReputationIndex > -1:
+                continue
+            reputation_entry = CharacterReputation()
+            reputation_entry.guid = guid
+            reputation_entry.faction = faction.ID
+            reputation_entry.standing = faction.ReputationBase_1
+            reputation_entry.index = faction.ReputationIndex
+            reputation_entry.flags = ReputationManager.reputation_flag_by_reaction(
+                ReputationManager.reaction_by_standing(faction.ReputationBase_1))
 
-                RealmDatabaseManager.character_add_reputation(reputation_entry)
+            RealmDatabaseManager.character_add_reputation(reputation_entry)
 
     @staticmethod
     def generate_starting_spells(guid, race, class_, _level):
         added_spells = set()
         for spell in WorldDatabaseManager.player_create_spell_get(race, class_):
             spell_to_load = DbcDatabaseManager.SpellHolder.spell_get_by_id(spell.Spell)
-            if spell_to_load and spell_to_load.ID not in added_spells:
-                added_spells.add(spell_to_load.ID)
+            if not spell_to_load or spell_to_load.ID in added_spells:
+                continue
+            added_spells.add(spell_to_load.ID)
 
-                spell_to_set = CharacterSpell()
-                spell_to_set.guid = guid
-                spell_to_set.spell = spell_to_load.ID
-                RealmDatabaseManager.character_add_spell(spell_to_set)
+            spell_to_set = CharacterSpell()
+            spell_to_set.guid = guid
+            spell_to_set.spell = spell_to_load.ID
 
-        # TODO: Investigate the below behavior
-        """
-        # This doesn't seem to work well in 0.5.3, it bugs out the Common language. Maybe it was only possible 
-        # in 0.5.5+ as seen here: https://i.imgur.com/kJD11ve.png, or maybe a bad implementation.
-
-        # Insert remaining languages but with value 1
-        for lang_id, lang_desc in SkillManager.get_all_languages():
-            added_skills = set()
-            spell_to_load = DbcDatabaseManager.SpellHolder.spell_get_by_id(lang_desc.spell_id)
-            if spell_to_load and lang_desc.spell_id not in added_spells:
-                # Handle learning skills required by initial spells.
-                skill, skill_line = SkillManager.get_skill_and_skill_line_for_spell_id(spell_to_load.ID, race, class_)
-                if skill and skill.ID not in added_skills:
-                    lang_spell = CharacterSpell()
-                    lang_spell.guid = guid
-                    lang_spell.spell = lang_desc.spell_id
-
-                    RealmDatabaseManager.character_add_spell(lang_spell)
-                    added_spells.add(lang_desc.spell_id)
-
-                    added_skills.add(skill.ID)
-                    skill_to_set = CharacterSkill()
-                    skill_to_set.guid = guid
-                    skill_to_set.skill = skill.ID
-                    skill_to_set.value = 1
-                    skill_to_set.max = 1
-
-                    RealmDatabaseManager.character_add_skill(skill_to_set)
-        """
+            RealmDatabaseManager.character_add_spell(spell_to_set)
 
     @staticmethod
     def generate_starting_spells_skills(guid, race, class_, _level):
         added_skills = set()
         for spell in WorldDatabaseManager.player_create_spell_get(race, class_):
             initial_spell = DbcDatabaseManager.SpellHolder.spell_get_by_id(spell.Spell)
-            if initial_spell and not initial_spell.Attributes & SpellAttributes.SPELL_ATTR_PASSIVE:
-                # Handle learning skills required by initial spells.
-                skill, skill_line = SkillManager.get_skill_and_skill_line_for_spell_id(initial_spell.ID, race, class_)
-                if skill and skill.ID not in added_skills:
-                    added_skills.add(skill.ID)
-                    skill_to_set = CharacterSkill()
-                    skill_to_set.guid = guid
-                    skill_to_set.skill = skill.ID
-                    skill_to_set.value = 1 if skill.CategoryID != SkillCategories.MAX_SKILL else skill.MaxRank
-                    skill_to_set.max = skill.MaxRank
+            if not initial_spell or initial_spell.Attributes & SpellAttributes.SPELL_ATTR_PASSIVE:
+                continue
+            # Handle learning skills required by initial spells.
+            skill, skill_line = SkillManager.get_skill_and_skill_line_for_spell_id(initial_spell.ID, race, class_)
+            if not skill or skill.ID in added_skills:
+                continue
+            added_skills.add(skill.ID)
+            skill_to_set = CharacterSkill()
+            skill_to_set.guid = guid
+            skill_to_set.skill = skill.ID
+            skill_to_set.value = 1 if skill.CategoryID != SkillCategories.MAX_SKILL else skill.MaxRank
+            skill_to_set.max = skill.MaxRank
 
-                    RealmDatabaseManager.character_add_skill(skill_to_set)
+            RealmDatabaseManager.character_add_skill(skill_to_set)
 
     @staticmethod
     def generate_starting_items(guid, race, class_, gender):

@@ -13,8 +13,7 @@ from utils.constants.MiscCodes import ObjectTypeFlags, ObjectTypeIds, UpdateType
 from utils.constants.OpCodes import OpCode
 from utils.constants.SpellCodes import SpellImmunity
 from utils.constants.UnitCodes import UnitReaction
-from utils.constants.UpdateFields \
-    import ObjectFields, UnitFields
+from utils.constants.UpdateFields import ObjectFields, UnitFields
 
 
 class ObjectManager:
@@ -204,6 +203,9 @@ class ObjectManager:
     def is_active_object(self):
         return False
 
+    def has_player_observers(self):
+        return True
+
     def get_stationary_position(self):
         return self.location
 
@@ -292,19 +294,29 @@ class ObjectManager:
         return data
 
     def _get_fields_update(self, is_create, requester, update_data=None):
-        data = bytearray()
-        mask = self.update_packet_factory.update_mask.copy() if not update_data else update_data.update_bit_mask
-        values = self.update_packet_factory.update_values_bytes if not update_data else update_data.update_field_values
+        # Make sure we work on a copy of the current mask and values.
+        if not update_data:
+            update_data = self.update_packet_factory.generate_update_data(flush_current=True)
 
+        mask = update_data.update_bit_mask
+        values = update_data.update_field_values
+
+        data = bytearray()
         for field_index in range(self.update_packet_factory.update_mask.field_count):
             # Partial packets only care for fields that had changes.
             if not is_create and mask[field_index] == 0:
                 continue
-            # Check for encapsulation, turn off the bit if requester has no read access.
+            # Check for encapsulation, turn off the bit if the requester has no read access.
             if not self.update_packet_factory.has_read_rights_for_field(field_index, requester):
                 mask[field_index] = 0
                 continue
-            # Append field value and turn on bit on mask.
+            # Defer bytes_1 sheath update, this is similar to the doors collision issue (But for sheath state)
+            # in which the client needs to see the doors as ready first and then receive their actual state after creation.
+            elif is_create and self.is_unit() and field_index == UnitFields.UNIT_FIELD_BYTES_1:
+                data.extend(pack('<I', self.get_bytes_1(is_create=True)))
+                mask[field_index] = 1
+                continue
+            # Append field value and turn on the bit on mask.
             data.extend(values[field_index])
             mask[field_index] = 1
         return pack('<B', self.update_packet_factory.update_mask.block_count) + mask.tobytes() + data
@@ -314,54 +326,53 @@ class ObjectManager:
         return UnitFields.UNIT_FIELD_AURA <= index <= UnitFields.UNIT_FIELD_AURA + 55
 
     def set_int32(self, index, value, force=False):
-        return self._set_value(index, value, 'i', force)
+        return self._set_value(index, value, 'i', False, force)
 
     def set_uint32(self, index, value, force=False):
-        return self._set_value(index, value, 'I', force)
+        return self._set_value(index, value, 'I', False, force)
 
     def set_int64(self, index, value, force=False):
-        return self._set_value(index, value, 'q', force)
+        return self._set_value(index, value, 'q', True, force)
 
     def set_uint64(self, index, value, force=False):
-        return self._set_value(index, value, 'Q', force)
+        return self._set_value(index, value, 'Q', True, force)
 
     def set_float(self, index, value, force=False):
-        return self._set_value(index, value, 'f', force)
+        return self._set_value(index, value, 'f', force, False)
 
     def get_int32(self, index):
-        return self._get_value_by_type_at('i', index)
+        return self._get_value_by_type_at('i', index, False)
 
     def get_uint32(self, index):
-        return self._get_value_by_type_at('I', index)
+        return self._get_value_by_type_at('I', index, False)
 
     def get_int64(self, index):
-        return self._get_value_by_type_at('q', index)
+        return self._get_value_by_type_at('q', index, True)
 
     def get_uint64(self, index):
-        return self._get_value_by_type_at('Q', index)
+        return self._get_value_by_type_at('Q', index, True)
 
     def get_float(self, index):
-        return self._get_value_by_type_at('f', index)
+        return self._get_value_by_type_at('f', index, False)
 
-    def _get_value_by_type_at(self, value_type, index):
+    def _get_value_by_type_at(self, value_type, index, is_int64):
         if not self.update_packet_factory.update_values[index]:
             return 0
 
         # Return the raw value directly if not 64 bits.
-        if value_type.lower() != 'q':
+        if not is_int64:
             return self.update_packet_factory.update_values[index]
 
         # Unpack from two field bytes.
         value = self.update_packet_factory.update_values_bytes[index]
-        if value_type.lower() == 'q':
-            value += self.update_packet_factory.update_values_bytes[index + 1]
+        value += self.update_packet_factory.update_values_bytes[index + 1]
 
         return unpack(f'<{value_type}', value)[0]
 
-    def _set_value(self, index, value, value_type, force=False):
+    def _set_value(self, index, value, value_type, is_int64, force=False):
         force = force and self.is_player()
-        if force or self.update_packet_factory.should_update(index, value, value_type):
-            self.update_packet_factory.update(index, value, value_type)
+        if force or self.update_packet_factory.should_update(index, value, is_int64):
+            self.update_packet_factory.update(index, value, value_type, is_int64)
             if force and self.is_in_world():  # Changes should apply immediately.
                 self.get_map().update_object(self, has_changes=True)
             return True, force
@@ -450,7 +461,11 @@ class ObjectManager:
         pass
 
     # override
-    def despawn(self, ttl=0):
+    def spawn(self, owner=None):
+        self.get_map().spawn_object(owner=owner, instance=self)
+
+    # override
+    def despawn(self, ttl=0, respawn_delay=0):
         self.is_spawned = False
         if self.spell_manager:
             self.spell_manager.remove_casts()
@@ -483,7 +498,8 @@ class ObjectManager:
     # override
     def is_under_water(self):
         liquid_information = self.get_map().get_liquid_information(self.location.x, self.location.y, self.location.z)
-        return liquid_information and self.location.z + (self.current_scale * 1.8) < liquid_information.get_height()
+        model_height = self.model_height if self.model_height else 1.8
+        return liquid_information and self.location.z + (self.current_scale * model_height) < liquid_information.get_height()
 
     # override
     def is_in_deep_water(self):
@@ -504,6 +520,10 @@ class ObjectManager:
 
     # override
     def is_pet(self):
+        return False
+
+    # override
+    def is_temp_summon_or_pet_or_guardian(self):
         return False
 
     # override
@@ -539,6 +559,10 @@ class ObjectManager:
     # Returns 1. if the target can be detected and 2. if alert should happen (AI reaction).
     def can_detect_target(self, target, distance=-1):
         return True, False
+
+    # Implemented by CreatureManager.
+    def is_escort(self):
+        return False
 
     # Implemented by UnitManager.
     def get_charmer_or_summoner(self, include_self=False):

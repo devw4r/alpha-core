@@ -4,10 +4,11 @@ from struct import pack, unpack
 from utils.ConfigManager import config
 
 
-class Vector(object):
+class Vector:
     """Class to represent points in a 3D space and utilities to work with them within the game."""
+    __slots__ = ('x', 'y', 'z', 'o', 'z_locked')
 
-    def __init__(self, x=0, y=0, z=0, o=0, z_locked=False):
+    def __init__(self, x=0.0, y=0.0, z=0.0, o=0.0, z_locked=False):
         self.x = x
         self.y = y
         self.z = z
@@ -25,6 +26,9 @@ class Vector(object):
 
     def __eq__(self, other):
         return other and self.x == other.x and self.y == other.y and self.z == other.z
+
+    def approximately_equals(self, other, tolerance=0.5):
+        return abs(self.x - other.x) <= tolerance and abs(self.y - other.y) <= tolerance
 
     @staticmethod
     def from_bytes(vector_bytes):
@@ -54,6 +58,13 @@ class Vector(object):
         elif is_terrain:
             new_vector.z += 0.1
         return new_vector
+
+    def lerp(self, target, t):
+        return Vector(
+            self.x + (target.x - self.x) * t,
+            self.y + (target.y - self.y) * t,
+            self.z + (target.z - self.z) * t
+        )
 
     def to_bytes(self, include_orientation=True):
         if include_orientation:
@@ -92,7 +103,7 @@ class Vector(object):
             vector = Vector(x=x, y=y)
         return math.atan2(vector.x - self.x, vector.y - self.y)
 
-    def has_in_arc(self, vector, arc):
+    def has_in_arc(self, vector, arc=math.pi):
         vector_angle = self.angle(vector) % (2 * math.pi)
 
         # Orientation is offset by 90°
@@ -129,25 +140,31 @@ class Vector(object):
         point_in_between = unit.get_map().find_point_in_between_vectors(offset, unit.location, vector)
         if point_in_between:
             # Convert Namigator tuple to Vector.
-            result = Vector(point_in_between[0], point_in_between[1], point_in_between[2])
-            orientation = self.o if self.o != 0 else self.get_angle_towards_vector(result)
-            result.set_orientation(orientation)
-            return result
+            result = Vector(point_in_between[0], point_in_between[1], point_in_between[2], z_locked=False)
+        else:
+            general_distance = self.distance(vector)
+            # Location already in the given offset
+            if general_distance <= offset:
+                return vector
 
-        general_distance = self.distance(vector)
-        # Location already in the given offset
-        if general_distance <= offset:
-            return vector
+            factor = offset / general_distance
+            x3 = self.x + factor * (vector.x - self.x)
+            y3 = self.y + factor * (vector.y - self.y)
+            z3, z_locked = Vector.calculate_z(x3, y3, map_id, self.z + factor * (vector.z - self.z), is_rand_point=True)
 
-        factor = offset / general_distance
-        x3 = self.x + factor * (vector.x - self.x)
-        y3 = self.y + factor * (vector.y - self.y)
-        z3, z_locked = Vector.calculate_z(x3, y3, map_id, self.z + factor * (vector.z - self.z), is_rand_point=True)
+            result = Vector(x3, y3, z3, z_locked=z_locked)
 
-        result = Vector(x3, y3, z3, z_locked=z_locked)
         orientation = self.o if self.o != 0 else self.get_angle_towards_vector(result)
         result.set_orientation(orientation)
 
+        return result
+
+    def get_surrounding_points_in_distance(self, distance=1.0):
+        result = [self,
+            Vector(self.x, self.y + distance, self.z),  # North.
+            Vector(self.x, self.y - distance, self.z),  # South.
+            Vector(self.x + distance, self.y, self.z),  # East.
+            Vector(self.x - distance, self.y, self.z)]  # West.
         return result
 
     def get_point_in_middle(self, vector, map_id=-1):

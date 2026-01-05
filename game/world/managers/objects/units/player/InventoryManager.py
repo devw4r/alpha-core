@@ -13,7 +13,7 @@ from utils.constants.OpCodes import OpCode
 MAX_3368_ITEM_DISPLAY_ID = 11802
 
 
-class InventoryManager(object):
+class InventoryManager:
     def __init__(self, owner):
         self.owner = owner
         # Containers are lazy initialized, since we need the player session active (in-world).
@@ -46,7 +46,7 @@ class InventoryManager(object):
                         continue
 
                     self.containers[item_instance.bag].sorted_slots[container_mgr.current_slot] = container_mgr
-                    self.containers[container_mgr.current_slot] = container_mgr
+                    self.containers[InventorySlots(container_mgr.current_slot)] = container_mgr
 
         # Then load items
         for item_instance in character_inventory:
@@ -856,7 +856,7 @@ class InventoryManager(object):
             if not container:
                 continue
             container.reset_fields_older_than(now)
-            [item.reset_fields_older_than(now) for item in container.sorted_slots.values()]
+            [item.reset_fields_older_than(now) for item in list(container.sorted_slots.values())]
 
     # Owner will check for items pending changes.
     def has_pending_updates(self):

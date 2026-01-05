@@ -1,6 +1,7 @@
 import math
 import random
 from enum import auto, IntFlag
+from typing import Dict, Tuple, Union
 
 from database.world.WorldDatabaseManager import WorldDatabaseManager, config
 from game.world.managers.objects.units.player.EnchantmentManager import EnchantmentManager
@@ -50,6 +51,8 @@ class UnitStats(IntFlag):
     PARRY_CHANCE = auto()
     DODGE_CHANCE = auto()
     BLOCK_CHANCE = auto()
+    BLOCK_SHIELD = auto()
+    BLOCK_BUCKLER = auto()
     # Note: Block value did not exist in 0.5.3
 
     PROC_CHANCE = auto()
@@ -94,18 +97,18 @@ class UnitStats(IntFlag):
     ALL_RESISTANCES = RESISTANCE_HOLY | RESISTANCE_FIRE | RESISTANCE_NATURE | RESISTANCE_FROST | RESISTANCE_SHADOW
 
 
-class StatManager(object):
+class StatManager:
 
     # Player base stats and stats scaling off base attributes (block value, weapon damage bonus from attributes etc.)
-    base_stats: dict[UnitStats, float]  # Floats for defensive chances
+    base_stats: Dict[UnitStats, float]  # Floats for defensive chances
 
     # Stat gain from items
-    item_stats: dict[UnitStats, int]
+    item_stats: Dict[UnitStats, int]
 
     # Managed by AuraManager. [Aura index, (Stat, bonus, misc value)]
     # Misc value can contain power/weapon/creature type etc. depending on the stat
-    aura_stats_flat: dict[int, (UnitStats, int, int)]
-    aura_stats_percentual: dict[int, (UnitStats, float, int, int)]
+    aura_stats_flat: Dict[int, Tuple[UnitStats, int, int]]
+    aura_stats_percentual: Dict[int, Tuple[UnitStats, float, int]]
 
     weapon_reach: float
 
@@ -182,8 +185,10 @@ class StatManager(object):
         else:
             self.set_creature_stats()
 
-        # Don't overwrite base speed if it has been modified.
+        # Don't overwrite the base speed if it has been modified.
         self.base_stats[UnitStats.SPEED_RUNNING] = self.base_stats.get(UnitStats.SPEED_RUNNING, config.Unit.Defaults.run_speed)
+
+        self.base_stats[UnitStats.SPELL_CASTING_SPEED] = 1.0
 
         # Players and creatures have an unchanging base 5% chance to block and parry (before defense skill differences).
         # As block chance also scales with strength, the value is calculated in update_base_block_chance.
@@ -298,7 +303,7 @@ class StatManager(object):
 
         return stat_map, (base_dmg_min, base_dmg_max), (ranged_dmg_min, ranged_dmg_max)
 
-    def get_base_stat(self, stat_type: UnitStats) -> int:
+    def get_base_stat(self, stat_type: UnitStats) -> float:
         return self.base_stats.get(stat_type, 0)
 
     def get_item_stat(self, stat_type: UnitStats) -> int:
@@ -338,7 +343,7 @@ class StatManager(object):
         # Don't apply bonuses for players that haven't completed login.
         # Sending a speed change before entering the world crashes the client.
         if self.unit_mgr.is_player() and not self.unit_mgr.online:
-            return
+            return 0, 0
 
         self.calculate_item_stats()
 
@@ -865,7 +870,16 @@ class StatManager(object):
         rating_difference_block = self._get_combat_rating_difference(attacker.level, combat_rating,
                                                                      use_block=self.unit_mgr.can_block(in_combat=True))
 
-        block_chance = self.get_total_stat(UnitStats.BLOCK_CHANCE, accept_float=True) + rating_difference_block * 0.0004
+        block_chance = self.get_total_stat(UnitStats.BLOCK_CHANCE, accept_float=True)
+
+        # Shield/Buckler bonuses.
+        if self.unit_mgr.has_shield():
+            block_chance += self.get_total_stat(UnitStats.BLOCK_SHIELD, accept_float=True)
+        elif self.unit_mgr.has_buckler():
+            block_chance += self.get_total_stat(UnitStats.BLOCK_BUCKLER, accept_float=True)
+
+        block_chance += rating_difference_block * 0.0004
+
         can_block = not (invalid_result_mask & HitInfo.BLOCK) and self.unit_mgr.can_block(attacker.location, in_combat=True)
         if can_block and random.random() < block_chance:
             return hit_info | HitInfo.BLOCK
@@ -962,7 +976,7 @@ class StatManager(object):
             multiplier = 0.002 if rating_difference > 0 else 0.0004
             return attacker_critical_chance - rating_difference * multiplier
 
-    def get_spell_miss_result_against_self(self, casting_spell) -> (SpellMissReason, SpellHitFlags):
+    def get_spell_miss_result_against_self(self, casting_spell) -> Tuple[SpellMissReason, SpellHitFlags]:
         hit_flags = SpellHitFlags.NONE
 
         # Evading.
@@ -1002,9 +1016,16 @@ class StatManager(object):
             # Note that dual wield penalty is not applied to spells.
             # Spells can never result in crushing blows. Ranged attacks can't be parried.
             # Crit is rolled later for special damage (non-normal school) spells.
-            invalid_results = HitInfo.CRUSHING | \
-                              (HitInfo.PARRY if casting_spell.is_ranged_weapon_attack() else HitInfo.DAMAGE) | \
-                              (HitInfo.CRITICAL_HIT if is_special_damage else HitInfo.DAMAGE)
+            invalid_results = HitInfo.CRUSHING
+            if casting_spell.is_ranged_weapon_attack():
+                invalid_results |= HitInfo.PARRY
+            else:
+                invalid_results |= HitInfo.DAMAGE
+
+            if is_special_damage:
+                invalid_results |= HitInfo.CRITICAL_HIT
+            else:
+                invalid_results |= HitInfo.DAMAGE
 
             result_info = self.get_attack_result_against_self(caster, casting_spell.get_attack_type(),
                                                               invalid_result_mask=invalid_results,
@@ -1121,21 +1142,21 @@ class StatManager(object):
         level = self.unit_mgr.level
         class_ = self.unit_mgr.class_
 
-        if class_ == Classes.CLASS_WARRIOR or \
-                class_ == Classes.CLASS_PALADIN:
-            attack_power = (strength * 2) + (level * 3) - 20
-        elif class_ == Classes.CLASS_DRUID:
-            attack_power = (strength * 2) - 20
-        elif class_ == Classes.CLASS_HUNTER:
-            attack_power = strength + agility + (level * 2) - 20
-        elif class_ == Classes.CLASS_MAGE or \
-                class_ == Classes.CLASS_PRIEST or \
-                class_ == Classes.CLASS_WARLOCK:
-            attack_power = strength - 10
-        elif class_ == Classes.CLASS_ROGUE:
-            attack_power = strength + ((agility * 2) - 20) + (level * 2) - 20
-        elif class_ == Classes.CLASS_SHAMAN:
-            attack_power = strength - 10 + ((agility * 2) - 20) + (level * 2)
+        # TODO: Should this match case be for players only?
+        #  We never reach creatures code at the bottom.
+        match class_:
+            case Classes.CLASS_WARRIOR | Classes.CLASS_PALADIN:
+                return (strength * 2) + (level * 3) - 20
+            case Classes.CLASS_DRUID:
+                return (strength * 2) - 20
+            case Classes.CLASS_HUNTER:
+                return strength + agility + (level * 2) - 20
+            case Classes.CLASS_MAGE | Classes.CLASS_PRIEST | Classes.CLASS_WARLOCK:
+                return strength - 10
+            case Classes.CLASS_ROGUE:
+                return strength + ((agility * 2) - 20) + (level * 2) - 20
+            case Classes.CLASS_SHAMAN:
+                return strength - 10 + ((agility * 2) - 20) + (level * 2)
 
         # Creatures have base attack power which includes gain from base stats.
         base_attack_power = self.get_base_stat(UnitStats.ATTACK_POWER)
@@ -1165,7 +1186,7 @@ class StatManager(object):
             self.unit_mgr.set_resistance(i, *self._get_total_and_item_stat_bonus(UnitStats.RESISTANCE_START << i))
             self.unit_mgr.set_resistance_mods(i, *self._get_positive_negative_bonus(UnitStats.RESISTANCE_START << i))
 
-    def _get_positive_negative_bonus(self, stat_type: UnitStats):
+    def _get_positive_negative_bonus(self, stat_type: Union[UnitStats, int]):
         aura_bonuses = self.get_aura_stat_bonuses(stat_type)
         percentual = self.get_aura_stat_bonuses(stat_type, percentual=True)
 
@@ -1181,7 +1202,7 @@ class StatManager(object):
             positive *= percentual_bonus
         return negative, positive
 
-    def _get_total_and_item_stat_bonus(self, stat_type: UnitStats):
+    def _get_total_and_item_stat_bonus(self, stat_type: Union[UnitStats, int]):
         return self.get_total_stat(stat_type, accept_negative=True), self.get_item_stat(stat_type)
 
     def send_attributes(self):
@@ -1235,6 +1256,12 @@ class StatManager(object):
         # Percentual bonuses are stored as 100% = 1, client expects 100% = 100
         value = self.get_total_stat(UnitStats.BLOCK_CHANCE, accept_float=True) * 100
 
+        # Shield/Buckler bonuses.
+        if self.unit_mgr.has_shield():
+            value += self.get_total_stat(UnitStats.BLOCK_SHIELD, accept_float=True) * 100
+        elif self.unit_mgr.has_buckler():
+            value += self.get_total_stat(UnitStats.BLOCK_BUCKLER, accept_float=True) * 100
+
         # Penalty against player of same level with max skill.
         value += self._get_combat_rating_difference(use_block=True) * 0.04
 
@@ -1272,8 +1299,10 @@ class StatManager(object):
     def send_cast_time_mods(self):
         if not self.unit_mgr.is_player():
             return
-        self.unit_mgr.set_float(UnitFields.UNIT_MOD_CAST_SPEED,
-                                self.get_total_stat(UnitStats.SPELL_CASTING_SPEED, accept_float=True) * 100)
+        # Calculate the difference from the base speed,
+        # as the client expects a signed integer modifier (e.g., -50 for +50% speed, 20 for -20% speed).
+        mod_speed = int((self.get_total_stat(UnitStats.SPELL_CASTING_SPEED, accept_float=True) - 1) * 100)
+        self.unit_mgr.set_int32(UnitFields.UNIT_MOD_CAST_SPEED, mod_speed)
 
     # Arguments greater than 0 if defense is higher.
     def _get_combat_rating_difference(self, attacker_level=-1, attacker_rating=-1, use_block=False):

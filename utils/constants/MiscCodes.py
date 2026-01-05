@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, IntFlag
 
 
 class ObjectTypeFlags(IntEnum):
@@ -93,7 +93,7 @@ class NpcFlags(IntEnum):
 
 
 # COMBAT INFORMATION
-class HitInfo(IntEnum):
+class HitInfo(IntFlag):
     DAMAGE = 0x00000000
     MISS = 0x00000001
     SUCCESS = 0x00000002
@@ -662,6 +662,40 @@ class CreatureGroupFlags(IntEnum):
     OPTION_INFORM_MEMBERS_ON_ANY_DIED = 0x080
 
 
+class SummonCreatureFlags(IntEnum):
+    SF_SUMMON_CREATURE_SET_RUN     = 0x01    # Makes creature move at run speed.
+    SF_SUMMON_CREATURE_ACTIVE      = 0x02    # Active creatures are always updated.
+    SF_SUMMON_CREATURE_UNIQUE      = 0x04    # Not actually unique, just checks for same entry in certain range.
+    SF_SUMMON_CREATURE_UNIQUE_TEMP = 0x08    # Same as 0x10 but check for TempSummon only creatures.
+    SF_SUMMON_CREATURE_NULL_AI     = 0x10    # Use Null AI instead of the normal creature script.
+
+
+class TempSummonType(IntEnum):
+    TEMP_SUMMON_DEFAULT = 0
+    # Despawns after a specified time (out of combat) OR when the creature disappears.
+    TEMP_SUMMON_TIMED_OR_DEAD_DESPAWN = 1
+    # Despawns after a specified time (out of combat) OR when the creature dies.
+    TEMP_SUMMON_TIMED_OR_CORPSE_DESPAWN = 2
+    # Despawns after a specified time.
+    TEMP_SUMMON_TIMED_DESPAWN = 3
+    # Despawns after a specified time after the creature is out of combat.
+    TEMP_SUMMON_TIMED_DESPAWN_OUT_OF_COMBAT = 4
+    # Despawns instantly after death.
+    TEMP_SUMMON_CORPSE_DESPAWN = 5
+    # Despawns after a specified time after death.
+    TEMP_SUMMON_CORPSE_TIMED_DESPAWN = 6
+    # Despawns when the creature disappears.
+    TEMP_SUMMON_DEAD_DESPAWN = 7
+    # Despawns when UnSummon() is called.
+    TEMP_SUMMON_MANUAL_DESPAWN = 8
+    # Despawns after a specified time (in or out of combat) OR when the creature disappears.
+    TEMP_SUMMON_TIMED_COMBAT_OR_DEAD_DESPAWN = 9
+    # Despawns after a specified time (in or out of combat) OR when the creature dies.
+    TEMP_SUMMON_TIMED_COMBAT_OR_CORPSE_DESPAWN = 10
+    # Dies after a specified time (in or out of combat) and despawns when creature disappears.
+    TEMP_SUMMON_TIMED_DEATH_AND_DEAD_DESPAWN = 11
+
+
 class MapTileStates(IntEnum):
     READY = 0
     LOADING = 1
@@ -669,18 +703,19 @@ class MapTileStates(IntEnum):
 
 
 class MoveType(IntEnum):
-    INSTANT = 0x0
-    IDLE = 0x1
-    WANDER = 0x2
-    WAYPOINTS = 0x3
-    CHASE = 0x4
-    FLIGHT = 0x5
-    EVADE = 0x6
-    FEAR = 0x7
-    DISTRACTED = 0x8
-    GROUP = 0x9
-    PET = 0xA
-    CONFUSED = 0xB
+    INSTANT = 0
+    IDLE = 1
+    WANDER = 2
+    WAYPOINTS = 3
+    CHASE = 4
+    FLIGHT = 5
+    EVADE = 6
+    FEAR = 7
+    DISTRACTED = 8
+    GROUP = 9
+    PET = 10
+    CONFUSED = 11
+    FOLLOW = 12
 
 
 class MoveFlags(IntEnum):
@@ -971,6 +1006,8 @@ class MirrorTimerTypes(IntEnum):
     FATIGUE = 0
     BREATH = 1
     FEIGNDEATH = 2
+    SLIME = 3
+    MAGMA = 4
 
 
 class LogoutResponseCodes(IntEnum):
@@ -1024,6 +1061,7 @@ class ScriptTypes(IntEnum):
     SCRIPT_TYPE_SPELL = 7
     SCRIPT_TYPE_AI = 8
     SCRIPT_TYPE_EVENT_SCRIPT = 9
+    SCRIPT_TYPE_AREA_TRIGGER = 10
 
 
 class TeleportToOptions(IntEnum):
@@ -1150,6 +1188,7 @@ class CreatureAIEventTypes(IntEnum):
     AI_EVENT_TYPE_TARGET_MISSING_AURA = 28
     # AI_EVENT_TYPE_MOVEMENT_INFORM = 29
     AI_EVENT_TYPE_LEAVE_COMBAT = 30
+    AI_EVENT_TYPE_SCRIPT_EVENT = 31
     AI_EVENT_TYPE_GROUP_MEMBER_DIED = 32
     AI_EVENT_TYPE_TARGET_ROOTED = 33
 
