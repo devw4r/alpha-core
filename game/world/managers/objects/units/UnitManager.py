@@ -200,6 +200,8 @@ class UnitManager(ObjectManager):
         self._school_absorbs = {}
         # Effects modifying unit flags.
         self._flag_effects = dict(dict())  # Enum: (Flag: set(source id))
+        # Language override, used by spells like Curse of Tongues.
+        self.language_mod = -1
 
         self.movement_info = MovementInfo(self)
         self.has_moved = False
@@ -823,6 +825,10 @@ class UnitManager(ObjectManager):
 
         damage_info.absorb = target.get_school_absorb_for_damage(damage_info)
         damage_info.total_damage = max(0, damage_info.base_damage - damage_info.absorb)
+
+        # TODO: We never reach this even when set over get_spell_miss_result_against_self.
+        if damage_info.hit_info & SpellHitFlags.REFLECTED:
+            damage_info.proc_ex = ProcFlagsExLegacy.REFLECT
 
         # Target will die because of this attack.
         if target.health - damage_info.total_damage <= 0:
