@@ -1,4 +1,3 @@
-import itertools
 import random
 import time
 
@@ -9,6 +8,7 @@ from game.world.managers.abstractions.Vector import Vector
 from game.world.managers.objects.gameobjects.managers.ButtonManager import ButtonManager
 from game.world.managers.objects.gameobjects.managers.DoorManager import DoorManager
 from game.world.managers.objects.gameobjects.managers.GooberManager import GooberManager
+from game.world.managers.objects.gameobjects.GameObjectSpawn import GameObjectSpawn
 from game.world.managers.objects.script.ConditionChecker import ConditionChecker
 from game.world.managers.objects.script.Script import Script
 from game.world.managers.objects.script.ScriptHelpers import ScriptHelpers
@@ -30,6 +30,7 @@ from utils.constants.ScriptCodes import ModifyFlagsOptions, MoveToCoordinateType
     ScriptCommands, SetHomePositionOptions, CastFlags, SetPhaseOptions, TerminateConditionFlags, WaypointPathOrigin, \
     ScriptTarget
 from game.world.managers.objects.units.ChatManager import ChatManager
+from utils.EnumUtils import EnumUtils
 from utils.Logger import Logger
 from collections import namedtuple
 from utils.ConfigManager import config
@@ -46,25 +47,32 @@ class ScriptHandler:
         self.forced_event_ids = set()
 
     def enqueue_script(self, source, target, script_type, script_id, delay=0.0, event=None):
+        caller_name = source.get_name() if source else 'None'
+        script_type_name = EnumUtils.name_or_value(ScriptTypes, script_type)
+
         # Grab start script command(s).
         script_commands = self.resolve_script_actions(script_type, script_id)
         if not script_commands:
             Logger.warning(f'Script [{script_id}] not found, '
                             f'Event: {event.get_event_info() if event else "None"}, '
-                            f'Caller: {source.get_name()}')
+                            f'Caller: {caller_name}')
             return
 
         if event:
-            Logger.script(f'Id [{script_id}] [{source.get_name()}] Event [{event.get_event_info()}]')
+            Logger.script(f'Id [{script_id}] [{caller_name}] Event [{event.get_event_info()}]')
         else:
-            Logger.script(f'Id [{script_id}] [{source.get_name()}] Type [{ScriptTypes(script_type).name}]')
+            Logger.script(f'Id [{script_id}] [{caller_name}] Type [{script_type_name}]')
 
         script_commands.sort(key=lambda command: command.delay)
         new_script = Script(script_id, script_commands, source, target, self, delay=delay, event=event)
 
         # If no delay, update right away.
         if not delay:
-            new_script.update(time.time())
+            try:
+                new_script.update(time.time())
+            except Exception:
+                Logger.exception(f'ScriptHandler: Failed to run script {script_id} immediately, aborting instance.')
+                new_script.abort()
             if not new_script.is_complete():
                 self.scripts_set.add(new_script)
         else:
@@ -77,13 +85,18 @@ class ScriptHandler:
         except KeyError:
             Logger.warning(f'Unknown script command: {script_command.command}.')
             return True  # Abort.
+        except Exception:
+            Logger.exception(f'ScriptHandler: Script command {script_command.command} failed in '
+                             f'script {script_command.script_id}.')
+            return True  # Abort.
 
     # noinspection PyMethodMayBeStatic
     def resolve_script_actions(self, script_type, script_id):
         try:
             return SCRIPT_TYPES[script_type](script_id)
         except KeyError:
-            Logger.warning(f'Unsupported script command type: {ScriptCommands(script_type).name}.')
+            type_name = EnumUtils.name_or_value(ScriptTypes, script_type)
+            Logger.warning(f'Unsupported script command type: {type_name}.')
             return None
 
     def reset(self):
@@ -93,12 +106,17 @@ class ScriptHandler:
         # Update scripts, each one can contain multiple script actions.
         for script in list(self.scripts_set):
             # Check if there is a forced event trigger.
-            if self.forced_event_ids and script.event.id in self.forced_event_ids:
+            if self.forced_event_ids and script.event and script.event.id in self.forced_event_ids:
                 Logger.debug(f'Event {script.event.get_event_info()}  unlocked by request.')
                 script.delay = 0
                 self.forced_event_ids.discard(script.event.id)
             # Update/Run script.
-            script.update(now)
+            try:
+                script.update(now)
+            except Exception:
+                Logger.exception(f'ScriptHandler: Failed to update script {script.id}, aborting script instance.')
+                # Abort, avoid permanent queue stalls.
+                script.abort()
             if not script.is_complete():
                 continue
             # Finished all actions, remove.
@@ -112,12 +130,41 @@ class ScriptHandler:
         # source = Map
         # datalong1-4 = event_script id
         # dataint1-4 = chance (total cant be above 100)
-        scripts = [datalong for datalong in ScriptHelpers.get_filtered_datalong(command)]
-        weights = [dataint for dataint in ScriptHelpers.get_filtered_dataint(command)]
-        script_id = random.choices(scripts, weights=weights, k=1)[0]
+        if not command.source:
+            Logger.warning(f'ScriptHandler: No source found, {command.get_info()}.')
+            return command.should_abort()
 
-        command.source.get_map().enqueue_script(source=command.source, target=command.target,
-                                                script_type=ScriptTypes.SCRIPT_TYPE_GENERIC, script_id=script_id)
+        map_ = command.source.get_map()
+        if not map_:
+            Logger.warning(f'ScriptHandler: No map found, {command.get_info()}.')
+            return command.should_abort()
+
+        # Keep slot alignment (script_i <-> chance_i) to match DB semantics.
+        script_slots = [
+            (command.datalong, command.dataint),
+            (command.datalong2, command.dataint2),
+            (command.datalong3, command.dataint3),
+            (command.datalong4, command.dataint4)
+        ]
+        roll = random.randint(1, 100)
+        cumulative = 0
+        script_id = 0
+        for current_script_id, current_chance in script_slots:
+            if not current_script_id:
+                continue
+
+            # Invalid values should not underflow the roll window.
+            current_chance = max(0, current_chance)
+            if cumulative < roll <= cumulative + current_chance:
+                script_id = current_script_id
+                break
+            cumulative += current_chance
+
+        if not script_id:
+            return command.should_abort()
+
+        map_.enqueue_script(source=command.source, target=command.target,
+                            script_type=ScriptTypes.SCRIPT_TYPE_GENERIC, script_id=script_id)
         return False
 
     @staticmethod
@@ -424,15 +471,18 @@ class ScriptHandler:
             Logger.warning(f'ScriptHandler: No source found, {command.get_info()}.')
             return command.should_abort()
 
-        # Units.
+        # Player teleports can cross maps.
+        if ConditionChecker.is_player(command.source):
+            command.source.teleport(command.datalong, Vector(command.x, command.y, command.z, command.o))
+            return False
+
+        # Non-player units use near teleport in current map.
         if command.source.is_unit():
             command.source.near_teleport(Vector(command.x, command.y, command.z, command.o))
-            return command.should_abort()
+            return False
 
-        # Players.
-        command.source.teleport(command.datalong, Vector(command.x, command.y, command.z, command.o))
-
-        return False
+        Logger.warning(f'ScriptHandler: Source is not a unit, {command.get_info()}.')
+        return command.should_abort()
 
     @staticmethod
     def handle_script_command_quest_explored(command):
@@ -458,7 +508,7 @@ class ScriptHandler:
         in_range = not command.datalong2 or player.location.distance(quest_giver.location) <= command.datalong2
         if command.datalong3 and player.group_manager and in_range:
             player.group_manager.reward_quest_completion(player, command.datalong)
-            return command.should_abort()
+            return False
 
         if in_range:
             player.quest_manager.active_quests[command.datalong].set_explored_or_event_complete()
@@ -726,7 +776,7 @@ class ScriptHandler:
         # target = Unit
         # datalong = spell_id
         # datalong2 = eCastSpellFlags
-        if not command.source:
+        if not command.source or not command.source.spell_manager:
             Logger.warning(f'ScriptHandler: No source found, {command.get_info()}.')
             return command.should_abort()
 
@@ -735,30 +785,55 @@ class ScriptHandler:
             ScriptHandler._validate_spell_id(command)
             return command.should_abort()
 
-        self_cast = not command.target or command.target == command.source
-        target = command.target if command.target else command.source
+        cast_flags = command.datalong2
+        cast_target = command.target if command.target else command.source
+        source_is_unit = not command.source.is_player() and command.source.is_unit()
+        source_ai = command.source.object_ai if source_is_unit else None
+        self_cast = cast_target == command.source
         target_mask = SpellTargetMask.UNIT if not self_cast else SpellTargetMask.SELF
+        spell_target = cast_target
         targets_terrain = spell_entry.Targets & SpellTargetMask.CAN_TARGET_TERRAIN
         if targets_terrain:
-            target = target.location
+            if not cast_target:
+                Logger.warning(f'[Script] [{command.script_id}], Unable to resolve destination for spell {command.datalong}.')
+                return command.should_abort()
+            spell_target = cast_target.location
             target_mask = SpellTargetMask.DEST_LOCATION
 
-        spell = command.source.spell_manager.try_initialize_spell(spell_entry, target, target_mask, validate=False)
+        is_triggered = bool(cast_flags & CastFlags.CF_TRIGGERED)
+        spell = command.source.spell_manager.try_initialize_spell(
+            spell_entry,
+            spell_target,
+            target_mask,
+            triggered=is_triggered,
+            validate=True
+        )
         if not spell:
+            if source_ai:
+                source_ai.update_main_ranged_cast_state(cast_flags, SpellCheckCastResult.SPELL_FAILED_ERROR)
             Logger.warning(f'[Script] [{command.script_id}], Unable to cast spell {command.datalong}')
             return command.should_abort()
 
-        if command.datalong2 & CastFlags.CF_TRIGGERED:
+        if is_triggered:
             spell.force_instant_cast()
-        elif not targets_terrain and command.source.is_unit():
-            cast_result = command.source.object_ai.try_to_cast(target, spell, command.datalong2, chance=100)
+
+        cast_result = spell.validate_script_cast_state(cast_flags)
+        if cast_result != SpellCheckCastResult.SPELL_NO_ERROR:
+            Logger.warning(f'[Script] [{command.script_id}],'
+                           f' Unable to cast spell {command.datalong}-{spell.spell_entry.Name_enUS},'
+                           f' Cast result {SpellCheckCastResult(cast_result).name}')
+            return command.should_abort()
+
+        if source_ai and cast_target and cast_target.is_unit():
+            cast_result = source_ai.try_to_cast(cast_target, spell, cast_flags, chance=0)
+            source_ai.update_main_ranged_cast_state(cast_flags, cast_result)
             if cast_result != SpellCheckCastResult.SPELL_NO_ERROR:
                 Logger.warning(f'[Script] [{command.script_id}],'
                                f' Unable to cast spell {command.datalong}-{spell.spell_entry.Name_enUS},'
                                f' Cast result {SpellCheckCastResult(cast_result).name}')
                 return command.should_abort()
 
-        command.source.spell_manager.start_spell_cast(initialized_spell=spell)
+        command.source.spell_manager.start_spell_cast(initialized_spell=spell, remove_colliding=False)
 
         return False
 
@@ -835,7 +910,10 @@ class ScriptHandler:
 
         clear = command.datalong4 != 0
         bool_param = command.datalong2 != 0
-        motion_type = MotionTypes(command.datalong)
+        motion_type = EnumUtils.try_from_value(MotionTypes, command.datalong)
+        if motion_type is None:
+            Logger.warning(f'ScriptHandler: Unknown movement type {command.datalong}, {command.get_info()}.')
+            return command.should_abort()
 
         if clear:
             source.movement_manager.flush()
@@ -946,14 +1024,14 @@ class ScriptHandler:
             return command.should_abort()
 
         creature_or_model_entry = command.datalong
-        display_id = command.datalong2
+        is_display_id = bool(command.datalong2)
 
         if not creature_or_model_entry:
             command.source.reset_display_id()
-            return command.should_abort()
-        elif display_id:
-            command.source.set_display_id(display_id)
-            return command.should_abort()
+            return False
+        elif is_display_id:
+            command.source.set_display_id(creature_or_model_entry)
+            return False
 
         creature_template = WorldDatabaseManager.CreatureTemplateHolder.creature_get_by_entry(creature_or_model_entry)
         if creature_template:
@@ -1024,7 +1102,9 @@ class ScriptHandler:
         victim = command.target
 
         if victim and victim.is_alive:
-            attacker.attack(victim)
+            if not attacker.attack(victim, from_script=True):
+                Logger.warning(f'ScriptHandler: Attack failed, {attacker.get_name()} vs {victim.get_name()}, '
+                               f'{command.get_info()}.')
             return False
 
         Logger.warning(f'ScriptHandler: Unable to resolve target, {command.get_info()}.')
@@ -1046,7 +1126,7 @@ class ScriptHandler:
 
         command.source.initialize_from_creature_template(creature_template)
 
-        return command.should_abort()
+        return False
 
     @staticmethod
     def handle_script_command_stand_state(command):
@@ -1305,8 +1385,15 @@ class ScriptHandler:
             Logger.warning(f'ScriptHandler: No source or source is dead, {command.get_info()}.')
             return command.should_abort()
 
-        command.source.object_ai.script_phase = random.choice([command.datalong1, command.datalong2,
-                                                               command.datalong3, command.datalong4])
+        phase1, phase2, phase3, phase4 = command.datalong, command.datalong2, command.datalong3, command.datalong4
+        if phase4:
+            phases = [phase1, phase2, phase3, phase4]
+        elif phase3:
+            phases = [phase1, phase2, phase3]
+        else:
+            phases = [phase1, phase2]
+
+        command.source.object_ai.script_phase = random.choice(phases)
         return False
 
     @staticmethod
@@ -1414,6 +1501,40 @@ class ScriptHandler:
         # datalong2 = value
         Logger.debug('ScriptHandler: handle_script_command_set_server_variable not implemented yet')
         return command.should_abort()
+
+    @staticmethod
+    def handle_script_command_creature_spells(command):
+        # source = Creature
+        # datalong1-4 = creature_spells.entry (spell list id)
+        # dataint1-4 = chance
+        if not ConditionChecker.is_creature(command.source):
+            Logger.warning(f'ScriptHandler: Invalid source (must be creature), {command.get_info()}.')
+            return command.should_abort()
+
+        if not command.source.object_ai:
+            Logger.warning(f'ScriptHandler: No creature AI manager found, {command.get_info()}.')
+            return command.should_abort()
+
+        roll = random.randint(1, 100)
+        cumulative = 0
+        chosen_spell_list_id = 0
+        spell_list_slots = [
+            (command.datalong, command.dataint),
+            (command.datalong2, command.dataint2),
+            (command.datalong3, command.dataint3),
+            (command.datalong4, command.dataint4)
+        ]
+        for spell_list_id, chance in spell_list_slots:
+            if chance <= 0:
+                continue
+            if cumulative < roll <= cumulative + chance:
+                chosen_spell_list_id = spell_list_id
+                break
+            cumulative += chance
+
+        if not command.source.object_ai.set_spell_list(chosen_spell_list_id):
+            return command.should_abort()
+        return False
 
     @staticmethod
     def handle_script_command_remove_guardians(command):
@@ -1820,6 +1941,49 @@ class ScriptHandler:
         return command.should_abort()
 
     @staticmethod
+    def handle_script_command_load_gameobject(command):
+        # source = WorldObject
+        # datalong = gameobject db spawn_id
+        if not command.source:
+            Logger.warning(f'ScriptHandler: No source found, {command.get_info()}.')
+            return command.should_abort()
+
+        map_ = command.source.get_map()
+        if not map_:
+            Logger.warning(f'ScriptHandler: No map found, {command.get_info()}.')
+            return command.should_abort()
+
+        if not command.datalong:
+            Logger.warning(f'ScriptHandler: Missing gameobject spawn id, {command.get_info()}.')
+            return command.should_abort()
+
+        # Already loaded in this map instance.
+        go_spawn = map_.get_gameobject_spawn_by_id(command.datalong)
+
+        if not go_spawn:
+            # Load non-default (ignored) db spawn on demand.
+            go_spawn_data = WorldDatabaseManager.gameobject_spawn_get_by_spawn_id(command.datalong)
+            if not go_spawn_data:
+                Logger.warning(f'ScriptHandler: Invalid gameobject spawn id {command.datalong}, {command.get_info()}.')
+                return command.should_abort()
+
+            if go_spawn_data.spawn_map != map_.map_id:
+                Logger.warning(f'ScriptHandler: Gameobject spawn {command.datalong} belongs to map '
+                               f'{go_spawn_data.spawn_map}, current map is {map_.map_id}.')
+                return command.should_abort()
+
+            go_spawn = GameObjectSpawn(go_spawn_data, instance_id=map_.instance_id)
+            map_.spawn_object(owner=go_spawn)
+
+        if go_spawn.is_spawned():
+            return False
+
+        if not go_spawn.spawn():
+            return command.should_abort()
+
+        return False
+
+    @staticmethod
     def handle_script_command_send_script_event(command):
         # source = Creature
         # target = WorldObject
@@ -2000,6 +2164,7 @@ SCRIPT_COMMANDS = {
     ScriptCommands.SCRIPT_COMMAND_INVINCIBILITY: ScriptHandler.handle_script_command_invincibility,
     ScriptCommands.SCRIPT_COMMAND_GAME_EVENT: ScriptHandler.handle_script_command_game_event,
     ScriptCommands.SCRIPT_COMMAND_SET_SERVER_VARIABLE: ScriptHandler.handle_script_command_set_server_variable,
+    ScriptCommands.SCRIPT_COMMAND_CREATURE_SPELLS: ScriptHandler.handle_script_command_creature_spells,
     ScriptCommands.SCRIPT_COMMAND_REMOVE_GUARDIANS: ScriptHandler.handle_script_command_remove_guardians,
     ScriptCommands.SCRIPT_COMMAND_ADD_SPELL_COOLDOWN: ScriptHandler.handle_script_command_add_spell_cooldown,
     ScriptCommands.SCRIPT_COMMAND_REMOVE_SPELL_COOLDOWN: ScriptHandler.handle_script_command_remove_spell_cooldown,
@@ -2025,6 +2190,7 @@ SCRIPT_COMMANDS = {
     ScriptCommands.SCRIPT_COMMAND_LEAVE_CREATURE_GROUP: ScriptHandler.handle_script_command_leave_creature_group,
     ScriptCommands.SCRIPT_COMMAND_SET_GO_STATE: ScriptHandler.handle_script_command_set_go_state,
     ScriptCommands.SCRIPT_COMMAND_DESPAWN_GAMEOBJECT: ScriptHandler.handle_script_command_despawn_gameobject,
+    ScriptCommands.SCRIPT_COMMAND_LOAD_GAMEOBJECT: ScriptHandler.handle_script_command_load_gameobject,
     ScriptCommands.SCRIPT_COMMAND_QUEST_CREDIT: ScriptHandler.handle_script_command_quest_credit,
     ScriptCommands.SCRIPT_COMMAND_SEND_SCRIPT_EVENT: ScriptHandler.handle_script_command_send_script_event,
     ScriptCommands.SCRIPT_COMMAND_RESET_DOOR_OR_BUTTON: ScriptHandler.handle_script_command_reset_door_or_button,

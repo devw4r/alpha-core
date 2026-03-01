@@ -14,11 +14,12 @@ from utils.GuidUtils import GuidUtils
 from utils.Logger import Logger
 from utils.ObjectQueryUtils import ObjectQueryUtils
 from utils.constants import UnitCodes
-from utils.constants.ItemCodes import InventoryError
+from utils.constants.ItemCodes import InventoryError, ItemClasses
 from utils.constants.OpCodes import OpCode
 from utils.constants.SpellCodes import SpellTargetMask
-from utils.constants.MiscCodes import QuestGiverStatus, QuestState, QuestFailedReasons, QuestMethod, \
-    QuestFlags, GameObjectTypes, HighGuid, ScriptTypes, ObjectTypeIds
+from utils.constants.MiscCodes import QuestGiverStatus, QuestState, QuestFailedReasons, QuestCantTakeReason, \
+    QuestMethod, \
+    QuestFlags, GameObjectTypes, HighGuid, ScriptTypes, ObjectTypeIds, UpdateFlags
 from utils.constants.UpdateFields import PlayerFields
 
 # Terminology:
@@ -524,7 +525,7 @@ class QuestManager:
                 gameobject = world_object
                 types = [GameObjectTypes.TYPE_CHEST, GameObjectTypes.TYPE_QUESTGIVER, GameObjectTypes.TYPE_GOOBER]
                 if gameobject.gobject_template.type in types:
-                    self.player_mgr.update_manager.update_gameobject_dynamic_flag(gameobject)
+                    gameobject.get_map().update_object(gameobject, update_flags=UpdateFlags.DYNAMIC_FLAGS)
 
     # Send item query details and return item struct byte segments.
     def _gen_item_struct(self, item_entry, count):
@@ -545,7 +546,12 @@ class QuestManager:
         return item_data
 
     def send_cant_take_quest_response(self, reason_code):
-        data = pack('<I', reason_code)
+        client_reason = reason_code
+        if reason_code == QuestFailedReasons.QUEST_FAILED_LOW_LEVEL:
+            client_reason = QuestCantTakeReason.QUEST_CANT_TAKE_LOW_LEVEL
+        elif reason_code == QuestFailedReasons.QUEST_FAILED_MISSING_ITEMS:
+            client_reason = QuestCantTakeReason.QUEST_CANT_TAKE_MISSING_ITEMS
+        data = pack('<I', client_reason)
         self.player_mgr.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_QUESTGIVER_QUEST_INVALID, data))
 
     def send_quest_giver_status(self, quest_giver_guid, quest_status):
@@ -560,8 +566,7 @@ class QuestManager:
     def send_quest_giver_quest_list(self, message, emote, quest_giver_guid, quests):
         message_bytes = PacketWriter.string_to_bytes(message)
 
-        # TODO: Many texts from Vanilla don't fit. Find what should happen in 0.5.3? Maybe texts were simply different?
-        # Client has a 256 characters limitation, truncate.
+        # Client limits this greeting string to 256 bytes.
         if len(message_bytes) > 256:
             message_bytes = message_bytes[:255] + b'\x00'
 
@@ -569,7 +574,7 @@ class QuestManager:
             f'<Q{len(message_bytes)}s2iB',
             quest_giver_guid,
             message_bytes,
-            0,
+            0,  # Emote Delay.
             emote,
             len(quests)
         ))
@@ -740,9 +745,9 @@ class QuestManager:
 
         data.extend(pack(
             '<3I',
-            0x02,  # MaskMatch
-            0x03 if is_completable else 0x00,  # Completable = Player has items?
-            0x04,  # HasFaction
+            1,  # Meets (level, race/class, skill, etc.)
+            1 if is_completable else 0,  # Completable has items.
+            1,  # Meets reputation requirements.
         ))
 
         packet = PacketWriter.get_packet(OpCode.SMSG_QUESTGIVER_REQUEST_ITEMS, data)
@@ -780,7 +785,7 @@ class QuestManager:
         for i in range(1, 5):
             offer_emote = getattr(quest, f'OfferRewardEmote{i}')
             offer_emote_delay = getattr(quest, f'OfferRewardEmoteDelay{i}')
-            data.extend(pack('<2I', offer_emote, offer_emote_delay))
+            data.extend(pack('<2I', offer_emote_delay, offer_emote))
 
         if QuestHelpers.has_pick_reward(quest):
             # Reward choices
@@ -808,7 +813,12 @@ class QuestManager:
         self.player_mgr.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_QUESTGIVER_OFFER_REWARD, data))
 
     def handle_accept_quest(self, quest_id, quest_giver_guid, shared=False, quest_giver=None, is_item=False):
-        if quest_id in self.active_quests:
+        quest_template = WorldDatabaseManager.QuestTemplateHolder.quest_get_by_entry(quest_id)
+        if not quest_template:
+            return
+
+        if (quest_id in self.active_quests or
+                quest_id in self.completed_quests and not QuestHelpers.is_quest_repeatable(quest_template)):
             self.send_cant_take_quest_response(QuestFailedReasons.QUEST_ALREADY_ON)
             return
 
@@ -834,12 +844,8 @@ class QuestManager:
             if not quest_giver:
                 return
 
-        quest = WorldDatabaseManager.QuestTemplateHolder.quest_get_by_entry(quest_id)
-        if not quest:
-            return
-
-        req_src_item = quest.SrcItemId
-        req_src_item_count = quest.SrcItemCount
+        req_src_item = quest_template.SrcItemId
+        req_src_item_count = quest_template.SrcItemCount
         if req_src_item != 0:
             # Check if the required source item is the item quest starter, else check if we can add it to the inventory.
             if not quest_item_starter or quest_item_starter.entry != req_src_item:
@@ -853,16 +859,16 @@ class QuestManager:
                     self.player_mgr.inventory.remove_item(quest_item_starter.item_instance.bag,
                                                           quest_item_starter.item_instance.slot)
 
-        active_quest = self._create_db_quest_status(quest)
+        active_quest = self._create_db_quest_status(quest_template)
         active_quest.save(is_new=True)
         self.add_to_quest_log(quest_id, active_quest)
-        self.send_quest_query_response(quest)
+        self.send_quest_query_response(quest_template)
 
         # Don't run scripts if not directly taken from NPC (either by sharing or .qadd command).
         # Otherwise, the quest_giver would be None and this leads to a crash.
         # Same goes for item quest starters since they have no script handler.
         if quest_giver and not is_item:
-            script_id = quest.StartScript if quest.StartScript else quest_id
+            script_id = quest_template.StartScript if quest_template.StartScript else quest_id
             quest_giver.get_map().enqueue_script(source=quest_giver, target=self.player_mgr,
                                                  script_type=ScriptTypes.SCRIPT_TYPE_QUEST_START,
                                                  script_id=script_id)
@@ -878,7 +884,7 @@ class QuestManager:
         if active_quest.can_complete_quest():
             self.complete_quest(active_quest, update_surrounding=False)
         # Check if we need to link escort and player.
-        elif quest_giver and quest_giver.is_escort() and QuestHelpers.is_event_quest(quest):
+        elif quest_giver and quest_giver.is_escort() and QuestHelpers.is_event_quest(quest_template):
             quest_giver.object_ai.attach_escort_link(self.player_mgr)
 
         self.update_surrounding_quest_status()
@@ -1013,7 +1019,7 @@ class QuestManager:
         data = bytearray(pack(
             '<4I',
             quest_id,
-            3,  # Investigate
+            0,  # status/flags, unused by client.
             int(given_xp * config.Server.Settings.xp_rate),
             given_gold
         ))
@@ -1061,7 +1067,7 @@ class QuestManager:
 
         # Force surrounding players to refresh this GO interactive state.
         if quest_giver.is_gameobject():
-            quest_giver.refresh_dynamic_flag()
+            quest_giver.get_map().update_object(quest_giver, UpdateFlags.DYNAMIC_FLAGS)
 
     def get_next_quest_in_chain(self, quest_giver, current_quest):
         # Current quest has no linked next quest.
@@ -1264,8 +1270,21 @@ class QuestManager:
         if not item_template:
             return False
 
-        # Always allow items that are quest starters.
-        if item_template.start_quest > 0:
+        # If this item is not marked as a quest item, then below checks shouldn't apply to it.
+        if item_template.class_ != ItemClasses.ITEM_CLASS_QUEST:
+            return True
+
+        # Always allow items that are quest starters (if we are not on that quest, and it's not done).
+        start_quest_entry = item_template.start_quest
+        if start_quest_entry > 0:
+            quest_template = WorldDatabaseManager.QuestTemplateHolder.quest_get_by_entry(start_quest_entry)
+            if not quest_template:
+                return False
+
+            if (start_quest_entry in self.active_quests or
+                    (start_quest_entry in self.completed_quests and
+                    not QuestHelpers.is_quest_repeatable(quest_template))):
+                return False
             return True
 
         for active_quest in list(self.active_quests.values()):

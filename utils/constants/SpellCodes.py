@@ -206,7 +206,7 @@ class SpellAttributesEx(IntEnum):
     SPELL_ATTR_EX_NO_SKILL_INCREASE = 0x00000010  # 4
     SPELL_ATTR_EX_NOT_BREAK_STEALTH = 0x00000020  # 5 Not break stealth
     SPELL_ATTR_EX_CHANNELED_2 = 0x00000040  # 6 channeled 2 - 0.5.3 only 1066 (aquatic form)?
-    SPELL_ATTR_EX_NEGATIVE = 0x00000080  # 7
+    SPELL_ATTR_EX_NEGATIVE = 0x00000080  # 7 used by benign/utility spells too; don't treat as always harmful
     SPELL_ATTR_EX_NOT_IN_COMBAT_TARGET = 0x00000100  # 8 Spell req target not to be in combat state
     SPELL_ATTR_EX_MELEE_COMBAT_START = 0x00000200  # 9
     SPELL_ATTR_EX_NO_THREAT = 0x00000400  # 10 no generates threat on cast 100%
@@ -403,6 +403,30 @@ class ShapeshiftForms(IntEnum):
     SHAPESHIFT_FORM_BERSERKERSTANCE = 0x13
 
 
+# Referenced in ShapeshiftMask field in Spell.dbc
+class ShapeshiftFlags(IntEnum):
+    SHAPESHIFT_FLAG_NONE = 0x0
+    SHAPESHIFT_FLAG_CAT_FORM = 0x1
+    SHAPESHIFT_FLAG_TREE_OF_LIFE = 0x2
+    SHAPESHIFT_FLAG_TRAVEL_FORM = 0x4  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_AQUATIC_FORM = 0x8
+    SHAPESHIFT_FLAG_BEAR_FORM = 0x10
+    SHAPESHIFT_FLAG_AMBIENT = 0x20  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_GHOUL = 0x40  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_DIRE_BEAR_FORM = 0x80  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_UNK_0X100 = 0x100  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_UNK_0X200 = 0x200  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_UNK_0X400 = 0x400  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_UNK_0X800 = 0x800  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_UNK_0X1000 = 0x1000  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_CREATURE_BEAR = 0x2000
+    SHAPESHIFT_FLAG_CREATURE_CAT = 0x4000  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_GHOSTWOLF = 0x8000  # Unused in 0.5.3
+    SHAPESHIFT_FLAG_BATTLE_STANCE = 0x10000
+    SHAPESHIFT_FLAG_DEFENSIVE_STANCE = 0x20000
+    SHAPESHIFT_FLAG_BERSERKER_STANCE = 0x40000
+
+
 class AuraTypes(IntEnum):  # from cmangos-classic; entries over 88 don't exist in spell.dbc
     SPELL_AURA_NONE = 0
     SPELL_AURA_BIND_SIGHT = 1
@@ -524,7 +548,7 @@ class SpellImplicitTargets(IntEnum):
     TARGET_UNIT_NEAR_CASTER = 4
     TARGET_PET = 5
     TARGET_ENEMY_UNIT = 6
-    TARGET_AREAEFFECT_CUSTOM = 7  # VMaNGOS: "TARGET_ENUM_UNITS_SCRIPT_AOE_AT_SRC_LOC" Most likely correct definition - includes cozy fire effect etc. TODO
+    TARGET_AREAEFFECT_CUSTOM = 7  # VMaNGOS: TARGET_ENUM_UNITS_SCRIPT_AOE_AT_SRC_LOC
     TARGET_INNKEEPER_COORDINATES = 9  # Used in teleport to innkeeper spells
     TARGET_10 = 10  # Only used by "Divine Escape" (1073)
     TARGET_11 = 11  # Only used by "Word of Recall Other" (4)
@@ -559,6 +583,8 @@ class SpellImplicitTargets(IntEnum):
 class SpellScriptTarget(IntEnum):
     TARGET_GAMEOBJECT = 0
     TARGET_UNIT = 1
+    TARGET_DEAD = 2
+    TARGET_PLAYER = 3
 
 
 class SpellMissInfo(IntEnum):

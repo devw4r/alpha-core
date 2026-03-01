@@ -1,5 +1,6 @@
 import random
 from enum import IntEnum
+from functools import lru_cache
 from struct import pack
 from typing import Optional
 
@@ -14,11 +15,13 @@ from utils.ByteUtils import ByteUtils
 from utils.ConfigManager import config
 from utils.Formulas import PlayerFormulas
 from utils.Logger import Logger
-from utils.constants.ItemCodes import ItemClasses, ItemSubClasses, InventoryError
-from utils.constants.MiscCodes import SkillCategories, AttackTypes, LockTypes
+from utils.constants.ItemCodes import ItemClasses, ItemSubClasses, InventoryError, InventoryTypes
+from utils.constants.MiscCodes import SkillCategories, AttackTypes, LockTypes, SpeedType, Languages
 from utils.constants.OpCodes import OpCode
-from utils.constants.SpellCodes import SpellCheckCastResult, SpellEffects
+from utils.constants.SpellCodes import SpellCheckCastResult, SpellEffects, SpellAttributes, SpellAttributesEx
+from utils.constants.UnitCodes import UnitFlags
 from utils.constants.UpdateFields import PlayerFields
+from game.world.managers.objects.units.player.StatManager import UnitStats
 
 
 class SkillTypes(IntEnum):
@@ -164,6 +167,26 @@ class SkillTypes(IntEnum):
     DEMONMASTERY = 0x162
     CURSES = 0x163
     FISHING = 0x164
+
+
+RIDING_SKILLS = {
+    SkillTypes.HORSERIDING,
+    SkillTypes.WOLFRIDING,
+    SkillTypes.TIGERRIDING,
+    SkillTypes.NIGHTMARERIDING,
+    SkillTypes.RAMRIDING
+}
+
+
+@lru_cache
+def get_riding_spell_ids():
+    riding_spell_ids = set()
+    for skill_id in RIDING_SKILLS:
+        spell_ids = DbcDatabaseManager.SkillLineAbilityHolder.spells_get_by_skill_id(skill_id)
+        if spell_ids:
+            riding_spell_ids.update(spell_ids)
+
+    return riding_spell_ids
 
 
 class SkillLineType(IntEnum):
@@ -330,7 +353,15 @@ class SkillManager:
             skill.max = max_value
 
         RealmDatabaseManager.character_update_skill(skill)
+
+        self._refresh_riding_speed()
         return True
+
+    def _refresh_riding_speed(self):
+        if not self.player_mgr.is_mounted():
+            return
+        base_speed = self.player_mgr.stat_manager.get_base_stat(UnitStats.SPEED_RUNNING)
+        self.player_mgr.change_speed(SpeedType.RUN, base_speed)
 
     def update_skills_max_value(self):
         for skill_id, skill in self.skills.items():
@@ -393,6 +424,9 @@ class SkillManager:
 
     def handle_spell_cast_skill_gain(self, casting_spell):
         if not casting_spell:
+            return False
+
+        if casting_spell.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_NO_SKILL_INCREASE:
             return False
 
         character_skill, skill, skill_line_ability = self.get_skill_info_for_spell_id(casting_spell.spell_entry.ID)
@@ -669,15 +703,15 @@ class SkillManager:
         if item_class not in self.proficiencies:
             return False
 
-        if self.proficiencies[item_class].item_subclass_mask & item_subclass_mask:
+        if (self.proficiencies[item_class].item_subclass_mask & item_subclass_mask) != 0:
             return True  # Account for case where the player has learned a proficiency with a command.
 
-        return self.full_proficiency_masks.get(item_class, 0) & item_subclass_mask
+        return (self.full_proficiency_masks.get(item_class, 0) & item_subclass_mask) != 0
 
     def can_use_equipment_now(self, item_class, item_subclass_mask):
         if item_class not in self.proficiencies:
             return False
-        return self.proficiencies[item_class].item_subclass_mask & item_subclass_mask
+        return (self.proficiencies[item_class].item_subclass_mask & item_subclass_mask) != 0
 
     # Shields and Block do not require an actual block to be gained, randomly pick one upon defense gain.
     # Warriors use the Shield skill, Paladins the Block skill and the rest only the Defense skill.
@@ -716,12 +750,103 @@ class SkillManager:
         bonus_skill = 0 if no_bonus else self.player_mgr.stat_manager.get_stat_skill_bonus(skill_id)
         return skill.value + bonus_skill
 
+    @staticmethod
+    def get_engineering_item_summon_level(player_mgr, source_item, require_trinket=False):
+        if not player_mgr or not player_mgr.is_player() or not source_item:
+            return -1
+
+        item_template = source_item.item_template
+        if not item_template:
+            return -1
+
+        if item_template.required_skill != SkillTypes.ENGINEERING:
+            return -1
+
+        if require_trinket and item_template.inventory_type != InventoryTypes.TRINKET:
+            return -1
+
+        engineering_skill = player_mgr.skill_manager.get_total_skill_value(SkillTypes.ENGINEERING)
+        if engineering_skill <= 0:
+            return -1
+
+        return engineering_skill // 5
+
     def get_skill_value_for_spell_id(self, spell_id):
         skill = self.get_skill_for_spell_id(spell_id)
         if not skill or skill.ID not in self.skills:
             return 0
 
         return self.get_total_skill_value(skill.ID)
+
+    def get_spell_rank_for_spell_id(self, spell_id):
+        # Mirror client spell-rank math (CGPlayer_C::GetSpellRank) for tooltip-aligned scaling.
+        spell_entry = DbcDatabaseManager.SpellHolder.spell_get_by_id(spell_id)
+        if not spell_entry:
+            return 0
+
+        skill, _ = SkillManager.get_skill_and_skill_line_for_spell_id(
+            spell_id, self.player_mgr.race, self.player_mgr.class_, self.player_mgr.is_gm
+        )
+        if not skill:
+            return 0
+
+        # Client returns 0 if the spell has no related skill rank.
+        skill_rank = 0
+        if skill.ID in self.skills:
+            skill_rank = self.get_total_skill_value(skill.ID)
+            if skill_rank < 0:
+                skill_rank = 0
+
+        weapon_flags = (SpellAttributes.SPELL_ATTR_RANGED |
+                        SpellAttributes.SPELL_ATTR_ON_NEXT_SWING_1 |
+                        SpellAttributes.SPELL_ATTR_ON_NEXT_SWING_2)
+        if spell_entry.Attributes & weapon_flags:
+            # Client averages the spell skill with the current weapon skill for weapon-based spells.
+            if spell_entry.Attributes & SpellAttributes.SPELL_ATTR_RANGED:
+                weapon = self.player_mgr.get_current_weapon_for_attack_type(AttackTypes.RANGED_ATTACK)
+                if not weapon:
+                    weapon_skill_rank = None
+                else:
+                    weapon_skill_id = self.get_skill_id_for_weapon(weapon.item_template)
+                    weapon_skill_rank = self.get_total_skill_value(weapon_skill_id)
+            else:
+                weapon = self.player_mgr.get_current_weapon_for_attack_type(AttackTypes.BASE_ATTACK)
+                weapon_skill_id = self.get_skill_id_for_weapon(weapon.item_template if weapon else None)
+                weapon_skill_rank = self.get_total_skill_value(weapon_skill_id)
+
+            if weapon_skill_rank is not None:
+                if weapon_skill_rank < 0:
+                    weapon_skill_rank = 0
+                skill_rank = int((skill_rank + weapon_skill_rank) / 2)
+
+        # Client clamps spell rank by MaxLevel when set (converted to rank by *5).
+        if spell_entry.MaxLevel > 0:
+            skill_rank = min(skill_rank, spell_entry.MaxLevel * 5)
+
+        return max(skill_rank, 0)
+
+    def get_riding_speed_bonus_percent(self) -> float:
+        best_bonus = 0.0
+        for skill_id in RIDING_SKILLS:
+            skill = self.skills.get(skill_id)
+            if not skill:
+                continue
+
+            max_rank = skill.max if skill.max else self.get_max_rank(skill_id)
+            if max_rank <= 0:
+                continue
+
+            value = self.get_total_skill_value(skill_id)
+            if value <= 0:
+                continue
+            if value > max_rank:
+                value = max_rank
+
+            bonus = (value / max_rank) * 100.0
+            if bonus > best_bonus:
+                best_bonus = bonus
+
+        return best_bonus
 
     def get_skill_id_for_weapon(self, item_template: Optional[ItemTemplate]):
         if not item_template:
@@ -752,6 +877,21 @@ class SkillManager:
         if not skill_line_ability or not skill_line_ability.SkillLine:
             return None
         return DbcDatabaseManager.SkillHolder.skill_get_by_id(skill_line_ability.SkillLine)
+
+    def can_read_language(self, language_id: int) -> bool:
+        if language_id == Languages.LANG_UNIVERSAL:
+            return True
+
+        for spell_id in DbcDatabaseManager.SpellHolder.get_language_spell_ids(language_id):
+            skill = self.get_skill_for_spell_id(spell_id)
+            if not skill:
+                continue
+            if not self.has_skill(skill.ID):
+                continue
+            if self.get_total_skill_value(skill.ID) > 0:
+                return True
+
+        return False
 
     def get_max_rank(self, skill_id, level=-1):
         skill = DbcDatabaseManager.SkillHolder.skill_get_by_id(skill_id)

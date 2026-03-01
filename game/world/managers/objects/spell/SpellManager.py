@@ -1,5 +1,4 @@
 import time
-from random import randint
 from struct import pack
 from typing import Optional
 
@@ -12,29 +11,32 @@ from game.world.managers.abstractions.Vector import Vector
 from game.world.managers.objects.ObjectManager import ObjectManager
 from game.world.managers.objects.gameobjects.managers.FishingNodeManager import FishingNodeManager
 from game.world.managers.objects.gameobjects.managers.RitualManager import RitualManager
+from game.world.managers.objects.farsight.FarSightManager import FarSightManager
 from game.world.managers.objects.gameobjects.managers.SpellFocusManager import SpellFocusManager
 from game.world.managers.objects.item.ItemManager import ItemManager
 from game.world.managers.objects.locks.LockManager import LockManager
 from game.world.managers.objects.spell import ExtendedSpellData
 from game.world.managers.objects.spell.CastingSpell import CastingSpell
+from game.world.managers.objects.spell.EffectTargets import TargetMissInfo
 from game.world.managers.objects.spell.CooldownEntry import CooldownEntry
 from game.world.managers.objects.spell.SpellEffectHandler import SpellEffectHandler
 from game.world.managers.objects.units.DamageInfoHolder import DamageInfoHolder
 from network.packet.PacketWriter import PacketWriter
+from utils.Formulas import Distances
 from utils.Logger import Logger
 from utils.constants.ItemCodes import InventoryError, ItemSubClasses, ItemClasses, ItemDynFlags, ItemSpellTriggerType
-from utils.constants.MiscCodes import HitInfo, GameObjectTypes, AttackTypes, ObjectTypeIds, ProcFlags, ItemBondingTypes
+from utils.constants.MiscCodes import HitInfo, GameObjectTypes, AttackTypes, ObjectTypeIds, ProcFlags, ItemBondingTypes, \
+    ZSource
 from utils.constants.MiscFlags import GameObjectFlags
 from utils.constants.OpCodes import OpCode
 from utils.constants.SpellCodes import SpellCheckCastResult, SpellCastStatus, \
     SpellMissReason, SpellTargetMask, SpellState, SpellAttributes, SpellCastFlags, \
     SpellInterruptFlags, SpellChannelInterruptFlags, SpellAttributesEx, SpellEffects, SpellHitFlags, SpellSchools, \
-    SpellScriptTarget, AuraState
+    SpellScriptTarget, AuraState, AuraTypes
 from utils.constants.UnitCodes import PowerTypes, StandState, WeaponMode, Classes, UnitStates, UnitFlags
 
 
 class SpellManager:
-    MAX_TARGETS = 5
 
     def __init__(self, caster):
         self.caster = caster  # GameObject, Unit or Player.
@@ -132,7 +134,7 @@ class SpellManager:
 
         # It's not preceded by a known spell, should learn as new.
         if should_learn:
-            data = pack('<H', spell_id)
+            data = pack('<HH', spell_id, 0)
             self.caster.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_LEARNED_SPELL, data))
 
         if cast_on_learn or spell.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_CAST_WHEN_LEARNED:
@@ -360,7 +362,7 @@ class SpellManager:
         return spell if self.validate_cast(spell) else None
 
     def start_spell_cast(self, spell: Optional[Spell] = None, spell_target=None, target_mask=SpellTargetMask.SELF,
-                         initialized_spell: Optional[CastingSpell] = None):
+                         initialized_spell: Optional[CastingSpell] = None, remove_colliding=True):
         casting_spell = self.try_initialize_spell(spell, spell_target, target_mask) \
             if not initialized_spell else initialized_spell
 
@@ -368,7 +370,8 @@ class SpellManager:
             return
 
         if not casting_spell.triggered:
-            self.remove_colliding_casts(casting_spell)
+            if remove_colliding:
+                self.remove_colliding_casts(casting_spell)
         else:
             casting_spell.cast_flags |= SpellCastFlags.CAST_FLAG_PROC
 
@@ -384,16 +387,26 @@ class SpellManager:
 
         if self.caster.is_unit(by_mask=True):
             weapon_mode = self.caster.sheath_state
+
+            def _force_weapon_mode(mode, has_weapon):
+                if not has_weapon:
+                    return
+                if self.caster.sheath_state == mode:
+                    return
+                if casting_spell.forced_sheath_state is None:
+                    casting_spell.forced_sheath_state = self.caster.sheath_state
+                self.caster.set_weapon_mode(mode, force=True)
             # If the spell uses a ranged weapon, draw it if needed.
             if casting_spell.is_ranged_weapon_attack():
-                self.caster.set_weapon_mode(WeaponMode.RANGEDMODE, force=weapon_mode != WeaponMode.RANGEDMODE)
-            # Need to make sure creatures go back to melee if needed.
-            elif self.caster.is_unit():
-                self.caster.set_weapon_mode(WeaponMode.NORMALMODE, force=weapon_mode != WeaponMode.NORMALMODE)
+                _force_weapon_mode(WeaponMode.RANGEDMODE, self.caster.has_ranged_weapon())
+            # If the spell uses a melee weapon, draw it if needed.
+            elif casting_spell.spell_attack_type == AttackTypes.BASE_ATTACK:
+                _force_weapon_mode(WeaponMode.NORMALMODE,
+                                   self.caster.has_mainhand_weapon() or self.caster.has_offhand_weapon())
 
             # If the spell uses a fishing pole, draw it if needed.
             if casting_spell.requires_fishing_pole():
-                self.caster.set_weapon_mode(WeaponMode.NORMALMODE, force=weapon_mode != WeaponMode.NORMALMODE)
+                _force_weapon_mode(WeaponMode.NORMALMODE, self.caster.has_mainhand_weapon())
 
         if not casting_spell.is_instant_cast():
             if not casting_spell.triggered:
@@ -477,12 +490,16 @@ class SpellManager:
 
     def apply_spell_effects(self, casting_spell: CastingSpell, remove=False, update=False, update_index=-1,
                             partial_targets: Optional[list[int]] = None):
-        if not update and not casting_spell.is_passive() and not casting_spell.is_target_immune_to_effects():
-            self.handle_procs_for_cast(casting_spell)
+        if not update and not casting_spell.is_passive():
+            if not casting_spell.is_target_immune_to_effects():
+                self.handle_procs_for_cast(casting_spell)
 
-            # Handle related skill gain.
-            if self.caster.is_unit(by_mask=True):
-                self.caster.handle_spell_cast_skill_gain(casting_spell)
+                # Handle related skill gain.
+                if self.caster.is_unit(by_mask=True):
+                    self.caster.handle_spell_cast_skill_gain(casting_spell)
+
+            # Handle energy/rage refunds.
+            self.handle_power_refunds(casting_spell)
 
         for effect in casting_spell.get_effects():
             if update and update_index != effect.effect_index:
@@ -513,14 +530,15 @@ class SpellManager:
                 spell_target = target
                 spell_caster = casting_spell.spell_caster
                 # Swap target/caster on reflect.
-                # TODO: Proper handling of reflect if possible, we don't have MISS_REASON_REFLECTED from vanilla.
-                #  Reflect is not handled as a miss in alpha, instead, its probably handled through SMSG_SPELL_GO or
-                #  SMSG_ATTACKERSTATEUPDATEDEBUGINFOSPELL.
-                #  So for now, the damage will be reflected but combat log will display as if the reflector
-                #  casted the spell and the victim states will be wrong.
+                # Client uses SPELLLOG (SMSG_ATTACKERSTATEUPDATEDEBUGINFOSPELL) flag 0x8 to display
+                # "reflected damage to", so we keep the REFLECTED flag on the redirected target.
                 if info.flags & SpellHitFlags.REFLECTED:
                     spell_target = casting_spell.spell_caster
                     spell_caster = target
+                    reflected_info = TargetMissInfo(spell_target, SpellMissReason.MISS_REASON_NONE,
+                                                    info.flags | SpellHitFlags.REFLECTED,
+                                                    info.advanced_logging)
+                    casting_spell.object_target_results[spell_target.guid] = reflected_info
 
                 if info.result == SpellMissReason.MISS_REASON_NONE:
                     SpellEffectHandler.apply_effect(casting_spell, effect, spell_caster, spell_target)
@@ -565,6 +583,45 @@ class SpellManager:
                     if proc_target.is_unit(by_mask=True):
                         proc_target.aura_manager.check_aura_procs(involved_cast=casting_spell, damage_info=damage_info)
                 applied_targets.append(target.guid)
+
+    def handle_power_refunds(self, casting_spell):
+        if not self.caster.is_unit(by_mask=True):
+            return
+
+        if not casting_spell.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_REFUND_POWER:
+            return
+
+        refund_miss_energy = {
+            SpellMissReason.MISS_REASON_PHYSICAL,
+            SpellMissReason.MISS_REASON_DODGED,
+            SpellMissReason.MISS_REASON_PARRIED,
+            SpellMissReason.MISS_REASON_IMMUNE,
+            SpellMissReason.MISS_REASON_TEMPIMMUNE,
+            SpellMissReason.MISS_REASON_DEFLECTED
+        }
+
+        refund_miss_rage = {
+            SpellMissReason.MISS_REASON_DODGED,
+            SpellMissReason.MISS_REASON_PARRIED
+        }
+
+        power_type = casting_spell.spell_entry.PowerType
+
+        if self.caster.power_type != power_type:
+            return
+
+        refund_misses = refund_miss_energy if power_type == PowerTypes.TYPE_ENERGY \
+            else refund_miss_rage if power_type == PowerTypes.TYPE_RAGE else None
+        if not refund_misses:
+            return
+
+        for target_info in casting_spell.object_target_results.values():
+            if target_info.result in refund_misses:
+                cost = casting_spell.get_resource_cost()
+                refund_amount = int(round(cost * 0.82))
+                if refund_amount > 0:
+                    self.caster.receive_power(refund_amount, power_type)
+                return
 
     def handle_damage_event_procs(self, damage_info: DamageInfoHolder):
         if not damage_info.spell_id and \
@@ -647,8 +704,14 @@ class SpellManager:
 
     def check_spell_interrupts(self, moved=False, turned=False, received_damage=False, hit_info=HitInfo.DAMAGE,
                                interrupted=False, received_auto_attack=False):
+
+        # No-aura mount spells don't get aura interrupt handling, but should still auto-unmount indoors
+        # (movement + WMO z-source).
+        self._check_unmount_interrupts(moved=moved)
+
         if not self.casting_spells:
-            return
+            return False
+        interrupted_any = False
 
         for casting_spell in list(self.casting_spells):
             if casting_spell.cast_state == SpellState.SPELL_STATE_DELAYED:
@@ -660,12 +723,19 @@ class SpellManager:
             if casting_spell.is_channeled() and casting_spell.cast_state == SpellState.SPELL_STATE_ACTIVE:
                 channel_flags = casting_spell.spell_entry.ChannelInterruptFlags
                 interrupt = False
+                effective_moved = moved
+                effective_turned = turned
+
+                if casting_spell.is_far_sight():
+                    # Far Sight stuns the caster; ignore movement/turn interrupts from client movement noise.
+                    effective_moved = False
+                    effective_turned = False
 
                 if (channel_flags & SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_DAMAGE) and received_damage:
                     interrupt = True
-                elif (channel_flags & SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_MOVEMENT) and moved:
+                elif (channel_flags & SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_MOVEMENT) and effective_moved:
                     interrupt = True
-                elif (channel_flags & SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_TURNING) and turned:
+                elif (channel_flags & SpellChannelInterruptFlags.CHANNEL_INTERRUPT_FLAG_TURNING) and effective_turned:
                     interrupt = True
 
                 if interrupt:
@@ -677,6 +747,7 @@ class SpellManager:
                             continue
 
                     self.remove_cast(casting_spell, interrupted=True)
+                    interrupted_any = True
                 continue
 
             if casting_spell.cast_state == SpellState.SPELL_STATE_ACTIVE:
@@ -709,6 +780,31 @@ class SpellManager:
                         continue  # Skip auto attack for partial interrupts.
 
                 self.remove_cast(casting_spell, interrupted=True)
+                interrupted_any = True
+        return interrupted_any
+
+    def _check_unmount_interrupts(self, moved=False):
+        if not moved:
+            return
+
+        if not self.caster.unit_state & UnitStates.SPELL_MOUNTED:
+            return
+
+        # Only handle no-aura mount spells; aura mounts are already managed by AuraManager interrupts.
+        if self.caster.aura_manager.has_aura_by_type(AuraTypes.SPELL_AURA_MOUNTED):
+            return
+
+        # Clear stale custom mount state if some other path already unmounted the unit.
+        if not self.caster.is_mounted() and self.caster.mount_display_id <= 0:
+            self.caster.set_unit_state(UnitStates.SPELL_MOUNTED, active=False, index=-1)
+            return
+
+        current_loc = self.caster.location
+        _, z_source = self.caster.get_map().calculate_z(current_loc.x, current_loc.y, current_loc.z)
+        if z_source == ZSource.WMO or self.caster.is_swimming():
+            # Forced dismount: suppress NOT_MOUNTED errors.
+            self.caster.unmount(from_aura=True)
+            self.caster.set_unit_state(UnitStates.SPELL_MOUNTED, active=False, index=-1)
 
     def interrupt_casting_spell(self, cooldown_penalty=0):
         casting_spell = self.get_casting_spell(ignore_melee=True)
@@ -727,6 +823,12 @@ class SpellManager:
             self.casting_spells.remove(casting_spell)
         except ValueError:
             return False
+
+        if casting_spell.dynamic_object and casting_spell.is_far_sight():
+            # Remove Far Sight camera before despawning the dynamic object.
+            FarSightManager.remove_camera(casting_spell.dynamic_object)
+            if self.caster.is_player():
+                self.caster.set_far_sight(0)
 
         if casting_spell.dynamic_object:
             casting_spell.dynamic_object.despawn()
@@ -754,6 +856,9 @@ class SpellManager:
         if cast_result != SpellCheckCastResult.SPELL_NO_ERROR:
             self.send_cast_result(casting_spell, cast_result)
 
+        if casting_spell.forced_sheath_state is not None and self.caster.is_unit(by_mask=True):
+            self.caster.set_weapon_mode(casting_spell.forced_sheath_state, force=True)
+
         return True
 
     def remove_cast_by_id(self, spell_id, interrupted=False) -> bool:
@@ -769,21 +874,13 @@ class SpellManager:
         for casting_spell in list(self.casting_spells):
             result = SpellCheckCastResult.SPELL_FAILED_INTERRUPTED
 
-            if not remove_active:
-                if casting_spell.is_far_sight():
-                    # Far Sight stuns the caster, but shouldn't interrupt the channel.
-                    # TODO this is kind of a hack...
-                    #  SPELL_ATTR_EX_FARSIGHT doesn't relate to the stun and is used by other perspective change spells.
-                    continue
-
             if casting_spell.cast_state == SpellState.SPELL_STATE_FINISHED:
                 # Cast finished normally, but this was called before update removed the cast.
                 result = SpellCheckCastResult.SPELL_NO_ERROR
 
             # "Passive" casts like active area auras and delayed spells.
-            if not casting_spell.is_channeled() and \
-                    casting_spell.cast_state == SpellState.SPELL_STATE_ACTIVE or \
-                    casting_spell.cast_state == SpellState.SPELL_STATE_DELAYED:
+            if not casting_spell.is_channeled() and (casting_spell.cast_state == SpellState.SPELL_STATE_ACTIVE or
+                    casting_spell.cast_state == SpellState.SPELL_STATE_DELAYED):
                 if not remove_active:
                     continue
                 result = SpellCheckCastResult.SPELL_NO_ERROR  # Don't send interrupted error for active/delayed spells
@@ -977,21 +1074,21 @@ class SpellManager:
         chr_race = DbcDatabaseManager.chr_races_get_by_race(self.caster.race)
         self.handle_cast_attempt(chr_race.LoginEffectSpellID, self.caster, SpellTargetMask.SELF, validate=False)
 
-    # TODO: This is a workaround for not being able to properly display resists.
     def send_spell_resist_result(self, casting_spell, damage_info):
         if casting_spell.spell_caster == damage_info.target:
             return
-
-        hit_count = 0
-        miss_count = SpellManager.MAX_TARGETS
-        signature = '<2QIH3BQBQBQBQBQHQ'
-        data = [damage_info.attacker.guid, damage_info.attacker.guid, casting_spell.spell_entry.ID,
-                casting_spell.cast_flags | SpellCastFlags.CAST_FLAG_PROC, hit_count, miss_count,
-                SpellMissReason.MISS_REASON_RESIST, damage_info.target.guid, 0, 0, 0, 0, 0, 0, 0, 0,
-                SpellTargetMask.UNIT, damage_info.target.guid]
-        is_player = self.caster.is_player()
-        packet = PacketWriter.get_packet(OpCode.SMSG_SPELL_GO, pack(signature, *data))
-        self.caster.get_map().send_surrounding(packet, self.caster, include_self=is_player)
+        # Client log uses spell level (rank/5), not raw caster level.
+        caster_level = casting_spell.caster_spell_level if self.caster.is_unit(by_mask=True) else 0
+        data = pack('<2QI2f2I',
+                    damage_info.attacker.guid,
+                    damage_info.target.guid,
+                    casting_spell.spell_entry.ID,
+                    0.0,  # resistRollNeeded
+                    0.0,  # resistRoll
+                    0,  # flags 0x1 → chooses "damage" vs. "heartbeat", 0x2 → chooses "resists" vs. "fails to resist".
+                    caster_level)
+        packet = PacketWriter.get_packet(OpCode.SMSG_RESISTLOG, data)
+        self.caster.get_map().send_surrounding(packet, self.caster, include_self=self.caster.is_player())
 
     def send_spell_go(self, casting_spell):
         source_guid = self.caster.guid
@@ -1012,15 +1109,16 @@ class SpellManager:
 
         # Only include the primary effect targets.
         targets = casting_spell.get_effects()[0].targets.get_resolved_effect_targets_by_type(ObjectManager)
-        for index in range(SpellManager.MAX_TARGETS):
-            if index >= len(targets):
-                misses.append((0, 0))
+        for target in targets:
+            miss_info = casting_spell.object_target_results.get(target.guid)
+            if miss_info and miss_info.flags & SpellHitFlags.REFLECTED:
+                if casting_spell.spell_caster.guid not in hits:
+                    hits.append(casting_spell.spell_caster.guid)
+                continue
+            if not miss_info or miss_info.result == SpellMissReason.MISS_REASON_NONE:
+                hits.append(target.guid)
             else:
-                miss_info = casting_spell.object_target_results[targets[index].guid]
-                if miss_info.result == SpellMissReason.MISS_REASON_NONE:
-                    hits.append(targets[index].guid)
-                else:
-                    misses.append((miss_info.result, targets[index].guid))
+                misses.append((miss_info.result, target.guid))
 
         # Write hits.
         hit_count = len(hits)
@@ -1031,7 +1129,7 @@ class SpellManager:
 
         # Write misses.
         signature += 'B'
-        data.append(SpellManager.MAX_TARGETS - hit_count)
+        data.append(len(misses))
         for result, target_guid in misses:
             signature += 'BQ'
             data.append(result)
@@ -1076,18 +1174,17 @@ class SpellManager:
 
     def set_on_cooldown(self, casting_spell, cooldown_penalty=0):
         spell = casting_spell.spell_entry
+
+        # Creature spell lists handle cooldowns per spell slot inside CreatureAI.
+        if casting_spell.creature_spell:
+            return
+
         # Don't lock cooldown if it unlocks on aura fade and the target is immune to it.
         unlocks_on_trigger = casting_spell.unlock_cooldown_on_trigger() and \
                              not casting_spell.is_target_immune_to_aura(casting_spell.initial_target)
 
-        # If a penalty was provided or the spell comes from a creature spell,
-        # Set the spell on cooldown for the given penalty or a new cd if it is greater than the spell dbc cooldown.
-        if cooldown_penalty or casting_spell.creature_spell:
-            if not cooldown_penalty and casting_spell.creature_spell:
-                min_delay = casting_spell.creature_spell.delay_repeat_min
-                max_delay = casting_spell.creature_spell.delay_repeat_max
-                cooldown_penalty = randint(min_delay, max_delay) * 1000
-
+        # If a penalty was provided, set the spell on cooldown for the given penalty.
+        if cooldown_penalty:
             cooldown_entry = CooldownEntry(spell, time.time(), unlocks_on_trigger, cooldown_penalty=cooldown_penalty)
             # Update existent cooldown for this spell.
             self.cooldowns[spell.ID] = cooldown_entry
@@ -1162,7 +1259,7 @@ class SpellManager:
         return self.get_casting_spell(ignore_melee=True) is not None
 
     def validate_cast(self, casting_spell) -> bool:
-        if self.is_on_cooldown(casting_spell.spell_entry):
+        if not casting_spell.creature_spell and self.is_on_cooldown(casting_spell.spell_entry):
             self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_NOT_READY)
             return False
 
@@ -1191,6 +1288,12 @@ class SpellManager:
                 self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_CASTER_DEAD)
                 return False
 
+            # Cannot be used in combat.
+            if casting_spell.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_CANT_USED_IN_COMBAT and \
+                    self.caster.in_combat and not casting_spell.triggered:
+                self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_AFFECTING_COMBAT)
+                return False
+
             # Stunned, spell source is not item and cast is not triggered.
             if self.caster.unit_state & UnitStates.STUNNED and not casting_spell.source_item and \
                     not casting_spell.triggered:
@@ -1216,10 +1319,60 @@ class SpellManager:
                 self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_NOTSTANDING)
                 return False
 
-            # Not stealthed but the spell requires it.
+            # Mounted.
+            if not casting_spell.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_CASTABLE_WHILE_MOUNTED and \
+                    self.caster.mount_display_id > 0 and not casting_spell.triggered:
+                self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_NOT_MOUNTED)
+                return False
+
+            # Outdoors / Indoors.
+            if self.caster.is_player():
+                if casting_spell.is_outdoors_spell():
+                    if not self.caster.get_map().is_wmo_exterior(self.caster.location.x,
+                                                                self.caster.location.y,
+                                                                self.caster.location.z):
+                        self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_ONLY_OUTDOORS)
+                        return False
+
+                # Indoors.
+                if casting_spell.is_indoors_spell():
+                    if not self.caster.get_map().is_wmo_interior(self.caster.location.x,
+                                                                self.caster.location.y,
+                                                                self.caster.location.z):
+                        self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_ONLY_INDOORS)
+                        return False
+
+                # Mount swim check.
+                if casting_spell.is_mount_spell() and self.caster.is_swimming():
+                    self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_ONLY_ABOVEWATER)
+                    return False
+
+            # Requires stealth.
             if casting_spell.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_ONLY_STEALTHED and \
                     not self.caster.is_stealthed():
                 self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_ONLY_STEALTHED)
+                return False
+
+            # Shapeshift form checks.
+            # Stance forms (battle/defensive/berserker) are shapeshifts, but still allow switching between stances.
+            shapeshift_form = self.caster.shapeshift_form
+            shapeshift_mask = casting_spell.spell_entry.ShapeshiftMask
+            if shapeshift_form:
+                form_entry = DbcDatabaseManager.spell_shapeshift_form_get_by_id(shapeshift_form)
+                is_stance_form = form_entry and (form_entry.Flags & 1)
+                in_mask = shapeshift_mask & (1 << (shapeshift_form - 1))
+                if not in_mask:
+                    # Client allows casts for some forms (non-stance) even if the mask doesn't include them.
+                    if not (shapeshift_mask == 0 and is_stance_form):
+                        if not form_entry or is_stance_form:
+                            self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_ONLY_SHAPESHIFT)
+                            return False
+                if casting_spell.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_NOT_SHAPESHIFT \
+                        and not in_mask and not is_stance_form:
+                    self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_NOT_SHAPESHIFT)
+                    return False
+            elif shapeshift_mask:
+                self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_ONLY_SHAPESHIFT)
                 return False
 
         # Required nearby spell focus GO.
@@ -1228,11 +1381,16 @@ class SpellManager:
             spell_focus_object = [go for go in self.caster.get_map().get_surrounding_gameobjects(self.caster).values()
                                   if go.gobject_template.type == GameObjectTypes.TYPE_SPELL_FOCUS
                                   and go.gobject_template.data0 == spell_focus_type
-                                  and self.caster.location.distance(go.location) <= go.gobject_template.data1]
+                                  and Distances.is_in_range(self.caster, go,
+                                                            Distances.resolve_spell_focus_distance(
+                                                                go.gobject_template.data1))]
 
             if not spell_focus_object:
-                self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_REQUIRES_SPELL_FOCUS,
-                                      spell_focus_type)
+                self.send_cast_result(
+                    casting_spell,
+                    SpellCheckCastResult.SPELL_FAILED_REQUIRES_SPELL_FOCUS,
+                    misc_data=spell_focus_type
+                )
                 return False
             if isinstance(spell_focus_object[0], SpellFocusManager):
                 spell_focus_object[0].use(unit=self.caster)
@@ -1266,15 +1424,33 @@ class SpellManager:
 
         if script_target_entries and validation_target != self.caster:
             for entry in script_target_entries:
-                req_type = ObjectTypeIds.ID_UNIT if entry.target_type == SpellScriptTarget.TARGET_UNIT \
-                    else ObjectTypeIds.ID_GAMEOBJECT
+                if entry.target_type == SpellScriptTarget.TARGET_GAMEOBJECT:
+                    req_type = ObjectTypeIds.ID_GAMEOBJECT
+                elif entry.target_type == SpellScriptTarget.TARGET_PLAYER:
+                    req_type = ObjectTypeIds.ID_PLAYER
+                else:
+                    req_type = ObjectTypeIds.ID_UNIT
 
                 if validation_target.get_type_id() != req_type or entry.target_entry != validation_target.entry:
                     self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_BAD_TARGETS)
                     return False
 
+                if entry.target_type == SpellScriptTarget.TARGET_DEAD and validation_target.is_alive:
+                    self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_BAD_TARGETS)
+                    return False
+                elif entry.target_type in {SpellScriptTarget.TARGET_UNIT, SpellScriptTarget.TARGET_PLAYER} and \
+                        not validation_target.is_alive:
+                    self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_BAD_TARGETS)
+                    return False
+
         # Unit target checks.
         if casting_spell.initial_target_is_unit_or_player():
+            # Target must not be in combat for this spell.
+            if casting_spell.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_NOT_IN_COMBAT_TARGET and \
+                    validation_target.in_combat:
+                self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_TARGET_AFFECTING_COMBAT)
+                return False
+
             # Basic effect harmfulness/attackability check.
             # The client checks this for player casts, but not pet casts.
             # Skip for self-targeted AoE and explicitly self-targeting spells.
@@ -1470,8 +1646,9 @@ class SpellManager:
 
             active_pet = self.caster.pet_manager.get_active_controlled_pet()
             if active_pet and active_pet.creature.is_alive:
-                self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_ALREADY_HAVE_SUMMON)
-                return False
+                if casting_spell.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_DISMISS_PET_FIRST:
+                    self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_ALREADY_HAVE_SUMMON)
+                    return False
 
         # Guardian summon check.
         summon_guardian_effect = casting_spell.get_effect_by_type(SpellEffects.SPELL_EFFECT_SUMMON_GUARDIAN)
@@ -1699,7 +1876,11 @@ class SpellManager:
                     break
 
                 if self.caster.inventory.get_item_count(reagent_info) < count:
-                    self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_REAGENTS)
+                    self.send_cast_result(
+                        casting_spell,
+                        SpellCheckCastResult.SPELL_FAILED_REAGENTS,
+                        misc_data=reagent_info
+                    )
                     return False
 
             # Check if player has required weapon and ammo.
@@ -1711,7 +1892,14 @@ class SpellManager:
                     return False
                 subclass_mask = 1 << equipped_weapon.item_template.subclass
                 if not required_weapon_mask & subclass_mask:
-                    self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_EQUIPPED_ITEM_CLASS)
+                    self.send_cast_result(
+                        casting_spell,
+                        SpellCheckCastResult.SPELL_FAILED_EQUIPPED_ITEM_CLASS,
+                        misc_data=(
+                            casting_spell.spell_entry.EquippedItemClass,
+                            casting_spell.spell_entry.EquippedItemSubclass
+                        )
+                    )
                     return False
 
                 required_ammo = equipped_weapon.item_template.ammo_type
@@ -1753,7 +1941,11 @@ class SpellManager:
                 if not tool:
                     break
                 if not self.caster.inventory.get_first_item_by_entry(tool):
-                    self.send_cast_result(casting_spell, SpellCheckCastResult.SPELL_FAILED_TOTEMS)
+                    self.send_cast_result(
+                        casting_spell,
+                        SpellCheckCastResult.SPELL_FAILED_TOTEMS,
+                        misc_data=tool
+                    )
                     return False
 
             # Check if player inventory has space left.
@@ -1789,6 +1981,9 @@ class SpellManager:
             new_power = current_power - cost
 
         if power_type == PowerTypes.TYPE_HEALTH:
+            if new_power <= 0:
+                self.caster.die()
+                return
             self.caster.set_health(new_power)
         else:
             self.caster.set_power_value(new_power, power_type)
@@ -1801,7 +1996,7 @@ class SpellManager:
             self.caster.aura_manager.modify_aura_state(aura_state, apply=False)
 
         removed_items = set()
-        if is_player:
+        if is_player and not casting_spell.is_trade_enchant():
             for reagent_info in casting_spell.get_reagents():  # Reagents.
                 if reagent_info[0] == 0:
                     break
@@ -1829,23 +2024,31 @@ class SpellManager:
             instance_charges = casting_spell.source_item.get_charges(casting_spell.spell_entry.ID)
             charges_removes_item = casting_spell.source_item.charges_removes_item(casting_spell.spell_entry.ID)
 
-            # Don't modify if no charges remain or this item is a consumable.
+            # Don't modify if no charges remain or this item is consumable.
             if instance_charges != 0 and not charges_removes_item:
                 new_charges = instance_charges-1 if instance_charges > 0 else instance_charges+1
                 casting_spell.source_item.set_charges(casting_spell.spell_entry.ID, new_charges)
                 instance_charges = new_charges
 
-            # No charges left or usage should remove item.
+            # No charges left or usage should remove the item.
             if (not instance_charges or charges_removes_item) and item_entry not in removed_items:
                 self.caster.inventory.remove_items(item_entry, 1)
 
-    def send_cast_result(self, casting_spell, error, misc_data=-1):
+    # SMSG_CAST_RESULT can include up to two extra ints after (spellId, status, reason).
+    # The client passes those through to Spell_C_SpellFailed as a5/a6 to format specific error text
+    # (e.g., missing reagent/tool item entry, required equip class+subclass, spell focus ID, ammo subclass).
+    def send_cast_result(self, casting_spell, error, misc_data=None):
         is_player = self.caster.is_player()
         spell_id = casting_spell.spell_entry.ID
         has_error = error != SpellCheckCastResult.SPELL_NO_ERROR
 
         if casting_spell.hide_result:
             error = SpellCheckCastResult.SPELL_FAILED_DONT_REPORT
+
+        if has_error and self.caster.is_unit(by_mask=True) and \
+                casting_spell.cast_state == SpellState.SPELL_STATE_PREPARING and \
+                casting_spell.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_FAILURE_BREAKS_STEALTH:
+            self.caster.aura_manager.remove_auras_by_type(AuraTypes.SPELL_AURA_MOD_STEALTH)
 
         # TODO: More research needed on client Spell_C_SetModal and CastResultHandler:
         # if (msg == * (CDataStore **)s_modalSpellID) (msg is spell id, s_modalSpellID is set upon spell cast)
@@ -1855,30 +2058,40 @@ class SpellManager:
         if not has_error and casting_spell.source_item and not casting_spell.source_item.is_player_cast():
             spell_id = 0
 
-        # Send spell failure only if this was an active spell.
-        if has_error and spell_id in self.casting_spells:
-            # Do not broadcast errors upon creature/go cast validate() failing.
-            if not is_player:
-                return
-            
+        # Client stops spell cast visuals/sounds for observers on SMSG_SPELL_FAILURE.
+        # If we skip broadcasting failures for non-player units, their cast sounds can linger after death/interrupt.
+        # See https://github.com/The-Alpha-Project/alpha-core/issues/715
+        # Send spell failure only if this cast actually started (not just a validation failure).
+        if has_error and error != SpellCheckCastResult.SPELL_FAILED_DONT_REPORT and \
+                casting_spell.cast_state != SpellState.SPELL_STATE_PREPARING and \
+                self.caster.is_unit(by_mask=True):
             charmer_or_summoner = self.caster.get_charmer_or_summoner()
             if charmer_or_summoner:
                 charmer_or_summoner.pet_manager.handle_cast_result(spell_id, error)
-                return
-            
+
             data = pack('<QIB', self.caster.guid, spell_id, error)
             packet = PacketWriter.get_packet(OpCode.SMSG_SPELL_FAILURE, data)
-
             self.caster.get_map().send_surrounding(packet, self.caster, include_self=is_player)
 
         # Only players receive cast results.
-        if is_player:
-            if not has_error:
-                data = pack('<IB', spell_id, SpellCastStatus.CAST_SUCCESS)
-            else:
-                if misc_data != -1:
-                    data = pack('<I2BI', spell_id, SpellCastStatus.CAST_FAILED, error, misc_data)
-                else:
-                    data = pack('<I2B', spell_id, SpellCastStatus.CAST_FAILED, error)
+        if not is_player:
+            return
 
-            self.caster.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_CAST_RESULT, data))
+        extra_data = ()
+        if misc_data not in (None, -1):
+            if isinstance(misc_data, (tuple, list)):
+                extra_data = tuple(misc_data)
+            else:
+                extra_data = (misc_data,)
+
+        if not has_error:
+            data = pack('<IB', spell_id, SpellCastStatus.CAST_SUCCESS)
+        else:
+            if extra_data:
+                data = pack('<I2B', spell_id, SpellCastStatus.CAST_FAILED, error)
+                data += pack('<I', int(extra_data[0]))
+                if len(extra_data) > 1:
+                    data += pack('<I', int(extra_data[1]))
+            else:
+                data = pack('<I2B', spell_id, SpellCastStatus.CAST_FAILED, error)
+        self.caster.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_CAST_RESULT, data))

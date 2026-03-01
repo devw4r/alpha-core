@@ -6,6 +6,7 @@ from database.world.WorldDatabaseManager import WorldDatabaseManager
 from game.world.managers.objects.ObjectManager import ObjectManager
 from game.world.managers.objects.GuidManager import GuidManager
 from network.packet.PacketWriter import PacketWriter
+from utils.Formulas import Distances
 from utils.Logger import Logger
 from utils.ObjectQueryUtils import ObjectQueryUtils
 from utils.constants.MiscCodes import ObjectTypeFlags, ObjectTypeIds, HighGuid, GameObjectTypes, \
@@ -14,6 +15,7 @@ from utils.constants.MiscFlags import GameObjectFlags
 from utils.constants.OpCodes import OpCode
 from utils.constants.SpellCodes import SpellMissReason
 from utils.constants.UpdateFields import ObjectFields, GameObjectFields
+from utils.constants.MiscCodes import UpdateFlags
 
 
 class GameObjectManager(ObjectManager):
@@ -75,7 +77,7 @@ class GameObjectManager(ObjectManager):
 
         # Check if this game object should be updated yet or not.
         if self.has_pending_updates():
-            self.get_map().update_object(self, has_changes=True)
+            self.get_map().update_object(self, update_flags=UpdateFlags.CHANGES)
 
         self.last_tick = now
 
@@ -168,7 +170,7 @@ class GameObjectManager(ObjectManager):
         target.send_spell_cast_debug_info(damage_info, spell)
         target.receive_damage(damage_info, self, casting_spell=spell, is_periodic=is_periodic)
 
-        # Send environmental damage log packet to the affected player.
+        # Send an environmental damage log packet to the affected player.
         if self.gobject_template.type == GameObjectTypes.TYPE_TRAP and target.is_player():
             data = pack(
                 '<Q2I',
@@ -189,7 +191,7 @@ class GameObjectManager(ObjectManager):
             self.set_active()
 
         # Force surrounding players to refresh this GO interactive state.
-        self.refresh_dynamic_flag()
+        self.get_map().update_object(self, UpdateFlags.DYNAMIC_FLAGS)
 
     def set_state(self, state, force=False):
         self.state = state
@@ -200,10 +202,15 @@ class GameObjectManager(ObjectManager):
             self.flags |= flag
         else:
             self.flags &= ~flag
+
         self.set_uint32(GameObjectFields.GAMEOBJECT_FLAGS, self.flags)
 
+        if (flag & GameObjectFlags.NO_INTERACT) != 0:
+            # Force surrounding players to refresh this GO interactive state.
+            self.get_map().update_object(self, UpdateFlags.DYNAMIC_FLAGS)
+
     def has_flag(self, flag: GameObjectFlags):
-        return self.flags & flag
+        return (self.flags & flag) != 0
 
     def set_active(self, alternative=False, force=False):
         if self.state == GameObjectStates.GO_STATE_READY:
@@ -211,9 +218,6 @@ class GameObjectManager(ObjectManager):
                            else GameObjectStates.GO_STATE_ACTIVE_ALTERNATIVE, force=force)
             return True
         return False
-
-    def refresh_dynamic_flag(self):
-        self.set_uint32(GameObjectFields.GAMEOBJECT_DYN_FLAGS, self.dynamic_flags, force=True)
 
     def is_active(self):
         return self.state in {GameObjectStates.GO_STATE_ACTIVE, GameObjectStates.GO_STATE_ACTIVE_ALTERNATIVE}
@@ -239,11 +243,10 @@ class GameObjectManager(ObjectManager):
 
     def is_within_interactable_distance(self, victim):
         # TODO: https://github.com/cmangos/mangos-tbc/blob/master/src/game/Entities/GameObject.cpp#L2438
-        return self.location.distance(victim.location) <= 6.0
+        return Distances.is_within_gameobject_interact_distance(self, victim)
 
-    # There are only 3 possible animations that can be used here.
-    # Effect might depend on the gameobject type, apparently. e.g. Fishing bobber does its animation by sending 0.
-    # TODO: See if we can retrieve the animation names.
+    # Client only accepts anim values 0-3 and labels them Custom0-3.
+    # The effect might depend on the gameobject type, apparently. e.g., Fishing bobber does its animation by sending 0.
     def send_custom_animation(self, animation):
         data = pack('<QI', self.guid, animation)
         packet = PacketWriter.get_packet(OpCode.SMSG_GAMEOBJECT_CUSTOM_ANIM, data)
@@ -299,6 +302,9 @@ class GameObjectManager(ObjectManager):
             Logger.warning(f'Invalid spell id for GameObject {self.get_name()}, Id {self.spawn_id}, spell {spell_id}')
 
     def generate_dynamic_field_value(self, requester):
+        if self.has_flag(GameObjectFlags.NO_INTERACT):
+            return 0
+
         go_handled_types = {GameObjectTypes.TYPE_QUESTGIVER, GameObjectTypes.TYPE_GOOBER, GameObjectTypes.TYPE_CHEST}
         if self.gobject_template.type in go_handled_types:
             if requester.quest_manager.should_interact_with_go(self):
@@ -334,36 +340,10 @@ class GameObjectManager(ObjectManager):
         return self.get_single_field_update_bytes(GameObjectFields.GAMEOBJECT_DYN_FLAGS, dyn_flag_value)
 
     # override
-    def _get_fields_update(self, is_create, requester, update_data=None):
-        # Make sure we work on a copy of the current mask and values.
-        if not update_data:
-            update_data = self.update_packet_factory.generate_update_data(flush_current=True)
-
-        mask = update_data.update_bit_mask
-
-        data = bytearray()
-        for index in range(self.update_packet_factory.update_mask.field_count):
-            # Partial packets only care for fields that had changes.
-            if not is_create and mask[index] == 0 and not self.update_packet_factory.is_dynamic_field(index):
-                continue
-            # Check for encapsulation, turn off the bit if the requester has no read access.
-            if not self.update_packet_factory.has_read_rights_for_field(index, requester):
-                mask[index] = 0
-                continue
-
-            if self.update_packet_factory.is_dynamic_field(index):
-                value = pack('<I', self.generate_dynamic_field_value(requester))
-            elif is_create and \
-                    index == GameObjectFields.GAMEOBJECT_STATE and \
-                    self.gobject_template.type == GameObjectTypes.TYPE_DOOR:
-                # Client doesn't remove collision for doors sent with active state - always send as ready.
-                value = pack('<I', GameObjectStates.GO_STATE_READY)
-            else:
-                value = update_data.get_field_bytes(index)
-
-            data.extend(value)
-            mask[index] = 1
-        return pack('<B', self.update_packet_factory.update_mask.block_count) + mask.tobytes() + data
+    def _get_field_value_for_update(self, index, is_create, requester, update_data):
+        if self.update_packet_factory.is_dynamic_field(index):
+            return pack('<I', self.generate_dynamic_field_value(requester))
+        return super()._get_field_value_for_update(index, is_create, requester, update_data)
 
     def _check_time_to_live(self, elapsed):
         if self.time_to_live and self.time_to_live_timer < self.time_to_live:
@@ -404,6 +384,9 @@ class GameObjectManager(ObjectManager):
     # override
     def on_cell_change(self):
         pass
+
+    def is_in_world(self):
+        return self.is_spawned and self.get_map()
 
     # override
     def get_debug_messages(self, requester=None):

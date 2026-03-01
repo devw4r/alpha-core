@@ -15,6 +15,9 @@ class PathManager:
 
     # Navs.
     NAVS_RELATIVE_PATH = 'etc/navs/'
+    # Patches.
+    PATCHES_RELATIVE_PATH = 'etc/patches/'
+    PATCHES_RSYNC_RELATIVE_PATH = 'etc/patches/rsync_basis/'
 
     # Git.
     GIT_RELATIVE_PATH = '.git/'
@@ -30,6 +33,7 @@ class PathManager:
 
     # Wmo.
     WMO_RELATIVE_PATH = 'etc/wmo_liquids/'
+    WMO_GEOMETRY_RELATIVE_PATH = 'etc/wmo_geometry/'
 
     @staticmethod
     def set_root_path(root_path):
@@ -56,6 +60,14 @@ class PathManager:
         return path.join(path.join(PathManager.get_navs_path(), 'Nav'), map_name)
 
     @staticmethod
+    def get_patches_path():
+        return path.join(PathManager.ROOT_PATH, PathManager.PATCHES_RELATIVE_PATH)
+
+    @staticmethod
+    def get_patches_rsync_basis_path():
+        return path.join(PathManager.ROOT_PATH, PathManager.PATCHES_RSYNC_RELATIVE_PATH)
+
+    @staticmethod
     def get_maps_path():
         return path.join(PathManager.ROOT_PATH, PathManager.MAPS_RELATIVE_PATH)
 
@@ -70,6 +82,10 @@ class PathManager:
     @staticmethod
     def get_wmo_liquids_path():
         return path.join(PathManager.ROOT_PATH, PathManager.WMO_RELATIVE_PATH)
+
+    @staticmethod
+    def get_wmo_geometry_path():
+        return path.join(PathManager.ROOT_PATH, PathManager.WMO_GEOMETRY_RELATIVE_PATH)
 
     @staticmethod
     def get_git_path():

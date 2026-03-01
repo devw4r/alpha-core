@@ -1,5 +1,8 @@
 import traceback
 import math
+import os
+import signal
+from concurrent.futures import ProcessPoolExecutor
 from functools import lru_cache
 from multiprocessing import RLock
 from os import path
@@ -14,15 +17,17 @@ from game.world.managers.maps.helpers.Constants import ADT_SIZE, RESOLUTION_ZMAP
     RESOLUTION_LIQUIDS, BLOCK_SIZE
 from game.world.managers.maps.Map import Map, MapType
 from game.world.managers.maps.MapTile import MapTile
+from game.world.managers.maps.MapTileLoader import load_map_tile_data, MapTileLoadError
 from game.world.managers.maps.helpers.LiquidInformation import LiquidInformation
 from game.world.managers.maps.helpers.MapUtils import MapUtils
 from game.world.managers.maps.helpers.Namigator import Namigator
 from utils.ConfigManager import config
+from utils.EnumUtils import EnumUtils
 from utils.Formulas import Distances
 from utils.GitUtils import GitUtils
 from utils.Logger import Logger
 from utils.PathManager import PathManager
-from utils.constants.MiscCodes import MapsNoNavs, MapTileStates
+from utils.constants.MiscCodes import MapsNoNavs, MapTileStates, ZSource
 
 
 MAPS: dict[int, dict[int, Map]] = {}
@@ -40,10 +45,24 @@ PENDING_TILE_INITIALIZATION_QUEUE = _queue.SimpleQueue()
 QUEUE_LOCK = RLock()
 
 
+def _tile_loader_worker_init():
+    # Ignore Ctrl+C in worker processes so the main process handles shutdown cleanly.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 # noinspection PyBroadException
 class MapManager:
     NAMIGATOR_LOADED = False
     NAMIGATOR_FAILED = False
+    TILE_LOADER_FAILED = False
+    TILE_LOAD_WORKERS = max(1, min(4, (os.cpu_count() or 2) - 1))  # Cap worker count to limit memory usage.
+    TILE_LOAD_MAX_INFLIGHT = TILE_LOAD_WORKERS * 2  # Max in-flight tile load jobs (queued + running).
+    TILE_LOAD_IDLE_TIMEOUT = 10.0  # Seconds, shutdown workers quickly when no tiles are loading.
+    TILE_LOAD_MAX_RESULTS_PER_TICK = 1  # Max completed tile results to apply per tick.
+    _TILE_LOAD_POOL = None  # ProcessPoolExecutor instance for tile parsing.
+    _TILE_LOAD_FUTURES = {}  # Tile loading result futures.
+    _TILE_LOAD_INFLIGHT = {}  # Current loading tile data.
+    _TILE_LOAD_IDLE_SINCE = None  # Timestamp when the pool became idle.
 
     @staticmethod
     def initialize_world_and_pvp_maps():
@@ -57,7 +76,7 @@ class MapManager:
 
     @staticmethod
     def has_navs(map_id):
-        return not MapsNoNavs.has_value(map_id)
+        return not EnumUtils.has_value(MapsNoNavs, map_id)
 
     @staticmethod
     @lru_cache
@@ -69,7 +88,7 @@ class MapManager:
     def _build_map(map_id, instance_id):
         if map_id in MAPS and instance_id in MAPS[map_id]:
             Logger.warning(f'Tried to instantiate an existent map. Map {map_id}, Instance {instance_id}')
-            return
+            return MAPS[map_id][instance_id]
 
         # Initialize instances dictionary.
         if map_id not in MAPS:
@@ -143,11 +162,237 @@ class MapManager:
 
     @staticmethod
     def initialize_pending_tiles():
+        if (not MapManager._TILE_LOAD_POOL and not MapManager._TILE_LOAD_FUTURES
+                and not MapManager._TILE_LOAD_INFLIGHT and PENDING_TILE_INITIALIZATION_QUEUE.empty()):
+            return
+        MapManager._collect_tile_load_results()
+        MapManager._dispatch_tile_loads()
+        MapManager._maybe_shutdown_tile_loader()
+
+    @staticmethod
+    def shutdown_tile_loader(wait=True):
+        pool = MapManager._TILE_LOAD_POOL
+        if not pool:
+            return
+        try:
+            pool.shutdown(wait=wait, cancel_futures=True)
+        except TypeError:
+            pool.shutdown(wait=wait)
+        MapManager._TILE_LOAD_POOL = None
+        MapManager._TILE_LOAD_FUTURES.clear()
+        MapManager._TILE_LOAD_INFLIGHT.clear()
+        MapManager._TILE_LOAD_IDLE_SINCE = None
+
+    @staticmethod
+    def _ensure_tile_loader():
+        if MapManager.TILE_LOADER_FAILED:
+            return False
+        if MapManager._TILE_LOAD_POOL:
+            MapManager._TILE_LOAD_IDLE_SINCE = None
+            return True
+        try:
+            MapManager._TILE_LOAD_POOL = ProcessPoolExecutor(
+                max_workers=MapManager.TILE_LOAD_WORKERS,
+                initializer=_tile_loader_worker_init,
+            )
+            MapManager._TILE_LOAD_IDLE_SINCE = None
+            return True
+        except:
+            MapManager.TILE_LOADER_FAILED = True
+            Logger.error('[Maps] Unable to initialize tile loader process pool.')
+            Logger.error(traceback.format_exc())
+            return False
+
+    @staticmethod
+    def _dispatch_tile_loads():
         if PENDING_TILE_INITIALIZATION_QUEUE.empty():
             return
-        key = PENDING_TILE_INITIALIZATION_QUEUE.get()
+
+        if not config.Server.Settings.use_map_tiles:
+            MapManager._dispatch_nav_only_loads()
+            return
+
+        if not MapManager._ensure_tile_loader():
+            MapManager._dispatch_sync_tile_loads()
+            return
+
+        maps_path = PathManager.get_maps_path()
+        use_float_16 = config.Server.Settings.use_float_16
+        expected_version = MapTile.EXPECTED_VERSION
+
+        while len(MapManager._TILE_LOAD_INFLIGHT) < MapManager.TILE_LOAD_MAX_INFLIGHT:
+            try:
+                key = PENDING_TILE_INITIALIZATION_QUEUE.get_nowait()
+            except _queue.Empty:
+                break
+
+            if key in MapManager._TILE_LOAD_INFLIGHT:
+                continue
+
+            map_id, adt_x, adt_y = MapManager._split_tile_key(key)
+            if map_id not in MAP_LIST or map_id not in MAPS_TILES:
+                continue
+
+            tile = MAPS_TILES[map_id][adt_x][adt_y]
+            if tile.is_initialized():
+                continue
+
+            tile.initialized = True
+            tile.ready = False
+
+            filename = f'{map_id:03}{adt_x:02}{adt_y:02}.map'
+            Logger.info(f'[Maps] Loading map tile, Map:{map_id} Tile:{adt_x},{adt_y}, File: {filename}')
+
+            future = MapManager._TILE_LOAD_POOL.submit(
+                load_map_tile_data,
+                maps_path,
+                map_id,
+                adt_x,
+                adt_y,
+                use_float_16,
+                expected_version,
+            )
+            MapManager._TILE_LOAD_FUTURES[future] = key
+            MapManager._TILE_LOAD_INFLIGHT[key] = future
+            MapManager._TILE_LOAD_IDLE_SINCE = None
+
+    @staticmethod
+    def _dispatch_nav_only_loads():
+        processed = 0
+        while processed < MapManager.TILE_LOAD_MAX_INFLIGHT:
+            try:
+                key = PENDING_TILE_INITIALIZATION_QUEUE.get_nowait()
+            except _queue.Empty:
+                break
+
+            map_id, adt_x, adt_y = MapManager._split_tile_key(key)
+            if map_id not in MAP_LIST or map_id not in MAPS_TILES:
+                continue
+
+            tile = MAPS_TILES[map_id][adt_x][adt_y]
+            if tile.is_initialized():
+                continue
+
+            tile.initialized = True
+            tile.ready = False
+            MapManager._finalize_tile_load(map_id, adt_x, adt_y, None)
+            processed += 1
+            MapManager._TILE_LOAD_IDLE_SINCE = None
+
+    @staticmethod
+    def _dispatch_sync_tile_loads():
+        processed = 0
+        while processed < MapManager.TILE_LOAD_MAX_INFLIGHT:
+            try:
+                key = PENDING_TILE_INITIALIZATION_QUEUE.get_nowait()
+            except _queue.Empty:
+                break
+
+            map_id, adt_x, adt_y = MapManager._split_tile_key(key)
+            if map_id not in MAP_LIST:
+                continue
+            if MapManager.initialize_adt_tile(map_id, adt_x, adt_y):
+                processed += 1
+                MapManager._TILE_LOAD_IDLE_SINCE = None
+
+    @staticmethod
+    def _collect_tile_load_results():
+        if not MapManager._TILE_LOAD_FUTURES:
+            return
+
+        processed = 0
+        for future in list(MapManager._TILE_LOAD_FUTURES.keys()):
+            if not future.done():
+                continue
+            key = MapManager._TILE_LOAD_FUTURES.pop(future, None)
+            if key:
+                MapManager._TILE_LOAD_INFLIGHT.pop(key, None)
+
+            map_data = None
+            if not future.cancelled():
+                try:
+                    map_data = future.result()
+                except:
+                    Logger.error('[Maps] Error while loading map tile data.')
+                    Logger.error(traceback.format_exc())
+
+            MapManager._apply_tile_load_result(key, map_data)
+            processed += 1
+            if processed >= MapManager.TILE_LOAD_MAX_RESULTS_PER_TICK:
+                break
+
+    @staticmethod
+    def _maybe_shutdown_tile_loader():
+        if not MapManager._TILE_LOAD_POOL:
+            MapManager._TILE_LOAD_IDLE_SINCE = None
+            return
+        if MapManager._TILE_LOAD_INFLIGHT:
+            MapManager._TILE_LOAD_IDLE_SINCE = None
+            return
+        if not PENDING_TILE_INITIALIZATION_QUEUE.empty():
+            MapManager._TILE_LOAD_IDLE_SINCE = None
+            return
+
+        if MapManager._TILE_LOAD_IDLE_SINCE is None:
+            MapManager._TILE_LOAD_IDLE_SINCE = time.time()
+            return
+
+        if (time.time() - MapManager._TILE_LOAD_IDLE_SINCE) >= MapManager.TILE_LOAD_IDLE_TIMEOUT:
+            Logger.info('[Maps] Tile loader idle, shutting down worker pool.')
+            MapManager.shutdown_tile_loader(wait=False)
+
+    @staticmethod
+    def _apply_tile_load_result(key, map_data):
+        if not key:
+            return
+
+        map_id, adt_x, adt_y = MapManager._split_tile_key(key)
+        if map_id not in MAPS_TILES:
+            return
+
+        tile = MAPS_TILES[map_id][adt_x][adt_y]
+        if key not in PENDING_TILE_INITIALIZATION:
+            tile.unload()
+            return
+
+        if config.Server.Settings.use_map_tiles and map_data and map_data.error == MapTileLoadError.NONE:
+            MapManager._finalize_tile_load(map_id, adt_x, adt_y, map_data)
+            return
+
+        if config.Server.Settings.use_map_tiles:
+            if not map_data:
+                Logger.error(f'[Maps] Failed to load map tile, Map:{map_id} Tile:{adt_x},{adt_y}')
+            else:
+                filename = map_data.filename
+                if map_data.error == MapTileLoadError.MISSING:
+                    Logger.warning(f'[Maps] Unable to locate map file: {filename}, '
+                                   f'Map:{map_id} Tile:{adt_x},{adt_y}')
+                elif map_data.error == MapTileLoadError.VERSION:
+                    version = map_data.version
+                    Logger.error(
+                        f'[Maps] Unexpected map version. Expected "{MapTile.EXPECTED_VERSION}", found "{version}".'
+                    )
+                else:
+                    Logger.error(f'[Maps] Failed to load map tile: {filename}')
+
+        MapManager._finalize_tile_load(map_id, adt_x, adt_y, None)
+
+    @staticmethod
+    def _finalize_tile_load(map_id, adt_x, adt_y, map_data):
+        tile = MAPS_TILES[map_id][adt_x][adt_y]
+        tile.initialized = True
+        tile.ready = False
+        use_float_16 = config.Server.Settings.use_float_16
+        tile.apply_map_data(map_data, use_float_16)
+
+        namigator = MAPS_NAMIGATOR[map_id] if (map_id in MAPS_NAMIGATOR and MapManager.NAMIGATOR_LOADED) else None
+        tile.has_navigation = tile.load_namigator_data(namigator)
+        tile.ready = True
+
+    @staticmethod
+    def _split_tile_key(key):
         map_id, adt_x, adt_y = str(key).rsplit(',')
-        MapManager.initialize_adt_tile(int(map_id), int(adt_x), int(adt_y))
+        return int(map_id), int(adt_x), int(adt_y)
 
     @staticmethod
     def initialize_adt_tile(map_id, adt_x, adt_y):
@@ -220,6 +465,8 @@ class MapManager:
         if tile and tile.is_ready():
             Logger.info(f'[Map] Unloading map tile, Map:{map_id} Tile:{adt_x},{adt_y}')
             tile.unload()
+        elif tile and tile.is_loading():
+            tile.unload()
 
         # Namigator unload (.nav)
         if (map_id in MAPS_NAMIGATOR and MapManager.has_navs(map_id) and not MapManager.NAMIGATOR_FAILED
@@ -266,62 +513,88 @@ class MapManager:
 
     # noinspection PyBroadException
     @staticmethod
-    def calculate_z(map_id, x, y, current_z=0.0, is_rand_point=False) -> tuple:
-        # float, z_locked (Could not use map files Z)
+    def calculate_z(map_id, x, y, current_z, is_rand_point=False) -> tuple: # float, ZSource
+
+        def _debug_return(z, source):
+            # Always return WMO for dungeons.
+            if MapManager.is_dungeon_map_id(map_id):
+                source = ZSource.WMO
+
+            return z, source
+
+        def _maybe_apply_navs(base_z, base_source, navs_z):
+            if not navs_z:
+                return _debug_return(base_z, base_source)
+            if base_source == ZSource.CURRENT_Z:
+                return _debug_return(navs_z, ZSource.TERRAIN)
+            if abs(current_z - navs_z) < abs(current_z - base_z):
+                return _debug_return(navs_z, base_source)
+            return _debug_return(base_z, base_source)
+
         if not config.Server.Settings.use_nav_tiles and not config.Server.Settings.use_map_tiles:
-            return current_z, False
+            return _debug_return(current_z, ZSource.CURRENT_Z)
         try:
+            navs_z = MapManager._get_navs_z(map_id, x, y, current_z, is_rand_point=is_rand_point)
             adt_x, adt_y, cell_x, cell_y = MapUtils.calculate_tile(x, y)
 
             # No tile data available or busy loading.
-            if MapManager._check_tile_load(map_id, x, y, adt_x, adt_y) != MapTileStates.READY:
-                return current_z, False
-
-            # Always prioritize Namigator if enabled.
-            if config.Server.Settings.use_nav_tiles:
-                nav_z, z_locked = MapManager.calculate_nav_z(map_id, x, y, current_z, is_rand_point=is_rand_point)
-                if not z_locked:
-                    return nav_z, False
+            tile_state = MapManager._check_tile_load(map_id, x, y, adt_x, adt_y)
+            if tile_state != MapTileStates.READY:
+                return _maybe_apply_navs(current_z, ZSource.CURRENT_Z, navs_z)
 
             # Check if we have .map data for this request.
             tile = MAPS_TILES[map_id][adt_x][adt_y]
             if not tile or not tile.has_maps:
-                return current_z, True
+                return _maybe_apply_navs(current_z, ZSource.CURRENT_Z, navs_z)
 
             try:
-                calculated_z = MapManager.get_normalized_height_for_cell(map_id, x, y, adt_x, adt_y, cell_x, cell_y)
+                calculated_z, height_source = tile.get_best_height_at_world(x, y, current_z)
                 # Tolerance.
                 tol = 1.1 if not is_rand_point else 2
                 # If Z goes outside boundaries, expand our search.
                 if (math.fabs(current_z - calculated_z) > tol) and current_z:
-                    found, z2 = MapManager.get_near_height(map_id, x, y, adt_x, adt_y, cell_x, cell_y, current_z, tol)
-                    # Not locked if found, else current z locked.
-                    return (z2, False) if found else (current_z, True)
+                    found, z2 = MapManager.get_near_height(map_id, x, y, current_z, tol)
+                    if found:
+                        return _maybe_apply_navs(z2, ZSource.TERRAIN, navs_z)
+                    return _maybe_apply_navs(current_z, ZSource.CURRENT_Z, navs_z)
                 # First Z was valid.
-                return calculated_z, False
+                return _maybe_apply_navs(calculated_z, height_source, navs_z)
             except:
                 tile = MAPS_TILES[map_id][adt_x][adt_y]
-                return tile.z_height_map[cell_x][cell_y], False
+                if tile:
+                    safe_cell_x = max(0, min(cell_x, RESOLUTION_ZMAP - 1))
+                    safe_cell_y = max(0, min(cell_y, RESOLUTION_ZMAP - 1))
+                    return _maybe_apply_navs(tile.get_z_at(safe_cell_x, safe_cell_y), ZSource.TERRAIN, navs_z)
+                return _maybe_apply_navs(current_z, ZSource.CURRENT_Z, navs_z)
         except:
             Logger.error(traceback.format_exc())
-            return current_z if current_z else 0.0, False
+            return _debug_return(current_z if current_z else 0.0, ZSource.CURRENT_Z)
 
     @staticmethod
-    def calculate_nav_z(map_id, x, y, current_z=0.0, is_rand_point=False) -> tuple:  # float, bool result negation
-        # If nav tiles disabled or unable to load Namigator, return current Z as locked.
+    def _get_navs_z(map_id, x, y, current_z, is_rand_point=False):
+        if not config.Server.Settings.use_nav_tiles:
+            return 0.0
+        nav_z, z_source = MapManager.calculate_nav_z(map_id, x, y, current_z, is_rand_point=is_rand_point)
+        if z_source == ZSource.CURRENT_Z:
+            return 0.0
+        return nav_z
+
+    @staticmethod
+    def calculate_nav_z(map_id, x, y, current_z=0.0, is_rand_point=False) -> tuple:  # float, ZSource
+        # If nav tiles disabled or unable to load Namigator, return current Z.
         if not config.Server.Settings.use_nav_tiles or not MapManager.NAMIGATOR_LOADED:
-            return current_z, True
+            return current_z, ZSource.CURRENT_Z
 
         if map_id not in MAPS:
-            return current_z, True
+            return current_z, ZSource.CURRENT_Z
 
         if map_id not in MAPS_NAMIGATOR:
-            return current_z, True
+            return current_z, ZSource.CURRENT_Z
 
         adt_x, adt_y = MapUtils.get_tile(x, y)
         # Check if we need to load adt.
         if MapManager._check_tile_load(map_id, x, y, adt_x, adt_y) != MapTileStates.READY:
-            return current_z, True
+            return current_z, ZSource.CURRENT_Z
 
         # Query available heights.
         heights = MAPS_NAMIGATOR[map_id].query_heights(float(x), float(y))
@@ -334,12 +607,12 @@ class MapManager:
         if len(heights) == 0:
             if not is_rand_point:
                 Logger.warning(f'[NAMIGATOR] Unable to find Z for Map {map_id} ADT [{adt_x},{adt_y}] {x} {y} {current_z}')
-            return current_z, True
+            return current_z, ZSource.CURRENT_Z
 
         # We are only interested in the resulting Z near to the Z we know.
         heights = sorted(heights, key=lambda _z: abs(current_z - _z))
 
-        return heights[0], False
+        return heights[0], ZSource.NAVS
 
     @staticmethod
     def los_check(map_id, src_loc, dst_loc, doodads=False):
@@ -400,7 +673,7 @@ class MapManager:
         return vector.get_random_point_in_radius(radius)
 
     @staticmethod
-    def can_reach_location(map_id, src_vector, dst_vector):
+    def can_reach_location(map_id, src_vector, dst_vector, smooth=False, clamp_endpoint=False):
         # If nav tiles disabled or unable to load Namigator, return as True.
         if not config.Server.Settings.use_nav_tiles or not MapManager.NAMIGATOR_LOADED:
             return True
@@ -408,7 +681,7 @@ class MapManager:
         if map_id not in MAPS_NAMIGATOR:
             return True
 
-        failed, in_place, path_ = MapManager.calculate_path(map_id, src_vector, dst_vector, True)
+        failed, in_place, path_ = MapManager.calculate_path(map_id, src_vector, dst_vector, True, smooth, clamp_endpoint)
         return failed, path_
 
     @staticmethod
@@ -442,53 +715,58 @@ class MapManager:
                                                        end_location.x, end_location.y, end_location.z)
 
     @staticmethod
-    def calculate_path(map_id, src_loc, dst_loc, los=False) -> tuple:  # bool failed, in_place, path list.
+    def calculate_path(map_id, src_loc, dst_loc, los=False, smooth=False, clamp_endpoint=False) -> tuple:  # bool failed, in_place, path list.
+        # Freeze both vectors to avoid mutation.
+        src_pos = src_loc.copy()
+        dst_pos = dst_loc.copy()
+
         # If nav tiles disabled or unable to load Namigator, return the end_vector as found.
         if not config.Server.Settings.use_nav_tiles or not MapManager.NAMIGATOR_LOADED:
-            return False, False, [dst_loc]
+            return False, False, [dst_pos]
 
         # We don't have navs loaded for a given map, return end vector.
         namigator = MAPS_NAMIGATOR.get(map_id, None)
         if not namigator:
-            return False, False, [dst_loc]
+            return False, False, [dst_pos]
 
         # At destination, return end vector.
-        if src_loc.approximately_equals(dst_loc):
-            return False, False, [dst_loc]
+        if src_pos.approximately_equals(dst_pos):
+            return False, False, [dst_pos]
 
         # Too short of a path, return end vector.
-        if src_loc.distance(dst_loc) < 1.0:
-            return False, False, [dst_loc]
+        if src_pos.distance(dst_pos) < 1.0:
+            return False, False, [dst_pos]
 
         # Calculate source adt coordinates for x,y.
-        src_adt_x, src_adt_y = MapUtils.get_tile(src_loc.x, src_loc.y)
+        src_adt_x, src_adt_y = MapUtils.get_tile(src_pos.x, src_pos.y)
 
         # Calculate destination adt coordinates for x,y.
-        dst_adt_x, dst_adt_y = MapUtils.get_tile(dst_loc.x, dst_loc.y)
+        dst_adt_x, dst_adt_y = MapUtils.get_tile(dst_pos.x, dst_pos.y)
 
         # Check if loaded or unable to load.
-        src_tile_state = MapManager._check_tile_load(map_id, src_loc.x, src_loc.y, src_adt_x, src_adt_y)
+        src_tile_state = MapManager._check_tile_load(map_id, src_pos.x, src_pos.y, src_adt_x, src_adt_y)
         if src_tile_state != MapTileStates.READY:
             if src_tile_state == MapTileStates.LOADING:
                 Logger.warning(f'[Namigator] Source tile was loading when path requested.')
-            return True, False, [dst_loc]
+            return True, False, [dst_pos]
 
         # Check if loaded or unable to load.
-        dst_tile_state = MapManager._check_tile_load(map_id, dst_loc.x, dst_loc.y, dst_adt_x, dst_adt_y)
+        dst_tile_state = MapManager._check_tile_load(map_id, dst_pos.x, dst_pos.y, dst_adt_x, dst_adt_y)
         if dst_tile_state != MapTileStates.READY:
             if dst_tile_state == MapTileStates.LOADING:
                 Logger.warning(f'[Namigator] Destination tile was loading when path requested.')
-            return True, False, [dst_loc]
+            return True, False, [dst_pos]
 
         # Calculate path.
-        navigation_path = namigator.find_path(src_loc.x, src_loc.y, src_loc.z, dst_loc.x, dst_loc.y, dst_loc.z)
+        # TODO: Use smooth/clamp_endpoint.
+        navigation_path = namigator.find_path(src_pos.x, src_pos.y, src_pos.z, dst_pos.x, dst_pos.y, dst_pos.z)
 
         if len(navigation_path) <= 1:
             if not los:
-                Logger.warning(f'[Namigator] Unable to find path, map {map_id} loc {src_loc} end {dst_loc}')
-            return True, False, [dst_loc]
+                Logger.warning(f'[Namigator] Unable to find path, map {map_id} loc {src_pos} end {dst_pos}')
+            return True, False, [dst_pos]
 
-        # Pop starting location, we already have that and WoW client seems to crash when sending
+        # Pop starting location, we already have that, and the client seems to crash when sending
         # movements with too short of a diff.
         del navigation_path[0]
 
@@ -518,47 +796,65 @@ class MapManager:
         return True
 
     @staticmethod
+    def get_height_at_world(map_id, x, y):
+        if map_id not in MAPS_TILES:
+            return 0.0
+        adt_x, adt_y = MapUtils.get_tile(x, y)
+        if adt_x < 0 or adt_x >= BLOCK_SIZE or adt_y < 0 or adt_y >= BLOCK_SIZE:
+            return 0.0
+        tile = MAPS_TILES[map_id][adt_x][adt_y]
+        if not tile or not tile.has_maps:
+            return 0.0
+        return tile.get_height_at_world(x, y)
+
+    @staticmethod
     def get_cell_height(map_id, adt_x, adt_y, cell_x, cell_y):
-        if cell_x > RESOLUTION_ZMAP:
+        original_adt_x = adt_x
+        original_adt_y = adt_y
+        original_cell_x = cell_x
+        original_cell_y = cell_y
+
+        if cell_x >= RESOLUTION_ZMAP:
             adt_x = int(adt_x + 1)
             cell_x = int(cell_x - RESOLUTION_ZMAP)
         elif cell_x < 0:
             adt_x = int(adt_x - 1)
             cell_x = int(-cell_x - 1)
 
-        if cell_y > RESOLUTION_ZMAP:
+        if cell_y >= RESOLUTION_ZMAP:
             adt_y = int(adt_y + 1)
             cell_y = int(cell_y - RESOLUTION_ZMAP)
         elif cell_y < 0:
             adt_y = int(adt_y - 1)
             cell_y = int(-cell_y - 1)
 
-        return MAPS_TILES[map_id][adt_x][adt_y].get_z_at(cell_x, cell_y)
+        if map_id not in MAPS_TILES:
+            return 0.0
+
+        if adt_x < 0 or adt_x >= BLOCK_SIZE or adt_y < 0 or adt_y >= BLOCK_SIZE:
+            adt_x = original_adt_x
+            adt_y = original_adt_y
+            cell_x = max(0, min(original_cell_x, RESOLUTION_ZMAP - 1))
+            cell_y = max(0, min(original_cell_y, RESOLUTION_ZMAP - 1))
+
+        tile = MAPS_TILES[map_id][adt_x][adt_y]
+        if not tile or not tile.has_maps:
+            if adt_x != original_adt_x or adt_y != original_adt_y:
+                tile = MAPS_TILES[map_id][original_adt_x][original_adt_y]
+                if tile and tile.has_maps:
+                    cell_x = max(0, min(original_cell_x, RESOLUTION_ZMAP - 1))
+                    cell_y = max(0, min(original_cell_y, RESOLUTION_ZMAP - 1))
+                    return tile.get_height_at_cell(cell_x, cell_y)
+            return 0.0
+
+        return tile.get_height_at_cell(cell_x, cell_y)
 
     @staticmethod
-    def get_normalized_height_for_cell(map_id, x, y, adt_x, adt_y, cell_x, cell_y):
-        # Calculate normalized coordinates within the cell.
-        x_norm = (RESOLUTION_ZMAP - 1) * (32.0 - (x / ADT_SIZE) - adt_x) - cell_x
-        y_norm = (RESOLUTION_ZMAP - 1) * (32.0 - (y / ADT_SIZE) - adt_y) - cell_y
-
-        # Retrieve cell heights for the four corners.
-        v1 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x, cell_y)
-        v2 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x + 1, cell_y)
-        v3 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x, cell_y + 1)
-        v4 = MapManager.get_cell_height(map_id, adt_x, adt_y, cell_x + 1, cell_y + 1)
-
-        # Bilinear interpolation.
-        top_height = MapManager._lerp(v1, v2, x_norm)
-        bottom_height = MapManager._lerp(v3, v4, x_norm)
-        height = MapManager._lerp(top_height, bottom_height, y_norm)
-
-        return height
-
-    @staticmethod
-    def get_near_height(map_id, x, y, adt_x, adt_y, cell_x, cell_y, current_z, tolerance=1.0):
+    def get_near_height(map_id, x, y, current_z, tolerance=1.0):
+        cell_size = ADT_SIZE / (RESOLUTION_ZMAP - 1)
         for i in range(-2, 2):
             for j in range(-2, 2):
-                height = MapManager.get_normalized_height_for_cell(map_id, x, y, adt_x, adt_y, cell_x + i, cell_y + j)
+                height = MapManager.get_height_at_world(map_id, x + (i * cell_size), y + (j * cell_size))
                 if abs(current_z - height) < tolerance:
                     return True, height
         # Not found.
@@ -580,6 +876,16 @@ class MapManager:
         except:
             Logger.error(traceback.format_exc())
             return None
+
+    @staticmethod
+    def is_wmo_interior(map_id, x, y, z):
+        _, height_source = MapManager.calculate_z(map_id, x, y, z)
+        return not config.Server.Settings.use_map_tiles or height_source == ZSource.WMO
+
+    @staticmethod
+    def is_wmo_exterior(map_id, x, y, z):
+        _, height_source = MapManager.calculate_z(map_id, x, y, z)
+        return not config.Server.Settings.use_map_tiles or height_source != ZSource.WMO
 
     @staticmethod
     def get_liquid_information(map_id, x, y, z, ignore_z=False):

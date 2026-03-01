@@ -14,6 +14,7 @@ from utils.constants.OpCodes import OpCode
 from utils.constants.SpellCodes import SpellImmunity
 from utils.constants.UnitCodes import UnitReaction
 from utils.constants.UpdateFields import ObjectFields, UnitFields
+from utils.constants.MiscCodes import UpdateFlags
 
 
 class ObjectManager:
@@ -119,7 +120,7 @@ class ObjectManager:
         packet = PacketWriter.get_packet(OpCode.SMSG_UPDATE_OBJECT, data)
         return packet
 
-    def get_create_update_bytes(self, requester):
+    def get_create_update_bytes(self, requester, update_data=None):
         if not self.initialized:
             self.initialize_field_values()
 
@@ -144,7 +145,7 @@ class ObjectManager:
         ))
 
         # Normal update fields.
-        data.extend(self._get_fields_update(True, requester))
+        data.extend(self._get_fields_update(True, requester, update_data=update_data))
 
         return data
 
@@ -217,6 +218,12 @@ class ObjectManager:
 
     def get_display_id(self):
         return self.current_display_id
+
+    def get_bounding_radius(self):
+        return max(0.0, self.bounding_radius or 0.0)
+
+    def get_combat_reach(self):
+        return 0.0
 
     def set_display_id(self, display_id):
         self.current_display_id = display_id
@@ -295,48 +302,47 @@ class ObjectManager:
     def _get_fields_update(self, is_create, requester, update_data=None):
         # Make sure we work on a copy of the current mask and values.
         if not update_data:
-            update_data = self.update_packet_factory.generate_update_data(flush_current=True)
+            update_data = self.update_packet_factory.generate_update_data()
 
-        mask = update_data.update_bit_mask
+        with self.update_packet_factory.lock:
+            mask = update_data.update_bit_mask.copy()
 
-        data = bytearray()
-        for field_index in range(self.update_packet_factory.update_mask.field_count):
-            # Partial packets only care for fields that had changes.
-            if not is_create and mask[field_index] == 0:
-                continue
-            # Check for encapsulation, turn off the bit if the requester has no read access.
-            if not self.update_packet_factory.has_read_rights_for_field(field_index, requester):
-                mask[field_index] = 0
-                continue
-            # Defer bytes_1 sheath update, this is similar to the doors collision issue (But for sheath state)
-            # in which the client needs to see the doors as ready first and then receive their actual state after creation.
-            elif is_create and self.is_unit() and field_index == UnitFields.UNIT_FIELD_BYTES_1:
-                data.extend(pack('<I', self.get_bytes_1(is_create=True)))
+            data = bytearray()
+            for field_index in range(self.update_packet_factory.update_mask.field_count):
+                # Partial packets only care for fields that had changes.
+                if not is_create and mask[field_index] == 0 and not self.update_packet_factory.is_dynamic_field(field_index):
+                    continue
+                # Check for encapsulation, turn off the bit if the requester has no read access.
+                if not self.update_packet_factory.has_read_rights_for_field(field_index, requester):
+                    mask[field_index] = 0
+                    continue
+
+                # Append field value and turn on the bit on mask.
+                data.extend(self._get_field_value_for_update(field_index, is_create, requester, update_data))
                 mask[field_index] = 1
-                continue
-            # Append field value and turn on the bit on mask.
-            data.extend(update_data.get_field_bytes(field_index))
-            mask[field_index] = 1
-        return pack('<B', self.update_packet_factory.update_mask.block_count) + mask.tobytes() + data
+            return pack('<B', self.update_packet_factory.update_mask.block_count) + mask.tobytes() + data
+
+    def _get_field_value_for_update(self, index, is_create, requester, update_data):
+        return update_data.get_field_bytes(index)
 
     # noinspection PyMethodMayBeStatic
     def is_aura_field(self, index):
         return UnitFields.UNIT_FIELD_AURA <= index <= UnitFields.UNIT_FIELD_AURA + 55
 
     def set_int32(self, index, value, force=False):
-        return self._set_value(index, value, 'i', False, force)
+        return self._set_value(index, int(value), 'i', False, force)
 
     def set_uint32(self, index, value, force=False):
-        return self._set_value(index, value, 'I', False, force)
+        return self._set_value(index, int(value), 'I', False, force)
 
     def set_int64(self, index, value, force=False):
-        return self._set_value(index, value, 'q', True, force)
+        return self._set_value(index, int(value), 'q', True, force)
 
     def set_uint64(self, index, value, force=False):
-        return self._set_value(index, value, 'Q', True, force)
+        return self._set_value(index, int(value), 'Q', True, force)
 
     def set_float(self, index, value, force=False):
-        return self._set_value(index, value, 'f', False, force)
+        return self._set_value(index, float(value), 'f', False, force)
 
     def get_int32(self, index):
         return self._get_value_by_type_at('i', index, False)
@@ -354,15 +360,22 @@ class ObjectManager:
         return self._get_value_by_type_at('f', index, False)
 
     def _get_value_by_type_at(self, value_type, index, is_int64):
-        return self.update_packet_factory.get_value(index, value_type, is_int64)
+        return self.update_packet_factory.get_value(index, value_type)
 
+    # Some client UI/control updates (e.g., shapeshift, charm, farsight) only happen when the
+    # related UpdateField is received. Using force for the local player sends an immediate
+    # update packet, so the client reacts without waiting for the next update, causing the UI to glitch.
     def _set_value(self, index, value, value_type, is_int64, force=False):
-        force = force and self.is_player()
-        if force or self.update_packet_factory.should_update(index, value, is_int64):
-            self.update_packet_factory.update(index, value, value_type, is_int64)
-            if force and self.is_in_world():  # Changes should apply immediately.
-                self.get_map().update_object(self, has_changes=True)
-            return True, force
+        force = force and (self.is_player() or self.is_gameobject())
+        with self.update_packet_factory.lock:
+            if force or self.update_packet_factory.should_update(index, value, value_type, is_int64):
+                self.update_packet_factory.update(index, value, value_type, is_int64)
+                if force and self.is_in_world():  # Changes should apply immediately.
+                    update_flags = UpdateFlags.CHANGES
+                    if self.is_player() and self.inventory.has_pending_updates():
+                        update_flags |= UpdateFlags.INVENTORY
+                    self.get_map().update_object(self, update_flags=update_flags)
+                return True, force
         return False, force
 
     # override
@@ -375,6 +388,10 @@ class ObjectManager:
 
     # override
     def on_cell_change(self):
+        pass
+
+    # override
+    def is_in_world(self):
         pass
 
     def get_low_guid(self):
@@ -390,42 +407,42 @@ class ObjectManager:
 
     def is_object(self, by_mask=False):
         if by_mask:
-            return self.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT
+            return (self.get_type_mask() & ObjectTypeFlags.TYPE_OBJECT) != 0
         return self.get_type_id() == ObjectTypeIds.ID_OBJECT
 
     def is_unit(self, by_mask=False):
         if by_mask:
-            return self.get_type_mask() & ObjectTypeFlags.TYPE_UNIT
+            return (self.get_type_mask() & ObjectTypeFlags.TYPE_UNIT) != 0
         return self.get_type_id() == ObjectTypeIds.ID_UNIT
 
     def is_player(self, by_mask=False):
         if by_mask:
-            return self.get_type_mask() & ObjectTypeFlags.TYPE_PLAYER
+            return (self.get_type_mask() & ObjectTypeFlags.TYPE_PLAYER) != 0
         return self.get_type_id() == ObjectTypeIds.ID_PLAYER
 
     def is_gameobject(self, by_mask=False):
         if by_mask:
-            return self.get_type_mask() & ObjectTypeFlags.TYPE_GAMEOBJECT
+            return (self.get_type_mask() & ObjectTypeFlags.TYPE_GAMEOBJECT) != 0
         return self.get_type_id() == ObjectTypeIds.ID_GAMEOBJECT
 
     def is_dyn_object(self, by_mask=False):
         if by_mask:
-            return self.get_type_mask() & ObjectTypeFlags.TYPE_DYNAMICOBJECT
+            return (self.get_type_mask() & ObjectTypeFlags.TYPE_DYNAMICOBJECT) != 0
         return self.get_type_id() == ObjectTypeIds.ID_DYNAMICOBJECT
 
     def is_corpse(self, by_mask=False):
         if by_mask:
-            return self.get_type_mask() & ObjectTypeFlags.TYPE_CORPSE
+            return (self.get_type_mask() & ObjectTypeFlags.TYPE_CORPSE) != 0
         return self.get_type_id() == ObjectTypeIds.ID_CORPSE
 
     def is_item(self, by_mask=False):
         if by_mask:
-            return self.get_type_mask() & ObjectTypeFlags.TYPE_ITEM
+            return (self.get_type_mask() & ObjectTypeFlags.TYPE_ITEM) != 0
         return self.get_type_id() == ObjectTypeIds.ID_ITEM
 
     def is_container(self, by_mask=False):
         if by_mask:
-            return self.get_type_mask() & ObjectTypeFlags.TYPE_CONTAINER
+            return (self.get_type_mask() & ObjectTypeFlags.TYPE_CONTAINER) != 0
         return self.get_type_id() == ObjectTypeIds.ID_CONTAINER
 
     def is_transport(self):
@@ -463,12 +480,12 @@ class ObjectManager:
             self.get_map().remove_object(self)
             return
         # Despawn (De-activate)
-        self.get_map().update_object(self, has_changes=True)
+        self.get_map().update_object(self, update_flags=UpdateFlags.CHANGES)
 
     # override
     def respawn(self):
         self.is_spawned = True
-        self.get_map().update_object(world_object=self, has_changes=True)
+        self.get_map().update_object(world_object=self, update_flags=UpdateFlags.CHANGES)
 
     def get_map(self):
         from game.world.managers.maps.MapManager import MapManager
@@ -607,9 +624,6 @@ class ObjectManager:
 
     def is_hostile_to(self, target):
         return self._allegiance_status_checker(target) < UnitReaction.UNIT_REACTION_NEUTRAL
-
-    def is_in_world(self):
-        return False
 
     def get_destroy_packet(self):
         data = pack('<Q', self.guid)

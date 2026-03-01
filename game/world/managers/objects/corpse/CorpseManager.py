@@ -4,6 +4,7 @@ from game.world.managers.objects.units.player.PlayerManager import PlayerManager
 from utils.ByteUtils import ByteUtils
 from utils.constants.ItemCodes import InventorySlots
 from utils.constants.MiscCodes import ObjectTypeIds, HighGuid, ObjectTypeFlags
+from utils.constants.MiscCodes import UpdateFlags
 from utils.constants.UpdateFields import ObjectFields, CorpseFields
 
 
@@ -90,6 +91,9 @@ class CorpseManager(ObjectManager):
         self.ttl -= elapsed
         if self.ttl <= 0:
             self.despawn()
+
+        if self.has_pending_updates():
+            self.get_map().update_object(self, update_flags=UpdateFlags.CHANGES)
 
         self.last_tick = now
 

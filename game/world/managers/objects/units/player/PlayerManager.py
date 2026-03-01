@@ -1,5 +1,6 @@
 import math
 import time
+from threading import RLock
 from typing import Any
 
 from bitarray import bitarray
@@ -37,7 +38,7 @@ from utils.GuidUtils import GuidUtils
 from utils.Logger import Logger
 from utils.constants.DuelCodes import *
 from utils.constants.ItemCodes import InventoryTypes, ItemSubClasses
-from utils.constants.MiscCodes import ChatFlags, LootTypes, LiquidTypes, MountResults, DismountResults, LockTypes, \
+from utils.constants.MiscCodes import ChatFlags, LootTypes, LootErrors, MountResults, DismountResults, LockTypes, \
     SpeedType
 from utils.constants.MiscCodes import ObjectTypeFlags, ObjectTypeIds, PlayerFlags, WhoPartyStatus, HighGuid, \
     AttackTypes, MoveFlags
@@ -46,6 +47,7 @@ from utils.constants.SpellCodes import SpellTargetMask
 from utils.constants.UnitCodes import Classes, PowerTypes, Races, Genders, UnitFlags, Teams, \
     RegenStatsFlags, CreatureTypes, UnitStates
 from utils.constants.UpdateFields import *
+from utils.constants.MiscCodes import UpdateFlags
 
 MAX_ACTION_BUTTONS = 120
 MAX_EXPLORED_AREAS = 488
@@ -76,9 +78,12 @@ class PlayerManager(UnitManager):
         self.pending_teleport_data = []
         self.update_lock = False
         self.possessed_unit = None
+        self.after_teleport = False
         self.known_objects = KnownObjects(self)
         self.known_items = dict()
         self.known_stealth_units = dict()
+        self._inventory_operation_lock = RLock()
+        self._inventory_operation_count = 0
 
         self.player = player
         self.online = online
@@ -244,7 +249,7 @@ class PlayerManager(UnitManager):
             self.set_uint32(PlayerFields.PLAYER_BYTES_2, self.get_player_bytes_2())
 
     def is_afk(self):
-        return self.player.extra_flags & PlayerFlags.PLAYER_FLAGS_AFK
+        return (self.player.extra_flags & PlayerFlags.PLAYER_FLAGS_AFK) != 0
 
     def toggle_afk(self):
         if self.is_afk():
@@ -257,7 +262,7 @@ class PlayerManager(UnitManager):
         self.set_uint32(PlayerFields.PLAYER_BYTES_2, self.get_player_bytes_2())
 
     def is_dnd(self):
-        return self.player.extra_flags & PlayerFlags.PLAYER_FLAGS_DND
+        return (self.player.extra_flags & PlayerFlags.PLAYER_FLAGS_DND) != 0
 
     def toggle_dnd(self):
         if self.is_dnd():
@@ -347,6 +352,9 @@ class PlayerManager(UnitManager):
 
     def logout(self):
         self.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_LOGOUT_COMPLETE))
+        self.inventory.clear_item_read_translation_timers()
+        TradeManager.cancel_trade(self)
+        self.interrupt_looting()
         self.online = False
         self.logout_timer = -1
         self.mirror_timers_manager.stop_all()
@@ -480,7 +488,7 @@ class PlayerManager(UnitManager):
 
         # End duel and detach pets if this is a long-distance teleport.
         if not is_instant:
-            # Set sanctuary, this will take care of leaving combat, removing casts, etc.
+            # Set sanctuary; this will take care of leaving combat, removing casts, etc.
             self.set_sanctuary(True, time_secs=1)
             self.pet_manager.detach_active_pets()
 
@@ -488,7 +496,7 @@ class PlayerManager(UnitManager):
             if duel_arbiter:
                 duel_arbiter.force_duel_end(self)
 
-        # If unit is being moved by a spline, stop it.
+        # If a spline is moving the unit, stop it.
         if self.movement_manager.unit_is_moving():
             self.movement_manager.reset()
 
@@ -516,6 +524,8 @@ class PlayerManager(UnitManager):
 
         # Pending teleport information.
         pending_teleport = self.pending_teleport_data[0]
+
+        self.interrupt_looting()
 
         # Leave combat.
         self.leave_combat()
@@ -579,7 +589,7 @@ class PlayerManager(UnitManager):
         # Pending teleport information.
         pending_teleport = self.pending_teleport_data[0]
 
-        # Check if player comes from a long teleport.
+        # Check if the player comes from a long teleport.
         from_long_teleport = pending_teleport.is_long_teleport()
 
         dbc_map = DbcDatabaseManager.map_get_by_id(pending_teleport.destination_map)
@@ -625,7 +635,7 @@ class PlayerManager(UnitManager):
             self.pending_taxi_destination = None
 
         # Unmount if needed.
-        if self.unit_flags & UnitFlags.UNIT_MASK_MOUNTED:
+        if self.is_mounted():
             self.unmount()
 
         # Repop/Resurrect.
@@ -639,11 +649,12 @@ class PlayerManager(UnitManager):
             self.stat_manager.apply_bonuses()
 
         # Get us in a new cell.
-        self.get_map().update_object(self, has_changes=True)
+        self.get_map().update_object(self)
 
         # Notify movement data to surrounding players when teleporting within the same map
         # (for example when using Charge)
         if not from_long_teleport:
+            self.after_teleport = True
             self.movement_flags |= MoveFlags.MOVEFLAG_MOVED
             heart_beat_packet = self.get_heartbeat_packet()
             self.get_map().send_surrounding(heart_beat_packet, self, True)
@@ -665,11 +676,11 @@ class PlayerManager(UnitManager):
         self.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_CANCEL_COMBAT))
 
     # override
-    def set_stunned(self, active=True, index=-1) -> bool:
+    def set_stunned(self, active=True, index=-1, allow_interrupt=True) -> bool:
         if active and self.pending_taxi_destination:
             return False  # Ignore on flight path.
 
-        is_stunned = super().set_stunned(active, index)
+        is_stunned = super().set_stunned(active, index, allow_interrupt)
         if is_stunned:
             # Release loot if any.
             self.interrupt_looting()
@@ -689,7 +700,8 @@ class PlayerManager(UnitManager):
         else:
             opcode = OpCode.SMSG_FORCE_MOVE_UNROOT
 
-        self.enqueue_packet(PacketWriter.get_packet(opcode))
+        data = pack('<QI', self.guid, 0)
+        self.enqueue_packet(PacketWriter.get_packet(opcode, data))
 
     def set_tracked_creature_type(self, creature_type, active, index=-1):
         is_tracking = self._set_effect_flag_state(CreatureTypes, creature_type, active, index)
@@ -725,24 +737,66 @@ class PlayerManager(UnitManager):
         arbiter = self.get_map().get_surrounding_gameobject_by_guid(self, arbiter_guid)
         return arbiter
 
+    def send_mount_result(self, result: MountResults):
+        self.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_MOUNTRESULT, pack('<I', int(result))))
+
+    def send_dismount_result(self, result: DismountResults):
+        self.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_DISMOUNTRESULT, pack('<I', int(result))))
+
+    def is_in_disallowed_mount_form(self):
+        if not self.shapeshift_form:
+            return False
+
+        form_entry = DbcDatabaseManager.spell_shapeshift_form_get_by_id(self.shapeshift_form)
+        if not form_entry:
+            return False
+
+        # Stances are represented as shapeshifts but are mount-compatible.
+        return (form_entry.Flags & 1) == 0
+
     # override
     def mount(self, mount_display_id):
-        # TODO: validate mount. Check MountResults.
+        if mount_display_id <= 0 or \
+                not DbcDatabaseManager.CreatureDisplayInfoHolder.creature_display_info_get_by_id(mount_display_id):
+            self.send_mount_result(MountResults.MOUNTRESULT_NOT_MOUNTABLE)
+            return False
+
+        if self.is_mounted():
+            self.send_mount_result(MountResults.MOUNTRESULT_ALREADY_MOUNTED)
+            return False
+
+        if self.is_in_disallowed_mount_form():
+            self.send_mount_result(MountResults.MOUNTRESULT_SHAPESHIFTED)
+            return False
+
+        if self.unit_flags & UnitFlags.UNIT_FLAG_LOOTING:
+            self.send_mount_result(MountResults.MOUNTRESULT_LOOTING)
+            return False
+
         if not super().mount(mount_display_id):
-            data = pack('<QI', self.guid, MountResults.MOUNTRESULT_INVALID_MOUNTEE)
-            packet = PacketWriter.get_packet(OpCode.SMSG_MOUNTRESULT, data)
-            self.enqueue_packet(packet)
+            self.send_mount_result(MountResults.MOUNTRESULT_NOT_MOUNTABLE)
+            return False
+
+        self.send_mount_result(MountResults.MOUNTRESULT_OK)
+        return True
 
     # override
-    def unmount(self):
-        # TODO: validate unmount. Check DismountResults.
-        if not super().unmount():
-            data = pack('<QI', self.guid, DismountResults.DISMOUNT_RESULT_NOT_MOUNTED)
-            packet = PacketWriter.get_packet(OpCode.SMSG_DISMOUNTRESULT, data)
-            self.enqueue_packet(packet)
+    def unmount(self, from_aura=False):
+        if not self.is_mounted():
+            if not from_aura:
+                self.send_dismount_result(DismountResults.DISMOUNT_RESULT_NOT_MOUNTED)
+            return False
+
+        if not super().unmount(from_aura=from_aura):
+            if not from_aura:
+                self.send_dismount_result(DismountResults.DISMOUNT_RESULT_NOT_MOUNTED)
+            return False
+
+        self.send_dismount_result(DismountResults.DISMOUNT_RESULT_OK)
+        return True
 
     # override
-    def change_speed(self, speed_type=SpeedType.RUN, speed=0):
+    def change_speed(self, speed_type: SpeedType = SpeedType.RUN, speed: float = 0.0):
         if super().change_speed(speed_type, speed):
             if speed_type == SpeedType.RUN:
                 opcode = OpCode.SMSG_FORCE_SPEED_CHANGE
@@ -798,7 +852,7 @@ class PlayerManager(UnitManager):
 
     def send_loot_release(self, loot_selection):
         self.set_unit_flag(UnitFlags.UNIT_FLAG_LOOTING, active=False)
-        loot_guid = self.loot_selection.object_guid
+        loot_guid = loot_selection.object_guid
 
         high_guid: HighGuid = GuidUtils.extract_high_guid(loot_guid)
         data = pack('<QB', loot_selection.object_guid, 1)  # Must be 1 otherwise client keeps the loot window open
@@ -818,7 +872,7 @@ class PlayerManager(UnitManager):
 
         if target_world_object:
             # Retrieve the loot manager for the corresponding world object.
-            loot_manager = self.loot_selection.get_loot_manager(target_world_object)
+            loot_manager = loot_selection.get_loot_manager(target_world_object)
             # Remove self from active looters.
             loot_manager.remove_active_looter(self)
             object_type = target_world_object.get_type_id()
@@ -831,13 +885,16 @@ class PlayerManager(UnitManager):
                         enemy.killed_by = None
                     # If in party, check if this player has rights to release the loot for FFA.
                     elif enemy.killed_by and enemy.killed_by.group_manager:
-                        if self in enemy.killed_by.group_manager.get_allowed_looters(enemy):
+                        if self.guid in enemy.killed_by.group_manager.get_allowed_looters(enemy):
                             if not loot_manager.has_loot():  # Flush looters for this enemy.
                                 enemy.killed_by.group_manager.clear_looters_for_victim(enemy)
                             enemy.killed_by = None
                     # Empty loot, remove looting flags.
                     if not loot_manager.has_loot():
                         enemy.set_lootable(False)
+                    else:
+                        # Still has loot, but might not be for everyone, update lootable visibility.
+                        enemy.get_map().update_object(enemy, update_flags=UpdateFlags.DYNAMIC_FLAGS)
             # GAMEOBJECTS.
             elif object_type == ObjectTypeIds.ID_GAMEOBJECT:
                 game_object = target_world_object
@@ -853,6 +910,14 @@ class PlayerManager(UnitManager):
             if not loot_manager.has_loot():
                 loot_manager.clear()
         self.loot_selection = None
+
+    def send_loot_error(self, loot_guid, error_code=LootErrors.LOOT_ERROR_DIDNT_KILL):
+        # Client expects: guid + acquire type (0) + one-byte error code.
+        self.set_unit_flag(UnitFlags.UNIT_FLAG_LOOTING, active=False)
+        if self.loot_selection and self.loot_selection.object_guid == loot_guid:
+            self.loot_selection = None
+        data = pack('<QBB', loot_guid, LootTypes.LOOT_TYPE_NOTALLOWED, error_code)
+        self.enqueue_packet(PacketWriter.get_packet(OpCode.SMSG_LOOT_RESPONSE, data))
 
     def send_loot(self, loot_manager, from_item_container=False):
         loot_type = loot_manager.get_loot_type(self, loot_manager.world_object)
@@ -872,10 +937,10 @@ class PlayerManager(UnitManager):
             for loot in loot_manager.current_loot:
                 if loot:
                     # Skip conditions:
-                    # - Is quest item and player does not have the involved quest.
-                    # - Is quest multi-drop item and is no longer visible to this player.
+                    # - It's a quest item and player does not have the involved quest.
+                    # - It's a quest multi-drop item and is no longer visible to this player.
                     if not from_item_container and loot.is_quest_item() and \
-                            not self.player_or_group_require_quest_item(loot.get_item_entry(), only_self=True) or \
+                            not self.quest_manager.item_needed_by_quests(loot.item.item_template.entry) or \
                             not loot.is_visible_to_player(self):
                         slot += 1
                         continue
@@ -1038,8 +1103,8 @@ class PlayerManager(UnitManager):
                 self.quest_manager.update_surrounding_quest_status()
                 self.friends_manager.send_update_to_friends()
 
-    def player_or_group_require_quest_item(self, item_entry, only_self=False):
-        if not self.group_manager or only_self:
+    def player_or_group_require_quest_item(self, item_entry):
+        if not self.group_manager:
             return self.quest_manager.item_needed_by_quests(item_entry)
         else:
             for member in list(self.group_manager.members.values()):
@@ -1064,7 +1129,7 @@ class PlayerManager(UnitManager):
         else:
             self.coinage += amount
 
-        self.set_uint32(UnitFields.UNIT_FIELD_COINAGE, self.coinage)
+        self.set_uint32(UnitFields.UNIT_FIELD_COINAGE, self.coinage, force=True)
 
     def on_zone_change(self, new_zone):
         is_new_zone = new_zone != self.zone
@@ -1494,6 +1559,19 @@ class PlayerManager(UnitManager):
         else:
             Logger.warning('Tried to send packet to null session.')
 
+    def begin_inventory_operation(self):
+        with self._inventory_operation_lock:
+            self._inventory_operation_count += 1
+
+    def end_inventory_operation(self):
+        with self._inventory_operation_lock:
+            if self._inventory_operation_count > 0:
+                self._inventory_operation_count -= 1
+
+    def has_inventory_operation_in_progress(self):
+        with self._inventory_operation_lock:
+            return self._inventory_operation_count > 0
+
     def check_swimming_state(self, elapsed):
         if not self.is_alive:
             return
@@ -1548,6 +1626,8 @@ class PlayerManager(UnitManager):
 
         # Enchantment manager.
         self.enchantment_manager.update(elapsed)
+        # Item read translation timers.
+        self.inventory.update_item_read_translation_timers(now)
 
         # Release spirit timer.
         if not self.is_alive:
@@ -1570,7 +1650,8 @@ class PlayerManager(UnitManager):
         # Check if player has update fields changes.
         has_changes = self.has_pending_updates()
         # Avoid inventory/item update if there is an ongoing inventory operation.
-        has_inventory_changes = self.inventory.has_pending_updates()
+        has_inventory_changes = (self.inventory.has_pending_updates()
+                                 and not self.has_inventory_operation_in_progress())
 
         # Movement checks and group updates.
         has_moved = self.has_moved or self.has_turned
@@ -1589,7 +1670,12 @@ class PlayerManager(UnitManager):
 
         # Update system, propagate player changes to surrounding units.
         if self.online and (has_changes or has_inventory_changes):
-            self.get_map().update_object(self, has_changes, has_inventory_changes)
+            update_flags = UpdateFlags.NONE
+            if has_changes:
+                update_flags |= UpdateFlags.CHANGES
+            if has_inventory_changes:
+                update_flags |= UpdateFlags.INVENTORY
+            self.get_map().update_object(self, update_flags)
         # Not dirty, has a pending teleport and a teleport is not ongoing.
         elif not has_changes and not has_inventory_changes and self.pending_teleport_data and not self.update_lock:
             self.trigger_teleport()
@@ -1601,6 +1687,13 @@ class PlayerManager(UnitManager):
         # If not teleporting, notify self movement to surrounding units for proximity aggro.
         if not self.update_lock:
             self.update_manager.process_tick_updates()
+
+            if self.after_teleport:
+                self.after_teleport = False
+                # Bring guardians/pet to our location if needed (Destroyed because of teleport distance).
+                for pet_or_guardian in self.pet_manager.get_pet_and_guardians():
+                    if pet_or_guardian.is_in_world() and pet_or_guardian.guid not in self.known_objects:
+                        pet_or_guardian.near_teleport(self.location)
 
         self.last_tick = now
 
@@ -1628,6 +1721,7 @@ class PlayerManager(UnitManager):
                 self.enqueue_packet(death_notify_packet)
 
         TradeManager.cancel_trade(self)
+        self.interrupt_looting()
         self.spirit_release_timer = 0
         self.mirror_timers_manager.stop_all()
         self.update_swimming_state(False)

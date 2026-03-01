@@ -66,6 +66,10 @@ class MovementManager:
 
     # Broadcast a new spline from an active movement behavior.
     def spline_callback(self, spline, movement_behavior=None):
+        # Update to the latest position if necessary.
+        current_spline = self.unit.movement_spline
+        if current_spline and current_spline is not spline and not current_spline.is_complete():
+            current_spline.update_to_now()
         spline.initialize()
         self.unit.movement_spline = spline
         movement_packet = spline.try_build_movement_packet()
@@ -100,6 +104,12 @@ class MovementManager:
         if not self._can_move():
             if self._get_current_spline():
                 self.stop()
+            if not self.is_player and self.unit.is_casting():
+                current_behavior = self.get_current_behavior()
+                if current_behavior:
+                    current_behavior.on_movement_paused()
+                # Prevent immediate cast interrupts from movement noise after stopping.
+                self.unit.set_has_moved(False, False, flush=True)
             return
 
         # Check if we need to remove any movement.
@@ -133,6 +143,7 @@ class MovementManager:
 
     def move_distracted(self, duration_seconds, angle=0):
         self.set_behavior(DistractedMovement(duration_seconds, angle, spline_callback=self.spline_callback))
+        self.face_angle(angle)
 
     def move_chase(self):
         # Evade upon die (leave_combat) should not set a behavior.
@@ -208,6 +219,7 @@ class MovementManager:
             return [11]
         elif current_behavior.move_type == MoveType.GROUP:
             return [2, 15, 17]
+        return [0]
 
     # Instant.
     def stop(self, force=False):
@@ -228,10 +240,6 @@ class MovementManager:
     # Instant.
     def face_angle(self, angle):
         self.spline_callback(SplineBuilder.build_face_angle_spline(self.unit, angle))
-
-    # Instant.
-    def face_spot(self, spot):
-        self.spline_callback(SplineBuilder.build_face_spot_spline(self.unit, spot))
 
     def set_behavior(self, movement_behavior):
         if self.unit.is_sessile():
@@ -337,6 +345,16 @@ class MovementManager:
         if not self.active_behavior_type:
             return 'None'
         return MoveType(self.active_behavior_type).name
+
+    def get_speed(self):
+        spline = self._get_current_spline()
+        if not spline and self.is_player:
+            spline = self.unit.movement_spline
+        if spline:
+            return spline.get_speed()
+        if self.is_player:
+            return self.unit.running_speed
+        return 0
 
     def _get_default_behavior(self):
         if not self.default_behavior_type:

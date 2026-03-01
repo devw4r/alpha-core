@@ -8,6 +8,7 @@ from utils.ByteUtils import ByteUtils
 from utils.constants.MiscCodes import ObjectTypeIds, HighGuid, ObjectTypeFlags
 from utils.constants.OpCodes import OpCode
 from utils.constants.UpdateFields import ObjectFields, DynamicObjectFields
+from utils.constants.MiscCodes import UpdateFlags
 
 
 # TODO: Finish implementing.
@@ -69,6 +70,9 @@ class DynamicObjectManager(ObjectManager):
             self.ttl = max(0, self.ttl - elapsed)
             if self.ttl == 0:
                 self.despawn()
+
+        if self.has_pending_updates():
+            self.get_map().update_object(self, update_flags=UpdateFlags.CHANGES)
 
         self.last_tick = now
 

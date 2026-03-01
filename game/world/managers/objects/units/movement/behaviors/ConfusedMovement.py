@@ -66,14 +66,19 @@ class ConfusedMovement(BaseMovement):
 
     # override
     def can_remove(self):
-        return (not self.unit.is_alive or not self.duration_seconds or not self.unit.unit_state & UnitStates.CONFUSED
-                or self.unit.unit_flags & UnitFlags.UNIT_FLAG_FLEEING or
+        return (not self.unit.is_alive or not self.duration_seconds or
+                (self.unit.unit_state & UnitStates.CONFUSED) == 0 or
+                (self.unit.unit_flags & UnitFlags.UNIT_FLAG_FLEEING) != 0 or
                 (not self.until_canceled and time.time() >= self.expected_confused_end_timestamp))
 
     # override
     def on_removed(self):
-        self.unit.remove_all_movement_flags()
         self.unit.set_unit_flag(UnitFlags.UNIT_FLAG_CONFUSED, False)
+
+        if self.unit.is_alive and self.unit.in_combat and not self.unit.combat_target:
+            target = self.unit.threat_manager.get_hostile_target()
+            if target and target.is_alive:
+                self.unit.attack(target)
 
     def _get_confused_move_point(self):
         start_point = self.home_position
@@ -84,7 +89,7 @@ class ConfusedMovement(BaseMovement):
             return False, start_point
 
         # Validate a path to the random point.
-        failed, in_place, path = map_.calculate_path(self.unit.location, random_point, los=True)
+        failed, in_place, path = map_.calculate_path(self.unit.location, random_point, los=True, clamp_endpoint=True)
         if failed or len(path) > 1 or in_place or start_point.distance(random_point) < 1:
             return False, start_point
 

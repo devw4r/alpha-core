@@ -83,9 +83,12 @@ class FearMovement(BaseMovement):
 
     # override
     def on_removed(self):
-        self.unit.remove_all_movement_flags()
-        # Remove fleeing flag if not caused by auras (ie. scripted flee).
         self.unit.set_unit_flag(UnitFlags.UNIT_FLAG_FLEEING, False)
+
+        if self.unit.is_alive and self.unit.in_combat and not self.unit.combat_target:
+            target = self.unit.threat_manager.get_hostile_target()
+            if target and target.is_alive:
+                self.unit.attack(target)
 
     def _get_waypoint(self):
         waypoint = self.waypoints[0]
@@ -99,7 +102,8 @@ class FearMovement(BaseMovement):
         _map = self.unit.get_map()
 
         # See if we can reach the first calculated random fear point.
-        failed, path = _map.can_reach_location(src_vector=self.unit.location, dst_vector=fear_point)
+        failed, path = _map.can_reach_location(src_vector=self.unit.location, dst_vector=fear_point,
+                                               smooth=True, clamp_endpoint=True)
         if not failed:
             return path
 
@@ -112,13 +116,15 @@ class FearMovement(BaseMovement):
             if diff > 2.5:
                 continue
 
-            failed, path = _map.can_reach_location(src_vector=self.unit.location, dst_vector=fear_point)
+            failed, path = _map.can_reach_location(src_vector=self.unit.location, dst_vector=fear_point,
+                                                   smooth=True, clamp_endpoint=True)
             if not failed:
                 return path
 
         # Everything failed, search for a random point using namigator.
         random_point = _map.find_random_point_around_circle(self.unit.location, radius=10.0)
-        failed, path = _map.can_reach_location(src_vector=self.unit.location, dst_vector=random_point)
+        failed, path = _map.can_reach_location(src_vector=self.unit.location, dst_vector=random_point,
+                                               smooth=True, clamp_endpoint=True)
         if not failed:
             return path
 

@@ -5,6 +5,7 @@ from database.dbc.DbcDatabaseManager import DbcDatabaseManager
 from game.world.managers.objects.gameobjects.GameObjectManager import GameObjectManager
 from game.world.managers.objects.units.player.PlayerManager import PlayerManager
 from network.packet.PacketWriter import PacketWriter
+from utils.Formulas import Distances
 from utils.constants.DuelCodes import *
 from utils.constants.MiscCodes import Emotes
 from utils.constants.OpCodes import OpCode
@@ -40,7 +41,6 @@ class DuelArbiterManager(GameObjectManager):
 
     def update(self, now):
         if now <= self.last_tick or self.last_tick <= 0:
-            self.last_tick = now
             super().update(now)
             return
 
@@ -54,7 +54,6 @@ class DuelArbiterManager(GameObjectManager):
         elif self._start_duel_check():
             self._start_duel()
 
-        self.last_tick = now
         super().update(now)
 
     def request_duel(self, requester, target):
@@ -185,9 +184,20 @@ class DuelArbiterManager(GameObjectManager):
         return DuelComplete.DUEL_CANCELED_INTERRUPTED
 
     def _start_duel_check(self):
-        if self.duel_state == DuelState.DUEL_STATE_REQUESTED:
-            return all(duel_info.accepted for duel_info in list(self.duel_info.values()))
-        return False
+        if self.duel_state != DuelState.DUEL_STATE_REQUESTED:
+            return False
+        if not all(duel_info.accepted for duel_info in list(self.duel_info.values())):
+            return False
+
+        for duel_info in list(self.duel_info.values()):
+            if duel_info.player.map_id != self.map_id:
+                self.end_duel(DuelWinner.DUEL_WINNER_RETREAT, DuelComplete.DUEL_CANCELED_INTERRUPTED, winner=None)
+                return False
+            if not Distances.is_within_duel_distance(self, duel_info.player):
+                self.end_duel(DuelWinner.DUEL_WINNER_RETREAT, DuelComplete.DUEL_CANCELED_INTERRUPTED, winner=None)
+                return False
+
+        return True
 
     def _boundary_check(self, elapsed):
         if self.duel_state != DuelState.DUEL_STATE_STARTED:

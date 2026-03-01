@@ -4,10 +4,10 @@ from game.world.managers.objects.farsight.FarSightManager import FarSightManager
 from game.world.managers.objects.spell.aura import AuraEffectDummyHandler
 from game.world.managers.objects.units.player.StatManager import UnitStats
 from game.world.managers.objects.spell import ExtendedSpellData
+from game.world.managers.objects.units.player.SkillManager import get_riding_spell_ids
 from utils.Logger import Logger
-from utils.constants import ItemCodes
 from utils.constants.ItemCodes import InventoryError, ItemSubClasses
-from utils.constants.MiscCodes import UnitDynamicTypes, ProcFlags
+from utils.constants.MiscCodes import UnitDynamicTypes
 from utils.constants.PetCodes import PetSlot
 from utils.constants.SpellCodes import ShapeshiftForms, AuraTypes, SpellSchoolMask, SpellImmunity
 from utils.constants.UnitCodes import UnitFlags, UnitStates, PowerTypes
@@ -28,9 +28,7 @@ class AuraEffectHandler:
 
         is_proc_effect = aura_type in PROC_AURA_EFFECTS
         if not remove and not is_proc and is_proc_effect or \
-                is_proc and not is_proc_effect and aura_type != AuraTypes.SPELL_AURA_DAMAGE_SHIELD:
-            #  TODO: Better fix for damage shield triggers. The trigger is handled through the proc system,
-            #   but the handler also needs to be called on application to set the proc flag.
+                is_proc and not is_proc_effect:
             return  # Only call proc effects on procs.
 
         AURA_EFFECTS[aura.spell_effect.aura_type](aura, effect_target, remove)
@@ -85,6 +83,16 @@ class AuraEffectHandler:
                 else:
                     effect_target.aura_manager.cancel_auras_by_spell_id(passive_spell_id)
 
+        # Remove Auras that require shapeshift aura (e.g. sneaking requires cat form).
+        if remove:
+            removed_form = aura.spell_effect.misc_value
+            removed_form_mask = 1 << (removed_form - 1) if removed_form > 0 else 0
+            effect_target.aura_manager.cancel_auras_by_shapeshift_mask(
+                removed_form_mask,
+                self_targeted_only=True,
+                exclude_aura=aura
+            )
+
         effect_target.stat_manager.apply_bonuses()
 
         if remove or not model_info[0]:
@@ -96,15 +104,18 @@ class AuraEffectHandler:
         effect_target.set_scale(model_info[1])
 
     @staticmethod
-    def handle_mounted(aura, effect_target, remove):  # TODO Summon Nightmare (5784) does not apply for other players ?
+    def handle_mounted(aura, effect_target, remove):
         if remove:
-            if effect_target.unit_flags & UnitFlags.UNIT_MASK_MOUNTED:
-                effect_target.unmount()
+            if effect_target.is_mounted():
+                effect_target.unmount(from_aura=True)
+            effect_target.set_unit_state(UnitStates.SPELL_MOUNTED, active=False, index=aura.index)
             return
 
         creature_entry = aura.spell_effect.misc_value
         if not effect_target.summon_mount(creature_entry):
             Logger.error(f'SPELL_AURA_MOUNTED: Creature template ({creature_entry}) not found in database.')
+            return
+        effect_target.set_unit_state(UnitStates.SPELL_MOUNTED, active=True, index=aura.index)
 
     @staticmethod
     def handle_periodic_trigger_spell(aura, effect_target, remove):
@@ -299,7 +310,11 @@ class AuraEffectHandler:
 
     @staticmethod
     def handle_mod_stun(aura, effect_target, remove):
-        effect_target.set_stunned(not remove, aura.index)
+        allow_interrupt = True
+        if not remove and aura.source_spell and aura.source_spell.is_far_sight():
+            # Far Sight uses a stun aura but shouldn't interrupt the channel.
+            allow_interrupt = False
+        effect_target.set_stunned(not remove, aura.index, allow_interrupt=allow_interrupt)
 
     @staticmethod
     def handle_mod_pacify_silence(aura, effect_target, remove):
@@ -397,13 +412,6 @@ class AuraEffectHandler:
     @staticmethod
     def handle_damage_shield(aura, effect_target, remove):
         if remove:
-            return
-
-        # Damage shields don't have proc flags assigned to them,
-        # possibly because proc flags are not effect-specific in spell data.
-        # Add proc flag for this aura when it's applied.
-        if effect_target is aura.target:
-            aura.proc_flags |= ProcFlags.TAKE_COMBAT_DMG
             return
 
         damage = aura.get_effect_points()
@@ -648,6 +656,10 @@ class AuraEffectHandler:
 
     @staticmethod
     def handle_increase_speed(aura, effect_target, remove):
+        # Riding skill passives use placeholder base points (e.g. -1/0) and shouldn't affect run speed.
+        # Mounted speed is derived from the riding skill rank instead.
+        if aura.source_spell.spell_entry.ID in get_riding_spell_ids():
+            return
         if remove:
             effect_target.stat_manager.remove_aura_stat_bonus(aura.index, percentual=True)
             return
@@ -656,6 +668,10 @@ class AuraEffectHandler:
 
     @staticmethod
     def handle_increase_mounted_speed(aura, effect_target, remove):
+        # Riding skill passives use placeholder base points (e.g. -1/0) and shouldn't affect mounted speed.
+        # Mounted speed is derived from the riding skill rank instead.
+        if aura.source_spell.spell_entry.ID in get_riding_spell_ids():
+            return
         if remove:
             effect_target.stat_manager.remove_aura_stat_bonus(aura.index, percentual=True)
             return
@@ -967,7 +983,8 @@ AURA_EFFECTS = {
 
 PROC_AURA_EFFECTS = [
     AuraTypes.SPELL_AURA_PROC_TRIGGER_SPELL,
-    AuraTypes.SPELL_AURA_PROC_TRIGGER_DAMAGE
+    AuraTypes.SPELL_AURA_PROC_TRIGGER_DAMAGE,
+    AuraTypes.SPELL_AURA_DAMAGE_SHIELD
 ]
 
 PERIODIC_AURA_EFFECTS = [

@@ -17,7 +17,7 @@ from game.world.managers.objects.units.creature.groups.CreatureGroupManager impo
 from network.packet.PacketWriter import PacketWriter
 from utils import Formulas
 from utils.ByteUtils import ByteUtils
-from utils.Formulas import Distances, UnitFormulas
+from utils.Formulas import Distances
 from utils.GuidUtils import GuidUtils
 from utils.Logger import Logger
 from utils.ObjectQueryUtils import ObjectQueryUtils
@@ -25,11 +25,13 @@ from utils.constants import CustomCodes
 from utils.constants.MiscCodes import NpcFlags, ObjectTypeIds, UnitDynamicTypes, ObjectTypeFlags, MoveFlags, HighGuid, \
     MoveType, EmoteUnitState, TempSummonType
 from utils.constants.OpCodes import OpCode
+from utils.constants.PetCodes import PetCommandState
 from utils.constants.ScriptCodes import TemporaryFactionFlags
-from utils.constants.SpellCodes import SpellTargetMask, SpellImmunity
+from utils.constants.SpellCodes import SpellTargetMask, SpellImmunity, AuraTypes, SpellEffects
 from utils.constants.UnitCodes import UnitFlags, WeaponMode, CreatureTypes, MovementTypes, CreatureStaticFlags, \
     PowerTypes, CreatureFlagsExtra, CreatureReactStates, StandState
 from utils.constants.UpdateFields import ObjectFields, UnitFields
+from utils.constants.MiscCodes import UpdateFlags
 
 
 # noinspection PyCallByClass
@@ -68,6 +70,7 @@ class CreatureManager(UnitManager):
         self.dmg_max = 0
         self.just_died = False
         self.virtual_item_info = {}
+        self.default_sheath_state = self.sheath_state
         self.wander_distance = 0
         self.movement_type = MovementTypes.IDLE
         self.fully_loaded = False
@@ -109,6 +112,7 @@ class CreatureManager(UnitManager):
         self.creature_type = self.creature_template.type
         self.spell_list_id = self.creature_template.spell_list_id
         self.sheath_state = WeaponMode.NORMALMODE
+        self.default_sheath_state = self.sheath_state
         self.subtype = subtype
         self.summon_type = summon_type
         self.level = randint(self.creature_template.level_min, self.creature_template.level_max)
@@ -128,6 +132,9 @@ class CreatureManager(UnitManager):
             self.set_immunity(SpellImmunity.IMMUNITY_MECHANIC, self.creature_template.mechanic_immune_mask)
         if self.creature_template.school_immune_mask:
             self.set_immunity(SpellImmunity.IMMUNITY_SCHOOL, self.creature_template.school_immune_mask)
+        # CREATURE_FLAG_EXTRA_NOT_TAUNTABLE maps to taunt immunity (aura + threat effect).
+        if self.is_not_tauntable():
+            self._apply_innate_taunt_immunity()
 
         if self.is_totem() or self.is_critter() or not self.can_have_target() or self.ignores_combat():
             self.react_state = CreatureReactStates.REACT_PASSIVE
@@ -161,7 +168,7 @@ class CreatureManager(UnitManager):
         if is_morph:
             self.aura_manager.remove_all_auras()
             self.initialize_field_values()
-            self.get_map().update_object(self, has_changes=True)
+            self.get_map().update_object(self, update_flags=UpdateFlags.CHANGES)
 
     # override
     def initialize_field_values(self):
@@ -296,6 +303,8 @@ class CreatureManager(UnitManager):
             if self.addon.mount_display_id > 0:
                 self.mount(self.addon.mount_display_id)
 
+        self.default_sheath_state = self.sheath_state
+
         # Stats.
         self.stat_manager.init_stats()
         self.stat_manager.apply_bonuses(replenish=True)
@@ -310,6 +319,9 @@ class CreatureManager(UnitManager):
 
         self.loading = False
         self.fully_loaded = True
+
+    def get_bounding_radius(self):
+        return super().get_bounding_radius()
 
     def set_virtual_equipment(self, slot, item_id):
         VirtualItemsUtils.set_virtual_item(self, slot, item_id)
@@ -369,22 +381,60 @@ class CreatureManager(UnitManager):
                 or isinstance(self.object_ai, EscortAI))
 
     def is_guard(self):
-        return self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_GUARD
+        return (self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_GUARD) != 0
 
     def can_summon_guards(self):
-        return self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_SUMMON_GUARD
+        return (self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_SUMMON_GUARD) != 0
+
+    def is_not_tauntable(self):
+        return (self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_NOT_TAUNTABLE) != 0
+
+    def _apply_innate_taunt_immunity(self):
+        # Aura-based taunts (SPELL_AURA_MOD_TAUNT).
+        # Alpha-era warrior Taunt (spell 355), which uses SPELL_EFFECT_THREAT.
+
+        # Immunities are stored as {immunity_type: {source_id: bitmask}}.
+        # source_id == -1 is the reserved "innate" (non-aura) source.
+        aura_immunity_sources = self._immunities.get(SpellImmunity.IMMUNITY_AURA, {})
+        innate_aura_mask = aura_immunity_sources.get(-1, 0)
+
+        taunt_aura_mask = 1 << AuraTypes.SPELL_AURA_MOD_TAUNT
+        merged_innate_mask = innate_aura_mask | taunt_aura_mask
+
+        # Write the merged innate mask so we keep any previously assigned innate aura immunities.
+        self.set_immunity(SpellImmunity.IMMUNITY_AURA, merged_innate_mask)
+
+        effect_immunity_sources = self._immunities.get(SpellImmunity.IMMUNITY_EFFECT, {})
+        innate_effect_mask = effect_immunity_sources.get(-1, 0)
+
+        taunt_effect_mask = 1 << SpellEffects.SPELL_EFFECT_THREAT
+        merged_innate_effect_mask = innate_effect_mask | taunt_effect_mask
+
+        # Keep pre-existing innate effect immunities while adding THREAT immunity for Taunt.
+        self.set_immunity(SpellImmunity.IMMUNITY_EFFECT, merged_innate_effect_mask)
+
+    def keeps_positive_auras_on_evade(self):
+        return (self.creature_template.flags_extra
+                & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_KEEP_POSITIVE_AURAS_ON_EVADE) != 0
+
+    # override
+    def is_immune_to_aoe(self):
+        return (self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_IMMUNE_AOE) != 0
 
     def can_assist_help_calls(self):
-        return not self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_NO_ASSIST
+        return (self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_NO_ASSIST) == 0
 
     def should_always_run_ooc(self):
-        return self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_ALWAYS_RUN
+        return (self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_ALWAYS_RUN) != 0
 
     def is_critter(self):
         return self.creature_template.type == CreatureTypes.AMBIENT
 
     def has_melee(self):
-        return super().has_melee() and not self.creature_template.static_flags & CreatureStaticFlags.NO_MELEE
+        return super().has_melee() and (self.creature_template.static_flags & CreatureStaticFlags.NO_MELEE) == 0
+
+    def is_unkillable_target(self):
+        return (self.static_flags & CreatureStaticFlags.UNKILLABLE) != 0
 
     def is_pet(self):
         owner = self.get_charmer_or_summoner()
@@ -426,27 +476,27 @@ class CreatureManager(UnitManager):
         return self.summoner and self.subtype == CustomCodes.CreatureSubtype.SUBTYPE_TOTEM
 
     def has_combat_ping(self):
-        return self.creature_template.static_flags & CreatureStaticFlags.COMBAT_PING
+        return (self.creature_template.static_flags & CreatureStaticFlags.COMBAT_PING) != 0
 
     def can_have_target(self):
-        return not self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_NO_TARGET
+        return (self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_NO_TARGET) == 0
 
     def ignores_combat(self):
-        return self.creature_template.static_flags & CreatureStaticFlags.IGNORE_COMBAT
+        return (self.creature_template.static_flags & CreatureStaticFlags.IGNORE_COMBAT) != 0
 
     def is_quest_giver(self):
-        return self.npc_flags & NpcFlags.NPC_FLAG_QUESTGIVER
+        return (self.npc_flags & NpcFlags.NPC_FLAG_QUESTGIVER) != 0
 
     def is_trainer(self):
-        return self.npc_flags & NpcFlags.NPC_FLAG_TRAINER
+        return (self.npc_flags & NpcFlags.NPC_FLAG_TRAINER) != 0
 
     # override
     def is_tameable(self):
-        return self.static_flags & CreatureStaticFlags.TAMEABLE
+        return (self.static_flags & CreatureStaticFlags.TAMEABLE) != 0
 
     # override
     def is_sessile(self):
-        return self.static_flags & CreatureStaticFlags.SESSILE
+        return (self.static_flags & CreatureStaticFlags.SESSILE) != 0
 
     def is_at_home(self):
         return self.location.approximately_equals(self.get_home_position())
@@ -455,6 +505,7 @@ class CreatureManager(UnitManager):
         self.tmp_home_position = None
         self.apply_default_auras()
         if not self.is_controlled():
+            self.movement_manager.stop()
             self.movement_manager.face_angle(self.spawn_position.o)
         if self.temp_faction_flags & TemporaryFactionFlags.TEMPFACTION_RESTORE_REACH_HOME:
             self.reset_faction()
@@ -495,11 +546,11 @@ class CreatureManager(UnitManager):
 
     # override
     def can_crush(self):
-        return not self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_NO_CRUSH
+        return (self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_NO_CRUSH) == 0
 
     # override
     def should_always_crush(self):
-        return self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_ALWAYS_CRUSH
+        return (self.creature_template.flags_extra & CreatureFlagsExtra.CREATURE_FLAG_EXTRA_ALWAYS_CRUSH) != 0
 
     # override
     def enter_combat(self, source=None):
@@ -510,19 +561,30 @@ class CreatureManager(UnitManager):
             self.set_unit_flag(UnitFlags.UNIT_FLAG_PET_IN_COMBAT, True)
         self.object_ai.enter_combat(source)
         self.swim_checks_enabled = True
+
+        if self.has_virtual_equipment():
+            if self.has_mainhand_weapon() or self.has_offhand_weapon():
+                self.set_weapon_mode(WeaponMode.NORMALMODE)
+            elif self.has_ranged_weapon():
+                self.set_weapon_mode(WeaponMode.RANGEDMODE)
         return True
 
     # override
     def leave_combat(self):
         was_in_combat = super().leave_combat()
 
-        if not self.is_player_controlled_pet() and not self.is_guardian():
+        if not self.is_controlled() and not self.is_guardian():
             self.evade()
             if self.object_ai and was_in_combat and self.is_alive:
                 self.object_ai.on_combat_stop()
                 self.object_ai.on_leave_combat()
         else:
-            self.set_unit_flag(UnitFlags.UNIT_FLAG_PET_IN_COMBAT, False)
+            if self.is_player_controlled_pet() or self.is_guardian():
+                self.set_unit_flag(UnitFlags.UNIT_FLAG_PET_IN_COMBAT, False)
+
+        if was_in_combat and self.has_virtual_equipment():
+            if self.sheath_state != self.default_sheath_state:
+                self.set_weapon_mode(self.default_sheath_state)
 
         if self.creature_group and self.is_evading and self.is_alive and was_in_combat:
             self.creature_group.on_leave_combat(self)
@@ -535,7 +597,6 @@ class CreatureManager(UnitManager):
         # Flag creature as currently evading.
         self.is_evading = True
 
-        # Remove hostile auras.
         self.aura_manager.remove_hostile_auras()
 
         if not self.static_flags & CreatureStaticFlags.NO_AUTO_REGEN:
@@ -674,7 +735,8 @@ class CreatureManager(UnitManager):
         has_changes = self.has_pending_updates()
         # Check if this creature object should be updated.
         if has_changes or self.has_moved:
-            self.get_map().update_object(self, has_changes=has_changes)
+            update_flags = UpdateFlags.CHANGES if has_changes else UpdateFlags.NONE
+            self.get_map().update_object(self, update_flags=update_flags)
             self.set_has_moved(False, False, flush=True)
 
         self.last_tick = now
@@ -696,6 +758,8 @@ class CreatureManager(UnitManager):
         self.time_to_live_timer = 0
         self.time_to_live = 0
 
+        # Notify summoner EventAI before detach logic can clear the summon relation.
+        self._notify_summoner_ai_summoned_creature_despawned()
         super().despawn(ttl, respawn_delay)
 
     def _should_despawn(self, elapsed):
@@ -706,7 +770,14 @@ class CreatureManager(UnitManager):
         if not self.is_dynamic_spawn:
             return False
 
-        return SUMMON_DESPAWN_TYPES[self.summon_type](self, elapsed)
+        summon_handler = SUMMON_DESPAWN_TYPES.get(self.summon_type)
+        if not summon_handler:
+            Logger.warning(f'Unsupported temp summon type {self.summon_type} for creature entry {self.entry}; '
+                           f'falling back to DEAD_DESPAWN.')
+            self.summon_type = TempSummonType.TEMP_SUMMON_DEAD_DESPAWN
+            summon_handler = CreatureManager.handle_summon_dead
+
+        return summon_handler(self, elapsed)
 
     def update_time_to_live(self, elapsed):
         if self.time_to_live > 0:
@@ -715,7 +786,7 @@ class CreatureManager(UnitManager):
         return False
 
     # override
-    def attack(self, victim: UnitManager):
+    def attack(self, victim: UnitManager, from_script=False):
         had_target = self.combat_target and self.combat_target.is_alive
 
         # Can't have this check in can_attack_target else allegiance checks would fail for passive creatures.
@@ -723,10 +794,24 @@ class CreatureManager(UnitManager):
         if self.get_react_state() == CreatureReactStates.REACT_PASSIVE and not self.is_pet():
             return False
 
+        # Preserve breakable crowd-control auras unless the owner explicitly commanded an attack.
+        if self.is_pet() and not from_script and victim.has_aura_pet_should_avoid_breaking():
+            charmer_or_summoner = self.get_charmer_or_summoner()
+            command_state = PetCommandState.COMMAND_STAY
+            if charmer_or_summoner:
+                controlled_pet = charmer_or_summoner.pet_manager.get_active_controlled_pet()
+                if controlled_pet:
+                    command_state = controlled_pet.get_pet_data().command_state
+                else:
+                    command_state = PetCommandState.COMMAND_FOLLOW
+
+            if command_state != PetCommandState.COMMAND_ATTACK:
+                return False
+
         if not self.can_have_target() or self.ignores_combat():
             return False
 
-        can_attack = super().attack(victim)
+        can_attack = super().attack(victim, from_script=from_script)
 
         if not can_attack:
             return False
@@ -832,7 +917,11 @@ class CreatureManager(UnitManager):
                 is_player_pet = True
 
         if not is_player_pet and not self.is_guardian() and killer and killer.is_player():
-            self.loot_manager.generate_loot(killer)
+            if self.static_flags & CreatureStaticFlags.NO_LOOT:
+                if self.loot_manager:
+                    self.loot_manager.clear()
+            elif self.loot_manager:
+                self.loot_manager.generate_loot(killer)
 
             self.reward_kill_xp(killer)
             self.killed_by = killer
@@ -846,15 +935,30 @@ class CreatureManager(UnitManager):
                 self.killed_by.quest_manager.reward_creature_or_go(self)
 
             # If the player is in a group, set the group as allowed looters if needed.
-            if self.killed_by.group_manager and self.loot_manager.has_loot():
+            if self.killed_by.group_manager and self.loot_manager and self.loot_manager.has_loot():
                 self.killed_by.group_manager.set_allowed_looters(self)
 
-            if self.loot_manager.has_loot():
+            if self.loot_manager and self.loot_manager.has_loot():
                 self.set_lootable(True)
 
         self.remove_all_unit_flags()
 
-        return super().die(killer)
+        died = super().die(killer)
+        if died:
+            self._notify_summoner_ai_summoned_creature_just_died()
+        return died
+
+    def _notify_summoner_ai_summoned_creature_just_died(self):
+        summoner = self.summoner
+        if not summoner or not summoner.is_unit(by_mask=True) or not summoner.object_ai:
+            return
+        summoner.object_ai.summoned_creature_just_died(self)
+
+    def _notify_summoner_ai_summoned_creature_despawned(self):
+        summoner = self.summoner
+        if not summoner or not summoner.is_unit(by_mask=True) or not summoner.object_ai:
+            return
+        summoner.object_ai.summoned_creatures_despawn(self)
 
     def reward_kill_xp(self, player):
         if self.static_flags & CreatureStaticFlags.NO_XP:
@@ -893,6 +997,8 @@ class CreatureManager(UnitManager):
 
         if self.is_at_home():
             self.on_at_home()
+
+        self.get_map().update_object(self, update_flags=UpdateFlags.CHANGES)
         return True
 
     def set_npc_flag(self, flag, enable=True):
@@ -949,7 +1055,7 @@ class CreatureManager(UnitManager):
             detection_range -= max(-25, min(self.level - unit.level, 25))
 
         # Minimum aggro radius seems to be combat distance.
-        detection_range = max(detection_range, UnitFormulas.combat_distance(self, unit))
+        detection_range = max(detection_range, Distances.combat_distance(self, unit))
         return detection_range
 
     # Automatically set/remove swimming move flag on units.
@@ -968,6 +1074,10 @@ class CreatureManager(UnitManager):
         elif not is_under_water and self.movement_flags & MoveFlags.MOVEFLAG_SWIMMING:
             self.set_move_flag(MoveFlags.MOVEFLAG_SWIMMING, active=False)
             self.movement_manager.set_speed_dirty()
+
+    def has_virtual_equipment(self):
+        equipment_entries = self.get_virtual_equipment_entries()
+        return any(entry > 0 for entry in equipment_entries)
 
     # override
     def has_mainhand_weapon(self):
@@ -1080,6 +1190,44 @@ class CreatureManager(UnitManager):
             ))
         return creature_class_level_stats
 
+    def get_dynamic_flag_update_bytes(self, requester):
+        dyn_flag_value = self.generate_dynamic_field_value(requester=requester)
+        return self.get_single_field_update_bytes(UnitFields.UNIT_DYNAMIC_FLAGS, dyn_flag_value)
+
+    # override
+    def _get_field_value_for_update(self, index, is_create, requester, update_data):
+        if self.update_packet_factory.is_dynamic_field(index):
+            return pack('<I', self.generate_dynamic_field_value(requester))
+        return super()._get_field_value_for_update(index, is_create, requester, update_data)
+
+    def generate_dynamic_field_value(self, requester):
+        if not self.loot_manager or not self.loot_manager.has_loot():
+            return self.dynamic_flags
+
+        loot_visibility = False
+        for loot in self.loot_manager.current_loot:
+            if not loot:
+                continue
+
+            # Check if loot is a quest item and needed by quests.
+            is_quest_item = loot.is_quest_item()
+            item_needed = requester.quest_manager.item_needed_by_quests(loot.item.item_template.entry)
+            is_visible_to_player = loot.is_visible_to_player(requester)
+
+            # Continue if loot is a quest item not needed or not visible.
+            if (is_quest_item and not item_needed) or not is_visible_to_player:
+                continue
+
+            # If loot passes the above checks, set visibility and break early.
+            loot_visibility = True
+            break
+
+        # If no loot is visible and lootable flag is set, remove lootable flag for this observer.
+        if not loot_visibility and (self.dynamic_flags & UnitDynamicTypes.UNIT_DYNAMIC_LOOTABLE):
+            return self.dynamic_flags & ~UnitDynamicTypes.UNIT_DYNAMIC_LOOTABLE
+
+        return self.dynamic_flags
+
 # Summon despawn handling.
 
     @staticmethod
@@ -1173,15 +1321,24 @@ class CreatureManager(UnitManager):
             if not unit.in_combat:
                 unit.despawn()
                 return True
+            # Keep the timer clamped while combat blocks despawn.
+            unit.time_to_live_timer = unit.time_to_live
 
         return False
 
 
     @staticmethod
     def handle_summon_timed_combat_or_corpse(unit, elapsed):
-        if not unit.is_alive or unit.update_time_to_live(elapsed):
+        if not unit.is_alive:
             unit.despawn()
             return True
+
+        if unit.update_time_to_live(elapsed):
+            if not unit.in_combat:
+                unit.despawn()
+                return True
+            # Match VMaNGOS behavior, once ttl is reached in combat, wait until combat ends.
+            unit.time_to_live_timer = unit.time_to_live
 
         return False
 
@@ -1194,6 +1351,9 @@ class CreatureManager(UnitManager):
             elif not unit.is_alive:
                 unit.despawn()
                 return True
+            else:
+                # Keep the timer clamped while combat blocks forced death.
+                unit.time_to_live_timer = unit.time_to_live
 
         return False
 

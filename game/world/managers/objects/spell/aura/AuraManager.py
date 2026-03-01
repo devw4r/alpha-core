@@ -11,7 +11,7 @@ from utils.constants.MiscCodes import ProcFlags
 from utils.constants.OpCodes import OpCode
 from utils.constants.SpellCodes import AuraTypes, AuraSlots, SpellAuraInterruptFlags, SpellAttributes, \
     SpellAttributesEx, SpellEffects, AuraState, AuraFlags
-from utils.constants.UnitCodes import UnitFlags, StandState
+from utils.constants.UnitCodes import UnitFlags, StandState, UnitStates
 from utils.constants.UpdateFields import UnitFields
 
 
@@ -28,13 +28,12 @@ class AuraManager:
         self.add_aura(aura)
 
     def add_aura(self, aura):
-        # Special case with SpellEffect mounting and mounting by aura.
-        # If a mount aura is being applied, and it results in dismounting, don't apply the new mount aura.
-        if aura.spell_effect.aura_type == AuraTypes.SPELL_AURA_MOUNTED and \
-                aura.target.unit_flags & UnitFlags.UNIT_MASK_MOUNTED and not \
-                self.get_auras_by_type(AuraTypes.SPELL_AURA_MOUNTED):
+        # Mount spells act as a toggle. If already mounted, dismount and skip applying a new mount aura.
+        if aura.spell_effect.aura_type == AuraTypes.SPELL_AURA_MOUNTED and aura.target.is_mounted():
+            aura.target.aura_manager.remove_auras_by_type(AuraTypes.SPELL_AURA_MOUNTED)
+            aura.target.aura_manager.remove_auras_by_type(AuraTypes.SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED)
             AuraEffectHandler.handle_mounted(aura, aura.target, remove=True)
-            return
+            return -1
 
         if not self.can_apply_aura(aura):
             return -1
@@ -116,7 +115,7 @@ class AuraManager:
     def are_spell_effects_applicable(self, casting_spell):
         for spell_effect in casting_spell.get_effects():
             if spell_effect.effect_type == SpellEffects.SPELL_EFFECT_SUMMON_MOUNT and \
-                    len(self.get_auras_by_type(AuraTypes.SPELL_AURA_MOUNTED)):
+                    self.has_aura_by_type(AuraTypes.SPELL_AURA_MOUNTED):
                 # Special case of mounting via spell effect when the player already has a mount aura applied.
                 # This interaction does not currently work,
                 # as the mount aura is removed via aura interrupts on cast (fixable?).
@@ -139,9 +138,10 @@ class AuraManager:
                               cast_spell: Optional[CastingSpell] = None):
         if not self.active_auras:
             return
+
         flag_cases = {
             SpellAuraInterruptFlags.AURA_INTERRUPT_FLAG_ENTER_COMBAT: enter_combat,
-            SpellAuraInterruptFlags.AURA_INTERRUPT_FLAG_NOT_MOUNTED: self.unit_mgr.unit_flags & UnitFlags.UNIT_MASK_MOUNTED,
+            SpellAuraInterruptFlags.AURA_INTERRUPT_FLAG_NOT_MOUNTED: self.unit_mgr.is_mounted(),
             SpellAuraInterruptFlags.AURA_INTERRUPT_FLAG_MOVE: moved,
             SpellAuraInterruptFlags.AURA_INTERRUPT_FLAG_TURNING: turned,
             SpellAuraInterruptFlags.AURA_INTERRUPT_FLAG_ACTION: cast_spell is not None or attacked,
@@ -168,11 +168,31 @@ class AuraManager:
                 self.remove_aura(aura)
                 continue
 
+            # Outdoors-only auras should be treated as movement-interruptible when mounted indoors or swimming.
+            if moved and aura.source_spell.is_outdoors_spell() and self.unit_mgr.is_mounted():
+                if self.unit_mgr.is_swimming() or self.unit_mgr.get_map().is_wmo_interior(self.unit_mgr.location.x,
+                                                                                          self.unit_mgr.location.y,
+                                                                                          self.unit_mgr.location.z):
+                    self.remove_aura(aura)
+                    continue
+
             for flag, condition in flag_cases.items():
                 if flag == SpellAuraInterruptFlags.AURA_INTERRUPT_FLAG_ACTION and \
                      aura.spell_effect.aura_type == AuraTypes.SPELL_AURA_MOD_STEALTH and \
                         cast_spell and not cast_spell.cast_breaks_stealth():
                     continue  # Skip cast interrupt for stealth spells for flagged spells.
+
+                # Mount casts must not interrupt existing mount auras; otherwise the aura is removed before
+                # mount-toggle logic runs, which re-applies the mount and stacks speed on repeated item use.
+                if flag == SpellAuraInterruptFlags.AURA_INTERRUPT_FLAG_ACTION and \
+                        aura.spell_effect.aura_type == AuraTypes.SPELL_AURA_MOUNTED and cast_spell:
+                    has_mount_effect = cast_spell.has_effect_of_type(SpellEffects.SPELL_EFFECT_SUMMON_MOUNT)
+                    has_mount_aura = any(effect and effect.aura_type == AuraTypes.SPELL_AURA_MOUNTED
+                                         for effect in cast_spell.get_effects())
+                    if has_mount_effect or has_mount_aura:
+                        # Let mount toggle logic handle dismount/remount without a premature interrupt.
+                        # Mount toggle happens in `AuraManager.add_aura` and `SpellEffectHandler.handle_summon_mount`.
+                        continue
 
                 if aura.interrupt_flags & flag and condition:
                     self.remove_aura(aura)
@@ -308,6 +328,57 @@ class AuraManager:
             auras.append(aura)
         return auras
 
+    def get_auras_by_shapeshift_mask(self, shapeshift_mask, self_targeted_only=False, exclude_aura: Optional[AppliedAura] = None) -> list[AppliedAura]:
+        if shapeshift_mask <= 0:
+            return []
+
+        auras = []
+        for aura in list(self.active_auras.values()):
+            if exclude_aura and aura is exclude_aura:
+                continue
+
+            aura_mask = aura.source_spell.spell_entry.ShapeshiftMask
+            if aura_mask <= 0:
+                continue
+
+            if aura_mask & shapeshift_mask == 0:
+                continue
+
+            if self_targeted_only and not aura.source_spell.is_self_targeted():
+                continue
+
+            auras.append(aura)
+
+        return auras
+
+    def has_aura_by_type(self, aura_type) -> bool:
+        for aura in list(self.active_auras.values()):
+            if aura.spell_effect.aura_type == aura_type:
+                return True
+        return False
+
+    def has_breakable_by_damage_aura_type(self, aura_type, exclude_aura_spell_id=0) -> bool:
+        for aura in self.get_auras_by_type(aura_type):
+            # Avoid self-interrupt of channeled CC spells (e.g., Seduction).
+            if exclude_aura_spell_id and aura.spell_id == exclude_aura_spell_id:
+                continue
+
+            if aura.interrupt_flags & SpellAuraInterruptFlags.AURA_INTERRUPT_FLAG_DAMAGE:
+                return True
+
+        return False
+
+    def has_breakable_by_damage_crowd_control_aura(self, exclude_caster_channel=None) -> bool:
+        exclude_aura_spell_id = 0
+        if exclude_caster_channel:
+            channel_spell = exclude_caster_channel.spell_manager.get_casting_spell(ignore_melee=True)
+            if channel_spell and channel_spell.is_channeled():
+                exclude_aura_spell_id = channel_spell.spell_entry.ID
+
+        return self.has_breakable_by_damage_aura_type(AuraTypes.SPELL_AURA_MOD_CONFUSE, exclude_aura_spell_id) or \
+            self.has_breakable_by_damage_aura_type(AuraTypes.SPELL_AURA_MOD_STUN, exclude_aura_spell_id) or \
+            self.has_breakable_by_damage_aura_type(AuraTypes.SPELL_AURA_TRANSFORM, exclude_aura_spell_id)
+
     def get_active_auras(self):
         return [self.active_auras[i] for i in
                 range(0, AuraSlots.AURA_SLOT_PASSIVE_AURA_START)
@@ -433,6 +504,16 @@ class AuraManager:
                 continue
             self.remove_aura(aura, canceled=True)
 
+    def cancel_auras_by_shapeshift_mask(self, shapeshift_mask, self_targeted_only=False, exclude_aura: Optional[AppliedAura] = None):
+        auras = self.get_auras_by_shapeshift_mask(
+            shapeshift_mask,
+            self_targeted_only=self_targeted_only,
+            exclude_aura=exclude_aura
+        )
+
+        for aura in auras:
+            self.remove_aura(aura, canceled=True)
+
     def remove_auras_from_spell(self, casting_spell):
         for aura in list(self.active_auras.values()):
             if aura.source_spell is casting_spell:
@@ -482,9 +563,9 @@ class AuraManager:
             self.unit_mgr.set_uint32(field_index, 0, force=True)
 
         self.unit_mgr.set_uint32(field_index, aura.spell_id if not clear else 0)
-        self._write_aura_flag_to_unit(aura, clear=clear, is_refresh=is_refresh)
+        self._write_aura_flag_to_unit(aura, clear=clear)
 
-    def _write_aura_flag_to_unit(self, aura, clear=False, is_refresh=False):
+    def _write_aura_flag_to_unit(self, aura, clear=False):
         if not aura:
             return
 

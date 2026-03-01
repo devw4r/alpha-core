@@ -13,15 +13,18 @@ from game.world.managers.objects.spell import ExtendedSpellData
 from game.world.managers.objects.spell.EffectTargets import TargetMissInfo, EffectTargets
 from game.world.managers.objects.spell.ExtendedSpellData import TotemHelpers, SpellThreatInfo
 from game.world.managers.objects.units.DamageInfoHolder import DamageInfoHolder
+from game.world.managers.objects.units.SpellAdvancedLogging import SpellAdvancedLogging
 from game.world.managers.objects.units.player.StatManager import UnitStats
 from game.world.managers.objects.spell.SpellEffect import SpellEffect
 from network.packet.PacketWriter import PacketWriter
+from utils.ConfigManager import config
 from utils.constants.ItemCodes import ItemClasses, ItemSubClasses
-from utils.constants.MiscCodes import  AttackTypes, HitInfo
+from utils.constants.MiscCodes import  AttackTypes
 from utils.constants.OpCodes import OpCode
+from utils.constants.ScriptCodes import CastFlags
 from utils.constants.SpellCodes import SpellState, SpellCastFlags, SpellTargetMask, SpellAttributes, SpellAttributesEx, \
     AuraTypes, SpellEffects, SpellInterruptFlags, SpellImplicitTargets, SpellImmunity, SpellSchoolMask, SpellHitFlags, \
-    SpellCategory, SpellSchools
+    SpellCategory, SpellSchools, SpellCheckCastResult
 
 
 class CastingSpell:
@@ -36,6 +39,7 @@ class CastingSpell:
     triggered_by_spell = None
     creature_spell = None
     hide_result: bool
+    forced_sheath_state: Optional[int]
 
     object_target_results: dict[int, TargetMissInfo] = {}  # Assigned on cast - contains guids and results on successful hits/misses/blocks etc.
     spell_target_mask: SpellTargetMask
@@ -52,7 +56,10 @@ class CastingSpell:
     cast_start_timestamp: float
     cast_end_timestamp: float
     spell_impact_timestamps: dict[int, float]
+    # Spell rank/level/effective values mirror client tooltip math (rank is skill-based, level is rank/5).
     caster_effective_level: int
+    caster_spell_level: int
+    caster_spell_rank: int
     spent_combo_points: int
 
     spell_attack_type: int
@@ -71,6 +78,11 @@ class CastingSpell:
         self.triggered_by_spell = triggered_by_spell
         self.hide_result = hide_result
         self.creature_spell = creature_spell
+        self.forced_sheath_state = None
+
+        self.caster_spell_rank = 0
+        self.caster_spell_level = 0
+        self.caster_effective_level = 0
 
         self.dynamic_object = None
         self.duration_entry = DbcDatabaseManager.spell_duration_get_by_id(spell.DurationIndex)
@@ -78,13 +90,14 @@ class CastingSpell:
 
         self.cast_time_entry = DbcDatabaseManager.spell_cast_time_get_by_id(spell.CastingTimeIndex)
 
+        if self.spell_caster.is_unit(by_mask=True):
+            # Match client spell rank/level semantics (Spell_C_GetSpellLevel and skill rank handling).
+            self.caster_spell_rank = self.calculate_spell_rank()
+            self.caster_spell_level = int(self.caster_spell_rank / 5) if self.caster_spell_rank > 0 else 0
+            self.caster_effective_level = self.calculate_effective_level()
+
         self.cast_end_timestamp = self.get_cast_time_ms() / 1000 + time.time()
         self.spell_visual_entry = DbcDatabaseManager.spell_visual_get_by_id(spell.SpellVisualID)
-
-        if self.spell_caster.is_unit(by_mask=True):
-            self.caster_effective_level = self.calculate_effective_level()
-        else:
-            self.caster_effective_level = 0
 
         self.spent_combo_points = 0
 
@@ -125,6 +138,23 @@ class CastingSpell:
     def initial_target_is_object(self):
         return isinstance(self.initial_target, ObjectManager)
 
+    def validate_script_cast_state(self, cast_flags):
+        caster = self.spell_caster
+        if not caster or not caster.is_unit(by_mask=True):
+            return SpellCheckCastResult.SPELL_NO_ERROR
+
+        if not caster.spell_manager.is_casting():
+            return SpellCheckCastResult.SPELL_NO_ERROR
+
+        if cast_flags & CastFlags.CF_INTERRUPT_PREVIOUS:
+            caster.spell_manager.remove_colliding_casts(self)
+            return SpellCheckCastResult.SPELL_NO_ERROR
+
+        if not self.triggered:
+            return SpellCheckCastResult.SPELL_FAILED_SPELL_IN_PROGRESS
+
+        return SpellCheckCastResult.SPELL_NO_ERROR
+
     def initial_target_is_unit_or_player(self):
         if not self.initial_target_is_object():
             return False
@@ -149,6 +179,19 @@ class CastingSpell:
 
         return self.initial_target.is_item()
 
+    def is_trade_enchant(self):
+        if not self.spell_caster.is_player():
+            return False
+
+        if not self.initial_target_is_item():
+            return False
+
+        if not self.has_effect_of_type(SpellEffects.SPELL_EFFECT_ENCHANT_ITEM_TEMPORARY,
+                                       SpellEffects.SPELL_EFFECT_ENCHANT_ITEM_PERMANENT):
+            return False
+
+        return self.initial_target.get_owner_guid() != self.spell_caster.guid
+
     def initial_target_is_gameobject(self):
         if not self.initial_target_is_object():
             return False
@@ -159,9 +202,42 @@ class CastingSpell:
         return isinstance(self.initial_target, Vector)
 
     def get_initial_target_info(self):  # ([values], len)
-        is_terrain = self.initial_target_is_terrain()
-        return ([self.initial_target.x, self.initial_target.y, self.initial_target.z] if is_terrain
-                else [self.initial_target.guid]), ('3f' if is_terrain else 'Q')
+        data = []
+        signature = ''
+        target_mask = self.spell_target_mask
+
+        if target_mask & SpellTargetMask.UNIT_TARGET_MASK:
+            if self.initial_target_is_unit_or_player():
+                data.append(self.initial_target.guid)
+            else:
+                data.append(self.spell_caster.guid)
+            signature += 'Q'
+
+        if target_mask & SpellTargetMask.ITEM_TARGET_MASK:
+            data.append(self.initial_target.guid if self.initial_target_is_item() else 0)
+            signature += 'Q'
+
+        if target_mask & SpellTargetMask.SOURCE_LOCATION:
+            if self.initial_target_is_terrain():
+                data.extend([self.initial_target.x, self.initial_target.y, self.initial_target.z])
+            else:
+                data.extend([self.spell_caster.location.x, self.spell_caster.location.y, self.spell_caster.location.z])
+            signature += '3f'
+
+        if target_mask & SpellTargetMask.DEST_LOCATION:
+            # If only one terrain vector is available, use it for destination as well.
+            if self.initial_target_is_terrain():
+                data.extend([self.initial_target.x, self.initial_target.y, self.initial_target.z])
+            else:
+                data.extend([self.spell_caster.location.x, self.spell_caster.location.y, self.spell_caster.location.z])
+            signature += '3f'
+
+        # Not used by spells.
+        if target_mask & SpellTargetMask.TARGET_STRING:
+            data.append(b'')
+            signature += '128s'
+
+        return data, signature
 
     def resolve_target_info_for_effects(self):
         for effect in self.get_effects():
@@ -183,6 +259,9 @@ class CastingSpell:
     def get_attack_type(self):
         return self.spell_attack_type if self.spell_attack_type != -1 else 0
 
+    # TODO: vMaNGOS treats weapon-damage spells as a single spell school (no per-weapon-line split),
+    #  and only melee swings emit sub-damage entries per weapon damage line (dmg_type2+).
+    #  We currently only use dmg_type1.
     def get_damage_school(self):
         if not self.spell_caster.is_player() or not self.is_weapon_attack() or self.spell_attack_type == -1 or \
                 self.spell_entry.School != SpellSchools.SPELL_SCHOOL_NORMAL:
@@ -193,7 +272,7 @@ class CastingSpell:
         if not weapon:
             return self.spell_entry.School
 
-        return weapon.item_template.dmg_type1  # TODO How should weapons with mixed damage types behave with spells?
+        return weapon.item_template.dmg_type1
 
     def get_damage_school_mask(self):
         damage_school = self.get_damage_school()
@@ -206,11 +285,10 @@ class CastingSpell:
         return school_mask
 
     def can_reflect(self):
-        return (self.spell_entry.School  # Not physical.
+        return (self.spell_entry.School != SpellSchools.SPELL_SCHOOL_NORMAL
                 and not self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_IS_ABILITY
                 and not self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY
-                and not self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_PASSIVE
-                and not self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_NEGATIVE)
+                and not self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_PASSIVE)
 
     def is_mining_spell(self):
         return self.spell_entry.Totem_1 == 2901  # Mining pick.
@@ -220,12 +298,14 @@ class CastingSpell:
             return None
 
         if not self.spell_caster.is_player():
+            # If the caster is not a player, it skips the inventory-type check and calls ThrownMissileReleased unconditionally.
+            # Client forces creature ammo through the thrown release path (CGUnit_C::CheckPendingMissileRelease),
+            # so avoid ammo visuals for thrown/wand subclasses to prevent incorrect visuals.
+
             ranged_items = {
                 1 << ItemSubClasses.ITEM_SUBCLASS_BOW: 2512,  # Rough Arrow
                 1 << ItemSubClasses.ITEM_SUBCLASS_GUN: 2516,  # Light Shot
-                1 << ItemSubClasses.ITEM_SUBCLASS_THROWN: 2947,  # Small Throwing Knife
                 1 << ItemSubClasses.ITEM_SUBCLASS_CROSSBOW: 2512,
-                1 << ItemSubClasses.ITEM_SUBCLASS_WAND: 6230   # Monster - Wand, Basic
             }
 
             weapon_mask = 0
@@ -247,7 +327,6 @@ class CastingSpell:
             if not item_entries:
                 return None
 
-            # TODO client doesn't seem to recognize thrown weapons or wands as ammo for creature casts.
             item_template = WorldDatabaseManager.ItemTemplateHolder.item_template_get_by_entry(item_entries[0])
             return ItemManager(item_template)
 
@@ -289,23 +368,25 @@ class CastingSpell:
         return self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_PASSIVE == SpellAttributes.SPELL_ATTR_PASSIVE
 
     def is_ability(self):
-        return self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_IS_ABILITY
+        return (self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_IS_ABILITY) != 0
 
     def is_tradeskill(self):
-        return self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_TRADESPELL
+        return (self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_TRADESPELL) != 0
 
     def is_channeled(self):
-        return self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_CHANNELED
+        return (self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_CHANNELED) != 0
 
     def is_far_sight(self):
-        return self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_FARSIGHT
+        if (self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_FARSIGHT) != 0:
+            return True
+        return any(effect.effect_type == SpellEffects.SPELL_EFFECT_ADD_FARSIGHT for effect in self.get_effects())
 
     def generates_threat(self):
-        return (not self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_NO_THREAT
+        return ((self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_NO_THREAT) == 0
                 and SpellThreatInfo.spell_generates_threat(self.spell_entry.ID))
 
     def generates_threat_on_miss(self):
-        return self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_THREAT_ON_MISS
+        return (self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_THREAT_ON_MISS) != 0
 
     def requires_implicit_initial_unit_target(self):
         # Some spells are self casts, but require an implicit unit target when casted.
@@ -384,16 +465,34 @@ class CastingSpell:
         return False
 
     def ignores_immunity(self):
-        return self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY
+        return (self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY) != 0
 
     def grants_positive_immunity(self):
-        return self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_IMMUNITY_HOSTILE_FRIENDLY_EFFECTS
+        return (self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_IMMUNITY_HOSTILE_FRIENDLY_EFFECTS) != 0
 
     def cast_breaks_stealth(self):
-        return not self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_NOT_BREAK_STEALTH
+        return (self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_NOT_BREAK_STEALTH) == 0
 
     def is_fishing_spell(self):
         return self.spell_entry.ImplicitTargetA_1 == SpellImplicitTargets.TARGET_SELF_FISHING
+
+    def is_indoors_spell(self):
+        if not config.Server.Settings.use_map_tiles:
+            return False
+        return (self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_INDOORS_ONLY) != 0
+
+    def is_outdoors_spell(self):
+        if not config.Server.Settings.use_map_tiles:
+            return False
+        return (self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_OUTDOORS_ONLY) != 0
+
+    def is_mount_spell(self):
+        for spell_effect in self.get_effects():
+            if spell_effect.aura_type in [AuraTypes.SPELL_AURA_MOUNTED, AuraTypes.SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED]:
+                return True
+            if spell_effect.effect_type == SpellEffects.SPELL_EFFECT_SUMMON_MOUNT:
+                return True
+        return False
 
     def has_pet_target(self):
         return self.spell_entry.ImplicitTargetA_1 == SpellImplicitTargets.TARGET_PET
@@ -434,7 +533,7 @@ class CastingSpell:
                {SpellCategory.SPELLCATEGORY_ITEM_FOOD, SpellCategory.SPELLCATEGORY_ITEM_DRINK}
 
     def is_overpower(self):
-        return self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_ENABLE_AT_DODGE
+        return (self.spell_entry.AttributesEx & SpellAttributesEx.SPELL_ATTR_EX_ENABLE_AT_DODGE) != 0
 
     def has_effect_of_type(self, *effect_types: SpellEffects):
         for effect in self._effects:
@@ -449,11 +548,11 @@ class CastingSpell:
         return None
 
     def unlock_cooldown_on_trigger(self):
-        return self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_DISABLED_WHILE_ACTIVE
+        return (self.spell_entry.Attributes & SpellAttributes.SPELL_ATTR_DISABLED_WHILE_ACTIVE) != 0
 
     def casts_on_swing(self):
-        return self.spell_entry.Attributes & \
-               (SpellAttributes.SPELL_ATTR_ON_NEXT_SWING_1 | SpellAttributes.SPELL_ATTR_ON_NEXT_SWING_2)
+        return (self.spell_entry.Attributes &
+                (SpellAttributes.SPELL_ATTR_ON_NEXT_SWING_1 | SpellAttributes.SPELL_ATTR_ON_NEXT_SWING_2)) != 0
 
     def casts_on_ranged_attack(self):
         # Quick Shot has a negative base cast time (-1000000), which will resolve to 0.
@@ -474,7 +573,7 @@ class CastingSpell:
                       (1 << ItemSubClasses.ITEM_SUBCLASS_CROSSBOW) | \
                       (1 << ItemSubClasses.ITEM_SUBCLASS_WAND)
 
-        return self.spell_entry.EquippedItemSubclass & ranged_mask != 0
+        return (self.spell_entry.EquippedItemSubclass & ranged_mask) != 0
 
     def is_weapon_attack(self):
         return self.casts_on_swing() or self.is_ranged_weapon_attack()
@@ -483,27 +582,38 @@ class CastingSpell:
         if self.spell_entry.EquippedItemClass != ItemClasses.ITEM_CLASS_WEAPON:
             return False
 
-        return self.spell_entry.EquippedItemSubclass & (1 << ItemSubClasses.ITEM_SUBCLASS_FISHING_POLE) != 0
+        return (self.spell_entry.EquippedItemSubclass & (1 << ItemSubClasses.ITEM_SUBCLASS_FISHING_POLE)) != 0
 
     def requires_combo_points(self):
         cp_att = (SpellAttributesEx.SPELL_ATTR_EX_REQ_TARGET_COMBO_POINTS |
                   SpellAttributesEx.SPELL_ATTR_EX_REQ_COMBO_POINTS)
-        return self.spell_caster.is_player() and self.spell_entry.AttributesEx & cp_att != 0
+        return self.spell_caster.is_player() and (self.spell_entry.AttributesEx & cp_att) != 0
 
     def requires_aura_state(self):
         return self.spell_entry.CasterAuraState != 0
 
-    def calculate_effective_level(self):
-        skill = 0
+    def calculate_spell_rank(self):
+        # Client uses skill rank (Averaged with weapon skill) for spell rank; units use level * 5.
         if self.spell_caster.is_player():
-            skill = self.spell_caster.skill_manager.get_skill_value_for_spell_id(self.spell_entry.ID)
+            return self.spell_caster.skill_manager.get_spell_rank_for_spell_id(self.spell_entry.ID)
 
-        level = self.spell_caster.level if not skill else int(skill / 5)
-        if level > self.spell_entry.MaxLevel > 0:
-            level = self.spell_entry.MaxLevel
-        elif level < self.spell_entry.BaseLevel:
-            level = self.spell_entry.BaseLevel
-        return max(level - self.spell_entry.SpellLevel, 0)
+        skill_rank = self.spell_caster.level * 5
+        max_level = self.spell_entry.MaxLevel
+        if max_level > 0:
+            skill_rank = min(skill_rank, max_level * 5)
+        return max(skill_rank, 0)
+
+    def calculate_effective_level(self):
+        # Client effect scaling subtracts BaseLevel before applying per-level formulas.
+        level = self.caster_spell_level
+        base_level = self.spell_entry.BaseLevel
+        if base_level > 0:
+            level -= base_level
+        return max(level, 0)
+
+    def get_spell_rank_value(self):
+        # Cached to keep spell cost/level calculations consistent across the cast.
+        return self.caster_spell_rank
 
     def get_cast_time_secs(self):
         return int(self.get_cast_time_ms() / 1000)
@@ -515,12 +625,9 @@ class CastingSpell:
         if self.is_instant_cast():
             return 0
 
-        skill = 0
-        if self.spell_caster.is_player():
-            skill = self.spell_caster.skill_manager.get_skill_value_for_spell_id(self.spell_entry.ID)
-
+        # Per-level cast time uses spell level (rank/5) on the client, not raw skill points.
         cast_time = int(max(self.cast_time_entry.Minimum, self.cast_time_entry.Base + self.cast_time_entry.PerLevel *
-                            skill))
+                            self.caster_spell_level))
 
         caster_is_unit = self.spell_caster.is_unit(by_mask=True)
 
@@ -545,10 +652,15 @@ class CastingSpell:
                 base_mana = self.spell_caster.stat_manager.get_base_stat(UnitStats.MANA)
                 mana_cost = base_mana * self.spell_entry.ManaCostPct / 100
 
+        if self.spell_entry.ManaCostPerLevel:
+            # Client scales mana per level by spell level (rank/5).
+            mana_cost += self.spell_entry.ManaCostPerLevel * self.caster_spell_level
+
+        if self.spell_caster.is_player():
             mana_cost = self.spell_caster.stat_manager.apply_bonuses_for_value(mana_cost, UnitStats.SPELL_SCHOOL_POWER_COST,
                                                                                misc_value=self.spell_entry.School)
-        # ManaCostPerLevel is not used by anything relevant, ignore for now (only 271/4513/7290) TODO
 
+        mana_cost = max(0, mana_cost)
         return mana_cost + power_cost_mod
 
     def get_duration(self, apply_mods=True):
@@ -562,7 +674,8 @@ class CastingSpell:
         if self.duration_ is not None and self.base_duration_ is not None:
             return (self.duration_ if apply_mods else self.base_duration_) + combo_gain
 
-        gain_per_level = self.duration_entry.DurationPerLevel * self.caster_effective_level
+        # Duration per level uses spell level (rank/5) on the client.
+        gain_per_level = self.duration_entry.DurationPerLevel * self.caster_spell_level
 
         base_duration = min(base_duration + gain_per_level, self.duration_entry.MaxDuration)
         if not self.spell_caster.is_unit(by_mask=True):
@@ -580,7 +693,13 @@ class CastingSpell:
                                        base_damage=damage, damage_school_mask=self.get_damage_school_mask(),
                                        spell_id=self.spell_entry.ID, spell_school=self.get_damage_school(),
                                        total_damage=max(0, damage - absorb), absorb=absorb,
-                                       hit_info=HitInfo.DAMAGE if not healing else SpellHitFlags.HEALED)
+                                       spell_hit_flags=SpellHitFlags.DAMAGE if not healing else SpellHitFlags.HEALED)
+        logging = SpellAdvancedLogging()
+        logging.min_damage = int(damage_info.base_damage)
+        logging.max_damage = int(damage_info.base_damage)
+        logging.scaled_damage = float(damage_info.base_damage)
+        logging.damage_type = int(damage_info.spell_school)
+        damage_info.spell_advanced_logging = logging
         return damage_info
 
     def load_effects(self):

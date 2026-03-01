@@ -20,9 +20,10 @@ from game.world.managers.objects.units.creature.CreatureBuilder import CreatureB
 from utils.ConfigManager import config
 from utils.GitUtils import GitUtils
 from utils.Srp6 import Srp6
+from utils.StringUtils import find_closest_match, normalize_name, parse_bool
 from utils.TextUtils import GameTextFormatter
 from utils.constants import CustomCodes
-from utils.constants.MiscCodes import UnitDynamicTypes, MoveFlags, SpeedType
+from utils.constants.MiscCodes import UnitDynamicTypes, MoveFlags, SpeedType, ZSource
 from utils.constants.SpellCodes import SpellEffects, SpellTargetMask
 from utils.constants.UnitCodes import UnitFlags, WeaponMode, CreatureStaticFlags
 from utils.constants.UpdateFields import PlayerFields
@@ -155,8 +156,7 @@ class CommandManager:
         player_y = player_mgr.location.y
         player_z = player_mgr.location.z
         player_o = player_mgr.location.o
-        maps_z, z_locked = map_.calculate_z_for_object(player_mgr)
-        maps_z_str = f'{maps_z:.3f}' if not z_locked else 'Invalid'
+        maps_z, z_source = map_.calculate_z_for_object(player_mgr)
         liq = map_.get_liquid_information(player_x, player_y, player_z)
         liq_str = 'None'
         if liq:
@@ -168,7 +168,7 @@ class CommandManager:
                   f'Zone: {world_session.player_mgr.zone}\n' \
                   f'Adt X: {adt_tile[0]} Adt Y: {adt_tile[1]}\n' \
                   f'X: {player_x:.3f} Y: {player_y:.3f} Z: {player_z:.3f} O: {player_o:.3f}\n' \
-                  f'MapZ: {maps_z_str}\n' \
+                  f'Calculated Z: {maps_z:.3f} Source: {z_source.name.upper()}\n' \
                   f'Liquid: {liq_str}'
 
     @staticmethod
@@ -782,7 +782,7 @@ class CommandManager:
     @staticmethod
     def unmount(world_session, args):
         player_mgr = CommandManager._target_or_self(world_session, only_players=True)
-        if player_mgr.unit_flags & UnitFlags.UNIT_MASK_MOUNTED:
+        if player_mgr.is_mounted():
             player_mgr.unmount()
         return 0, ''
 
@@ -902,6 +902,32 @@ class CommandManager:
 
             result += f'{flag_count} active unit flags.'
         return 0, result
+
+    @staticmethod
+    def toggle_unit_flag(world_session, args):
+        split_args = str(args).strip().split(maxsplit=1)
+        if len(split_args) != 2:
+            return -1, 'please use it like: .toggleunitflag <true|false> <unit_flag>'
+
+        active = parse_bool(split_args[0])
+        if active is None:
+            return -1, 'invalid state. use true|false, on|off, enable|disable, or 1|0.'
+
+        match_name = find_closest_match(split_args[1], UnitFlags.__members__,
+                                        prefixes=('UNIT_FLAG_', 'UNIT_MASK_'))
+        if not match_name:
+            return -1, 'invalid unit flag.'
+
+        unit_flag = UnitFlags[match_name]
+        unit = CommandManager._target_or_self(world_session)
+        unit.set_unit_flag(unit_flag, active)
+
+        normalized = normalize_name(split_args[1])
+        if normalized != match_name and normalized not in (match_name.replace('UNIT_FLAG_', '', 1),
+                                                           match_name.replace('UNIT_MASK_', '', 1)):
+            return 0, f'Matched "{split_args[1]}" to {match_name}. {unit.get_name()}: {match_name} set to {active}.'
+
+        return 0, f'{unit.get_name()}: {match_name} set to {active}.'
 
     @staticmethod
     def creature_info(world_session, args):
@@ -1274,6 +1300,29 @@ class CommandManager:
         return 0, f'<GM> tag {"enabled" if enable else "disabled"}.'
 
     @staticmethod
+    def faceme(world_session, args):
+        unit = CommandManager._target_or_self(world_session)
+        if unit == world_session.player_mgr:
+            return -1, 'invalid unit selection.'
+        unit.movement_manager.face_target(world_session.player_mgr)
+        return 0, ''
+
+    @staticmethod
+    def face_angle(world_session, args):
+        unit = CommandManager._target_or_self(world_session)
+        if unit == world_session.player_mgr:
+            return -1, 'invalid unit selection.'
+        if not args:
+            angle = unit.location.get_angle_towards_vector(world_session.player_mgr.location)
+        else:
+            try:
+                angle = float(args)
+            except ValueError:
+                return -1, 'please use it like: .faceangle <orientation>'
+        unit.movement_manager.face_angle(angle)
+        return 0, ''
+
+    @staticmethod
     def create_account(args):
         args = str(args).strip().split()
         if len(args) != 2:
@@ -1355,10 +1404,13 @@ GM_COMMAND_DEFINITIONS = {
     'squest': [CommandManager.squest, 'search quests'],
     'qadd': [CommandManager.qadd, 'adds a quest to your log'],
     'qdel': [CommandManager.qdel, 'delete active or completed quest'],
-    'gmtag': [CommandManager.gmtag, 'enable or disable the <GM> tag']
+    'gmtag': [CommandManager.gmtag, 'enable or disable the <GM> tag'],
+    'faceme': [CommandManager.faceme, 'have the targeted unit face you using target spline'],
+    'faceangle': [CommandManager.face_angle, 'have the targeted unit face you or a given angle using angle spline']
 }
 
 DEV_COMMAND_DEFINITIONS = {
+    'toggleunitflag': [CommandManager.toggle_unit_flag, 'toggle a unit flag by name'],
     'scriptwp': [CommandManager.activate_script_waypoints, 'tries to activate the selected unit script waypoints'],
     'flushbags': [CommandManager.flushbags, 'flush all items from bags'],
     'los': [CommandManager.los, 'check unit line of sight'],

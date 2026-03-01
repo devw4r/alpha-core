@@ -2,8 +2,7 @@ from database.dbc.DbcDatabaseManager import DbcDatabaseManager
 from game.world.opcode_handling.HandlerValidator import HandlerValidator
 from network.packet.PacketReader import *
 from network.packet.PacketWriter import *
-from utils.ConfigManager import config
-from utils.constants.MiscCodes import Emotes, EmoteUnitState
+from utils.constants.MiscCodes import EmoteUnitState
 from utils.constants.UnitCodes import StandState
 
 
@@ -16,10 +15,13 @@ class TextEmoteHandler:
         if not player_mgr:
             return res
 
-        if not player_mgr.is_alive or len(reader.data) < 12:
+        if not player_mgr.is_alive:
+            return 0
+        # Avoid handling an empty or truncated packet.
+        if not HandlerValidator.validate_packet_length(reader, min_length=12):
             return 0
 
-        emote_id, guid = unpack('<IQ', reader.data)
+        emote_id, guid = unpack('<IQ', reader.data[:12])
         emote = DbcDatabaseManager.emote_text_get_by_id(emote_id)
 
         if not emote:
@@ -28,7 +30,7 @@ class TextEmoteHandler:
         target = player_mgr.get_map().get_surrounding_unit_by_guid(player_mgr, guid, include_players=True)
 
         # Say emote text.
-        world_session.player_mgr.say_emote_text(emote_id, target)
+        player_mgr.say_emote_text(emote_id, target)
 
         # Perform visual emote action if needed
         emote_id = emote.EmoteID

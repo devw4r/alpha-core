@@ -46,6 +46,9 @@ class DynamicObjectTypes(IntEnum):
 
 
 class UpdateTypes(IntEnum):
+    # Client treats FAR/NEAR as in-range toggles only:
+    # FAR_OBJECTS -> UpdateOutOfRangeObjects (moves known objects out of range, not destroy).
+    # NEAR_OBJECTS -> UpdateInRangeObjects (marks cached objects in range, does not create).
     PARTIAL = 0
     MOVEMENT = 1
     CREATE_OBJECT = 2
@@ -53,12 +56,15 @@ class UpdateTypes(IntEnum):
     NEAR_OBJECTS = 4
 
 
+class UpdateFlags(IntFlag):
+    NONE = 0
+    CHANGES = 1 << 0
+    INVENTORY = 1 << 1
+    DYNAMIC_FLAGS = 1 << 2
+
+
 # Some might be unused on Alpha
 class HighGuid(IntEnum):
-
-    @classmethod
-    def has_value(cls, value):
-        return value in cls._value2member_map_
 
     HIGHGUID_PLAYER = 0x0000 << 48
     HIGHGUID_ITEM = 0x4000 << 48
@@ -97,13 +103,13 @@ class HitInfo(IntFlag):
     DAMAGE = 0x00000000
     MISS = 0x00000001
     SUCCESS = 0x00000002
-    UNIT_DEAD = 0x00000004  # unit died because of this attack
+    UNIT_DEAD = 0x00000004  # Unit died because of this attack (victim animation hint).
     CRITICAL_HIT = 0x00000008
-    STUN = 0x00000010
+    STUN = 0x00000010  # Advanced logging flag (stun roll info).
     PARRY = 0x00000020
     DODGE = 0x00000040
     BLOCK = 0x00000080
-    COOLDOWN = 0x00000100  # ?
+    COOLDOWN = 0x00000100  # Advanced logging flag (stun cooldown).
     OFFHAND = 0x00000200
     CRUSHING = 0x0000400
     UNKNOWN1 = 0x0000800
@@ -142,7 +148,7 @@ class VictimStates(IntEnum):
     VS_DODGE = 2
     VS_PARRY = 3
     VS_INTERRUPT = 4
-    VS_BLOCK = 5  # unused? not set when blocked even on full block
+    VS_BLOCK = 5
     VS_EVADE = 6
     VS_IMMUNE = 7
     VS_DEFLECT = 8
@@ -271,7 +277,8 @@ class UnitDynamicTypes(IntEnum):
 
 class MountResults(IntEnum):
     MOUNTRESULT_INVALID_MOUNTEE = 0  # You can't mount that unit!
-    MOUNTRESULT_TOO_FARA_WAY = 1  # That mount is too far away!
+    MOUNTRESULT_TOO_FAR_AWAY = 1  # That mount is too far away!
+    MOUNTRESULT_TOO_FARA_WAY = 1  # Backward-compatible alias.
     MOUNTRESULT_ALREADY_MOUNTED = 2  # You're already mounted!
     MOUNTRESULT_NOT_MOUNTABLE = 3  # That unit can't be mounted!
     MOUNTRESULT_NOT_YOUR_PET = 4  # That mount isn't your pet!
@@ -280,12 +287,14 @@ class MountResults(IntEnum):
     MOUNTRESULT_RACE_CANT_MOUNT = 7  # You can't mount because of your race!
     MOUNTRESULT_SHAPESHIFTED = 8  # You can't mount while shapeshifted!
     MOUNTRESULT_FORCED_DISMOUNT = 9  # You dismount before continuing.
+    MOUNTRESULT_OK = 10  # No error.
 
 
 class DismountResults(IntEnum):
     DISMOUNT_RESULT_NO_PET = 0
     DISMOUNT_RESULT_NOT_MOUNTED = 1
     DISMOUNT_RESULT_NOT_YOUR_PET = 2
+    DISMOUNT_RESULT_OK = 3
 
 
 class LootTypes(IntEnum):
@@ -293,6 +302,16 @@ class LootTypes(IntEnum):
     LOOT_TYPE_CORPSE = 1
     LOOT_TYPE_PICKLOCK = 2
     LOOT_TYPE_FISHING = 3
+
+
+class LootErrors(IntEnum):
+    # CGPlayer_C::OnLootResponse (0.5.3 client).
+    LOOT_ERROR_DIDNT_KILL = 0
+    LOOT_ERROR_TOO_FAR = 4
+    LOOT_ERROR_BAD_FACING = 5
+    LOOT_ERROR_LOCKED = 6
+    LOOT_ERROR_NOT_STANDING = 8
+    LOOT_ERROR_STUNNED = 9
 
 
 class ReputationFlag(IntEnum):
@@ -352,6 +371,11 @@ class QuestFailedReasons(IntEnum):
     QUEST_FAILED_NOT_ENOUGH_MONEY = 23  # You don't have enough money for that quest.
 
 
+class QuestCantTakeReason(IntEnum):
+    QUEST_CANT_TAKE_LOW_LEVEL = 1
+    QUEST_CANT_TAKE_MISSING_ITEMS = 15
+
+
 class SkillCategories(IntEnum):
     MAX_SKILL = 1  # These are always max when added i.e. language/riding
     COMBAT_SKILL = 2
@@ -386,6 +410,13 @@ class GameObjectStates(IntEnum):
     GO_STATE_ACTIVE = 0  # show in world as used and not reset (closed door open)
     GO_STATE_READY = 1  # show in world as ready (closed door close)
     GO_STATE_ACTIVE_ALTERNATIVE = 2  # show in world as used in alt way and not reset (closed door open by cannon fire)
+
+
+class GameObjectCustomAnim(IntEnum):
+    CUSTOM_0 = 0
+    CUSTOM_1 = 1
+    CUSTOM_2 = 2
+    CUSTOM_3 = 3
 
 
 class Emotes(IntEnum):
@@ -702,6 +733,13 @@ class MapTileStates(IntEnum):
     UNUSABLE = 2
 
 
+class ZSource(IntEnum):
+    CURRENT_Z = 0
+    NAVS = 1
+    TERRAIN = 2
+    WMO = 3
+
+
 class MoveType(IntEnum):
     INSTANT = 0
     IDLE = 1
@@ -901,11 +939,7 @@ class GuildEvents(IntEnum):
     GUILD_EVENT_LEADER_IS = 0x6
     GUILD_EVENT_LEADER_CHANGED = 0x7
     GUILD_EVENT_DISBANDED = 0x8
-    GUILD_EVENT_TABARDCHANGE = 0x9
-    GUILD_EVENT_UNK1 = 0xA
-    GUILD_EVENT_UNK2 = 0xB
-    GUILD_EVENT_HASCOMEONLINE = 0xC
-    GUILD_EVENT_HASGONEOFFLINE = 0xD
+    GUILD_EVENT_TABARDCHANGE = 0x9  # Not implemented client-side.
 
 
 class GuildChatMessageTypes(IntEnum):
@@ -1117,10 +1151,6 @@ class PoolType(IntEnum):
 
 class MapsNoNavs(IntEnum):
 
-    @classmethod
-    def has_value(cls, value):
-        return value in cls._value2member_map_
-
     UnderMine = 2
     Test = 13
     ScottTest = 25
@@ -1132,41 +1162,7 @@ class MapsNoNavs(IntEnum):
 
 
 class CreatureAIEventTypes(IntEnum):
-    # TODO: (Taken as-is from VMaNGOS) Finish moving all of these to our naming.
-    #     EVENT_T_TIMER                   = 0,                    // InitialMin, InitialMax, RepeatMin, RepeatMax
-    #     EVENT_T_TIMER_OOC               = 1,                    // InitialMin, InitialMax, RepeatMin, RepeatMax
-    #     EVENT_T_HP                      = 2,                    // HPMax%, HPMin%, RepeatMin, RepeatMax
-    #     EVENT_T_MANA                    = 3,                    // ManaMax%,ManaMin% RepeatMin, RepeatMax
-    #     EVENT_T_AGGRO                   = 4,                    // NONE
-    #     EVENT_T_KILL                    = 5,                    // RepeatMin, RepeatMax, PlayerOnly
-    #     EVENT_T_DEATH                   = 6,                    // NONE
-    #     EVENT_T_EVADE                   = 7,                    // NONE
-    #     EVENT_T_SPELLHIT                = 8,                    // SpellID, School, RepeatMin, RepeatMax
-    #     EVENT_T_RANGE                   = 9,                    // MinDist, MaxDist, RepeatMin, RepeatMax
-    #     EVENT_T_OOC_LOS                 = 10,                   // NoHostile, MaxRnage, RepeatMin, RepeatMax
-    #     EVENT_T_SPAWNED                 = 11,                   // NONE
-    #     EVENT_T_TARGET_HP               = 12,                   // HPMax%, HPMin%, RepeatMin, RepeatMax
-    #     EVENT_T_TARGET_CASTING          = 13,                   // RepeatMin, RepeatMax
-    #     EVENT_T_FRIENDLY_HP             = 14,                   // HPDeficit, Radius, RepeatMin, RepeatMax
-    #     EVENT_T_FRIENDLY_IS_CC          = 15,                   // DispelType, Radius, RepeatMin, RepeatMax
-    #     EVENT_T_FRIENDLY_MISSING_BUFF   = 16,                   // SpellId, Radius, RepeatMin, RepeatMax
-    #     EVENT_T_SUMMONED_UNIT           = 17,                   // CreatureId, RepeatMin, RepeatMax
-    #     EVENT_T_TARGET_MANA             = 18,                   // ManaMax%, ManaMin%, RepeatMin, RepeatMax
-    #     EVENT_T_QUEST_ACCEPT            = 19,                   // QuestID
-    #     EVENT_T_QUEST_COMPLETE          = 20,                   //
-    #     EVENT_T_REACHED_HOME            = 21,                   // NONE
-    #     EVENT_T_RECEIVE_EMOTE           = 22,                   // EmoteId, Condition, CondValue1, CondValue2
-    #     EVENT_T_AURA                    = 23,                   // Param1 = SpellID, Param2 = Number of time stacked, Param3/4 Repeat Min/Max
-    #     EVENT_T_TARGET_AURA             = 24,                   // Param1 = SpellID, Param2 = Number of time stacked, Param3/4 Repeat Min/Max
-    #     EVENT_T_SUMMONED_JUST_DIED      = 25,                   // CreatureId, RepeatMin, RepeatMax
-    #     EVENT_T_SUMMONED_JUST_DESPAWN   = 26,                   // CreatureId, RepeatMin, RepeatMax
-    #     EVENT_T_MISSING_AURA            = 27,                   // Param1 = SpellID, Param2 = Number of time stacked expected, Param3/4 Repeat Min/Max
-    #     EVENT_T_TARGET_MISSING_AURA     = 28,                   // Param1 = SpellID, Param2 = Number of time stacked expected, Param3/4 Repeat Min/Max
-    #     EVENT_T_MOVEMENT_INFORM         = 29,                   // Param1 = motion type, Param2 = point ID, RepeatMin, RepeatMax
-    #     EVENT_T_LEAVE_COMBAT            = 30,                   // NONE
-    #     EVENT_T_MAP_SCRIPT_EVENT        = 31,                   // Param1 = EventID, Param2 = Data
-    #     EVENT_T_GROUP_MEMBER_DIED       = 32,                   // Param1 = CreatureId, Param2 = IsLeader
-    #     EVENT_T_VICTIM_ROOTED           = 33,                   // RepeatMin, RepeatMax
+    # Values are kept aligned with VMaNGOS EVENT_T_* identifiers.
 
     AI_EVENT_TYPE_TIMER_IN_COMBAT = 0
     AI_EVENT_TYPE_OUT_OF_COMBAT = 1
@@ -1183,6 +1179,7 @@ class CreatureAIEventTypes(IntEnum):
     AI_EVENT_TYPE_TARGET_HP = 12
     AI_EVENT_TYPE_TARGET_CASTING = 13
     AI_EVENT_TYPE_FRIENDLY_HP = 14
+    AI_EVENT_TYPE_FRIENDLY_IS_CC = 15
     AI_EVENT_TYPE_FRIENDLY_MISSING_BUFF = 16
     AI_EVENT_TYPE_SUMMONED_UNIT = 17
     AI_EVENT_TYPE_TARGET_MANA = 18
@@ -1190,14 +1187,20 @@ class CreatureAIEventTypes(IntEnum):
     AI_EVENT_TYPE_QUEST_COMPLETE = 20
     AI_EVENT_TYPE_REACHED_HOME = 21
     AI_EVENT_TYPE_RECEIVE_EMOTE = 22
+    AI_EVENT_TYPE_AURA = 23
     AI_EVENT_TYPE_TARGET_AURA = 24
+    AI_EVENT_TYPE_SUMMONED_JUST_DIED = 25
+    AI_EVENT_TYPE_SUMMONED_JUST_DESPAWNED = 26
     AI_EVENT_TYPE_MISSING_AURA = 27
     AI_EVENT_TYPE_TARGET_MISSING_AURA = 28
-    # AI_EVENT_TYPE_MOVEMENT_INFORM = 29
+    AI_EVENT_TYPE_MOVEMENT_INFORM = 29
     AI_EVENT_TYPE_LEAVE_COMBAT = 30
     AI_EVENT_TYPE_SCRIPT_EVENT = 31
     AI_EVENT_TYPE_GROUP_MEMBER_DIED = 32
     AI_EVENT_TYPE_TARGET_ROOTED = 33
+    AI_EVENT_TYPE_HIT_BY_AURA = 34
+    AI_EVENT_TYPE_STEALTH_ALERT = 35
+    AI_EVENT_TYPE_SPELL_HIT_TARGET = 36
 
 
 class BroadcastMessageType(IntEnum):

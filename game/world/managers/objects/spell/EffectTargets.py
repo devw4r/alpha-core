@@ -10,7 +10,9 @@ from game.world.managers.objects.spell.ExtendedSpellData import SummonedObjectPo
 from game.world.managers.objects.spell.SpellEffectHandler import SpellEffectHandler
 from utils.Logger import Logger
 from utils.constants.SpellCodes import SpellImplicitTargets, SpellMissReason, SpellEffects, SpellTargetMask, \
+    SpellScriptTarget, \
     SpellHitFlags
+from game.world.managers.objects.units.SpellAdvancedLogging import SpellAdvancedLogging
 
 
 @dataclass
@@ -18,6 +20,7 @@ class TargetMissInfo:
     target: ObjectManager
     result: SpellMissReason
     flags: SpellHitFlags
+    advanced_logging: Optional[SpellAdvancedLogging] = None
 
 
 class EffectTargets:
@@ -149,8 +152,9 @@ class EffectTargets:
         target_info = {}
         for target in targets:
             if target.is_unit(by_mask=True) and self.effect_source.is_unit(by_mask=True):
-                result = target.stat_manager.get_spell_miss_result_against_self(self.casting_spell)
-                target_info[target.guid] = TargetMissInfo(target, *result)
+                logging = SpellAdvancedLogging()
+                result = target.stat_manager.get_spell_miss_result_against_self(self.casting_spell, logging)
+                target_info[target.guid] = TargetMissInfo(target, result[0], result[1], logging)
             else:
                 target_info[target.guid] = TargetMissInfo(target, SpellMissReason.MISS_REASON_NONE, SpellHitFlags.NONE)
         return target_info
@@ -195,24 +199,31 @@ class EffectTargets:
 
         scripted_targets = WorldDatabaseManager.SpellScriptTargetHolder.\
             spell_script_targets_get_by_spell(target_effect.casting_spell.spell_entry.ID)
+        apply_aoe_immunity = casting_spell.is_area_of_effect_spell()
 
         if not enemies_only and not friends_only and not distance_loc and not \
-                casting_spell.spell_entry.TargetCreatureType and not scripted_targets:
+                casting_spell.spell_entry.TargetCreatureType and not scripted_targets and not apply_aoe_immunity:
             return units  # No filters provided.
 
         return EffectTargets._filter_unit_targets(units, casting_spell,
                                                   enemies_only=enemies_only, friends_only=friends_only,
                                                   distance_loc=distance_loc, radius=radius,
-                                                  target_entries=[t.target_entry for t in scripted_targets])
+                                                  target_entries=[t.target_entry for t in scripted_targets
+                                                                  if t.target_type != SpellScriptTarget.TARGET_GAMEOBJECT],
+                                                  apply_aoe_immunity=apply_aoe_immunity)
 
     @staticmethod
     def _filter_unit_targets(units, casting_spell, enemies_only=False, friends_only=False,
-                             distance_loc=None, radius=-1, target_entries=None):
+                             distance_loc=None, radius=-1, target_entries=None, apply_aoe_immunity=False):
         filtered_units = []
         unit_type_restriction = casting_spell.spell_entry.TargetCreatureType
 
         radius_sqrd = radius ** 2
         for unit in units:
+
+            if apply_aoe_immunity and unit.is_immune_to_aoe():
+                continue
+
             # Unit type.
             if unit_type_restriction and not unit_type_restriction & (1 << unit.creature_type - 1):
                 continue
@@ -258,15 +269,42 @@ class EffectTargets:
 
     @staticmethod
     def resolve_area_effect_custom(casting_spell, target_effect):
-        # Always paired with TARGET_ALL_AROUND_CASTER,
-        # which applies unit entry restrictions via filtering in get_surrounding_unit_targets.
+        #  - Uses A targets as the area source set.
+        #  - Applies script target entry filtering with alive/dead constraints.
+        #  - Excludes caster.
+        targets = target_effect.targets.resolved_targets_a
+
+        script_targets = WorldDatabaseManager.SpellScriptTargetHolder.\
+            spell_script_targets_get_by_spell(casting_spell.spell_entry.ID)
+        if script_targets:
+            filtered_targets = []
+            for target in targets:
+                for script_target in script_targets:
+                    if script_target.target_type == SpellScriptTarget.TARGET_GAMEOBJECT:
+                        continue
+                    if target.entry != script_target.target_entry:
+                        continue
+
+                    is_valid = target.is_alive
+                    if script_target.target_type == SpellScriptTarget.TARGET_DEAD:
+                        is_valid = target.is_unit() and not target.is_player() and not target.is_alive
+
+                    if is_valid:
+                        filtered_targets.append(target)
+                        break
+            targets = filtered_targets
+
+        # (TARGET_ALL_AROUND_CASTER + TARGET_AREAEFFECT_CUSTOM), contributes the caster to the final
+        # target map. Keep caster in this specific pair to match practical behavior.
+        if target_effect.implicit_target_a != SpellImplicitTargets.TARGET_ALL_AROUND_CASTER:
+            targets = [target for target in targets if target != casting_spell.spell_caster]
 
         if casting_spell.spell_entry.ID in [7353, 7358]:  # Cozy Fire - only apply on friendly targets without the aura.
-            return [target for target in target_effect.targets.resolved_targets_a if
+            return [target for target in targets if
                     not casting_spell.spell_caster.can_attack_target(target) and
                     not target.aura_manager.get_similar_applied_auras_by_effect(target_effect)]
 
-        return target_effect.targets.resolved_targets_a
+        return targets
 
     @staticmethod
     def resolve_chain_damage(casting_spell, target_effect):
@@ -407,6 +445,7 @@ class EffectTargets:
             return [casting_spell.spell_caster.location]
 
         Logger.warning(f'Unimplemented implicit target called for spell {casting_spell.spell_entry.ID}')
+        return []
 
     @staticmethod
     def resolve_party_around_caster(casting_spell, target_effect):

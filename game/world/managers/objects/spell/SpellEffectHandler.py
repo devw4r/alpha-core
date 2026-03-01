@@ -18,7 +18,7 @@ from game.world.managers.objects.units.pet.PetData import PetData
 from game.world.managers.objects.units.player.SkillManager import SkillManager
 from network.packet.PacketWriter import PacketWriter
 from utils.ConfigManager import config
-from utils.Formulas import UnitFormulas
+from utils.Formulas import Distances
 from utils.Logger import Logger
 from utils.constants import CustomCodes
 from utils.constants.ItemCodes import EnchantmentSlots, InventoryError, ItemClasses
@@ -26,7 +26,7 @@ from utils.constants.MiscCodes import AttackTypes, GameObjectStates, DynamicObje
 from utils.constants.OpCodes import OpCode
 from utils.constants.PetCodes import PetSlot
 from utils.constants.SpellCodes import AuraTypes, SpellEffects, SpellState, SpellTargetMask, DispelType
-from utils.constants.UnitCodes import UnitFlags, UnitStates, CreatureTypes
+from utils.constants.UnitCodes import UnitFlags, UnitStates
 
 
 class SpellEffectHandler:
@@ -99,7 +99,7 @@ class SpellEffectHandler:
                                                             apply_bonuses=False)  # Bonuses are applied on spell damage.
         damage_bonus = effect.get_effect_points()
 
-        # Overpower also uses combo points, but shouldn't scale.
+        # Overpower also uses combo points but shouldn't scale.
         if caster.is_player() and not casting_spell.is_overpower() and casting_spell.requires_combo_points():
             damage_bonus *= casting_spell.spent_combo_points
 
@@ -234,12 +234,12 @@ class SpellEffectHandler:
         if not target.is_unit(by_mask=True):
             return
 
-        already_mounted = target.unit_flags & UnitFlags.UNIT_MASK_MOUNTED
-        if already_mounted:
+        if target.is_mounted():
             # Remove any existing mount auras.
             target.aura_manager.remove_auras_by_type(AuraTypes.SPELL_AURA_MOUNTED)
             target.aura_manager.remove_auras_by_type(AuraTypes.SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED)
-            # Force dismount if target is still mounted (like a previous SPELL_EFFECT_SUMMON_MOUNT that doesn't
+            target.set_unit_state(UnitStates.SPELL_MOUNTED, active=False, index=casting_spell.spell_entry.ID)
+            # Force dismount if the target is still mounted (like a previous SPELL_EFFECT_SUMMON_MOUNT that doesn't
             # leave any applied aura).
             if target.mount_display_id > 0:
                 target.unmount()
@@ -247,6 +247,8 @@ class SpellEffectHandler:
             creature_entry = effect.misc_value
             if not target.summon_mount(creature_entry):
                 Logger.error(f'SPELL_EFFECT_SUMMON_MOUNT: Creature template ({creature_entry}) not found in database.')
+                return
+            target.set_unit_state(UnitStates.SPELL_MOUNTED, active=True, index=casting_spell.spell_entry.ID)
 
     @staticmethod
     def handle_insta_kill(casting_spell, effect, caster, target):
@@ -549,7 +551,7 @@ class SpellEffectHandler:
         # Generate a point within combat reach and facing the target.
         # It wasn't until Patch 0.6 that Charge sped you along a path towards the target, it just teleported you
         # next to the target (there's also video evidence of this behavior).
-        distance = caster.location.distance(target.location) - UnitFormulas.combat_distance(leaper, target)
+        distance = caster.location.distance(target.location) - Distances.combat_distance(leaper, target)
         charge_location = caster.location.get_point_in_between(caster, distance, target.location, map_id=caster.map_id)
         charge_location.face_point(target.location)
 
@@ -586,8 +588,6 @@ class SpellEffectHandler:
 
         caster.pet_manager.summon_permanent_pet(casting_spell.spell_entry.ID, creature_id=effect.misc_value)
 
-    # TODO:
-    #  Level of pet summoned using engineering item based at engineering skill level.
     @staticmethod
     def handle_summon_guardian(casting_spell, effect, caster, target):
         creature_entry = effect.misc_value
@@ -605,6 +605,10 @@ class SpellEffectHandler:
 
         # Detach guardians with same entry if any.
         caster.pet_manager.detach_pets_by_entry(creature_entry)
+
+        # Engineering items can override level.
+        guardian_level = SkillManager.get_engineering_item_summon_level(caster, casting_spell.source_item,
+                                                                         require_trinket=True)
 
         for count in range(amount):
             random_point = caster.location.get_random_point_in_radius(radius, caster.map_id)
@@ -628,8 +632,8 @@ class SpellEffectHandler:
                                                       summon_type=summon_type,
                                                       is_guardian=True)
 
+            caster.pet_manager.add_guardian_from_spell(creature_manager, casting_spell, guardian_level=guardian_level)
             caster.get_map().spawn_object(instance=creature_manager)
-            caster.pet_manager.add_guardian_from_spell(creature_manager, casting_spell)
             if caster.object_ai:
                 caster.object_ai.just_summoned(creature_manager)
 
@@ -639,6 +643,8 @@ class SpellEffectHandler:
         if not creature_entry:
             return
 
+        # Engineering items can override level.
+        summon_level = SkillManager.get_engineering_item_summon_level(caster, casting_spell.source_item)
         radius = effect.get_radius()
         duration = casting_spell.get_duration()
         # If no duration, default to 2 minutes.
@@ -665,6 +671,7 @@ class SpellEffectHandler:
                                                       caster.instance_id,
                                                       summoner=caster, faction=caster.faction, ttl=duration,
                                                       spell_id=casting_spell.spell_entry.ID,
+                                                      level=summon_level,
                                                       subtype=CustomCodes.CreatureSubtype.SUBTYPE_TEMP_SUMMON,
                                                       summon_type=summon_type)
 
@@ -854,38 +861,41 @@ class SpellEffectHandler:
         # If this enchantment is being applied on a trade, update trade status with proposed enchant.
         # Enchant will be applied after trade is accepted.
         if owner_player != caster:
-            if caster.trade_data and caster.trade_data.other_player and caster.trade_data.other_player.trade_data:
-                # Get the trade slot for the item being enchanted.
-                trade_slot = caster.trade_data.other_player.trade_data.get_slot_by_item(target)
+            if caster.trade_data and caster.trade_data.has_linked_trade_data():
+                source_trade_data = caster.trade_data
+                target_trade_data = source_trade_data.get_linked_trade_data()
+                current_target_trade_data, trade_slot = source_trade_data.resolve_enchant_target_trade_context(target)
+                if not current_target_trade_data or not target_trade_data:
+                    return
+
+                target_owner_guid = current_target_trade_data.player.guid
 
                 # Update proposed enchantment on caster.
-                caster.trade_data.set_proposed_enchant(trade_slot,
+                source_trade_data.set_proposed_enchant(trade_slot,
                                                        casting_spell.spell_entry.ID,
                                                        enchantment_slot,
                                                        effect.misc_value,
-                                                       duration, charges)
+                                                       duration, charges, caster.guid, target_owner_guid, target.guid)
 
                 # Update proposed enchantment on receiver.
-                caster.trade_data.other_player.trade_data.set_proposed_enchant(trade_slot,
-                                                                               casting_spell.spell_entry.ID,
-                                                                               enchantment_slot,
-                                                                               effect.misc_value,
-                                                                               duration, charges)
+                target_trade_data.set_proposed_enchant(trade_slot,
+                                                       casting_spell.spell_entry.ID,
+                                                       enchantment_slot,
+                                                       effect.misc_value,
+                                                       duration, charges, caster.guid, target_owner_guid, target.guid)
 
                 # Update trade status, this will propagate to both players.
-                caster.trade_data.update_trade_status()
+                source_trade_data.update_trade_status()
                 return
 
         # Apply permanent enchantment.
         owner_player.enchantment_manager.set_item_enchantment(target, enchantment_slot, effect.misc_value,
-                                                              -1 if not is_temporary else duration, charges)
+                                                              -1 if not is_temporary else duration, charges,
+                                                              caster=caster)
         owner_player.equipment_proc_manager.handle_equipment_change(target)
 
         # Save item.
         target.save()
-
-        # Enchantment log.
-        owner_player.enchantment_manager.send_enchantment_log(caster, target, effect.misc_value)
 
     # Block/parry/dodge/defense passives have their own effects and no aura.
     # Flag the unit here as being able to block/parry/dodge.
